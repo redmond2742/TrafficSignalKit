@@ -24,8 +24,8 @@
             update.
 
             <ul>
-              <li>upload to github</li>
               <li>host</li>
+              <li>March Project!</li>
             </ul>
           </v-expansion-panel-text>
         </v-expansion-panel>

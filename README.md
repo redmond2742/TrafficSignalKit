@@ -1,77 +1,49 @@
-# Vuetify (Default)
+# Traffic Signal Kit
 
-This is the official scaffolding tool for Vuetify, designed to give you a head start in building your new Vuetify application. It sets up a base template with all the necessary configurations and standard directory structure, enabling you to begin development without the hassle of setting up the project from scratch.
+Welcome to the Traffic Signal Kit! This project is a learning journey into Vue.js with a focus on building practical traffic signal-related tools. In 2024, the goal is to dive deep into Vue.js, exploring various aspects of the framework by creating a new tool each month. These tools will serve as proof of concepts, showcasing different Vue.js features and techniques while providing a useful tool related to traffic signals.
 
-## ❗️ Important Links
+## Purpose
 
-- 📄 [Docs](https://vuetifyjs.com/)
-- 🚨 [Issues](https://issues.vuetifyjs.com/)
-- 🏬 [Store](https://store.vuetifyjs.com/)
-- 🎮 [Playground](https://play.vuetifyjs.com/)
-- 💬 [Discord](https://community.vuetifyjs.com)
+The purpose of the Traffic Signal Kit is to provide simple tools for traffic engineers while I learn Vue.js. By focusing on traffic signal-related tools, we aim to make the learning process engaging and relatable to practical scenarios.
 
-## 💿 Install
+## Goals
 
-Set up your project using your preferred package manager. Use the corresponding command to install the dependencies:
+- **Learn Vue.js:** Gain a deeper understanding of Vue.js concepts, including components, directives, state management, routing, and more.
+- **Explore Traffic Signal Concepts:** Apply Vue.js principles to simulate and manipulate traffic signal behaviors, timing, and controls.
+- **Build Practical Tools:** Create functional traffic signal-related tools that can be used for educational purposes or as prototypes for future projects.
+- **Iterative Development:** Continuously improve skills and knowledge by building a new tool each month, incorporating feedback, and experimenting with new techniques.
 
-| Package Manager                                                | Command        |
-|---------------------------------------------------------------|----------------|
-| [yarn](https://yarnpkg.com/getting-started)                   | `yarn install` |
-| [npm](https://docs.npmjs.com/cli/v7/commands/npm-install)     | `npm install`  |
-| [pnpm](https://pnpm.io/installation)                          | `pnpm install` |
-| [bun](https://bun.sh/#getting-started)                        | `bun install`  |
+## About the Tools
 
-After completing the installation, your environment is ready for Vuetify development.
+Each tool developed as part of the Traffic Signal Kit will focus on a specific aspect of traffic signals or related functionalities. These tools may include:
 
-## ✨ Features
+- **Traffic Light Simulator:** Simulate the behavior of traffic lights with customizable timing and control options.
+- **Pedestrian Crosswalk Signal:** Create a pedestrian signal system with crosswalk timings and user interaction.
+- **Traffic Signal Analytics:** Analyze traffic signal data, such as wait times, vehicle counts, and peak traffic periods.
+- **Traffic Signal Planner:** Design and plan traffic signal layouts for different road configurations and traffic volumes.
 
-- 🖼️ **Optimized Front-End Stack**: Leverage the latest Vue 3 and Vuetify 3 for a modern, reactive UI development experience. [Vue 3](https://v3.vuejs.org/) | [Vuetify 3](https://vuetifyjs.com/en/)
-- 🗃️ **State Management**: Integrated with [Pinia](https://pinia.vuejs.org/), the intuitive, modular state management solution for Vue.
-- 🚦 **Routing and Layouts**: Utilizes Vue Router for SPA navigation and vite-plugin-vue-layouts for organizing Vue file layouts. [Vue Router](https://router.vuejs.org/) | [vite-plugin-vue-layouts](https://github.com/JohnCampionJr/vite-plugin-vue-layouts)
-- ⚡ **Next-Gen Tooling**: Powered by Vite, experience fast cold starts and instant HMR (Hot Module Replacement). [Vite](https://vitejs.dev/)
-- 🧩 **Automated Component Importing**: Streamline your workflow with unplugin-vue-components, automatically importing components as you use them. [unplugin-vue-components](https://github.com/antfu/unplugin-vue-components)
+## Project Structure
 
-These features are curated to provide a seamless development experience from setup to deployment, ensuring that your Vuetify application is both powerful and maintainable.
+## Using Traffic Signal Kit
 
-## 💡 Usage
+Visit the website where this website is deployed: TBD
 
-This section covers how to start the development server and build your project for production.
+## Disclaimer
 
-### Starting the Development Server
+Please note that the tools developed as part of the Traffic Signal Kit are intended for learning purposes and proof of concepts. They may not be fully polished or production-ready. Use them at your own discretion and be aware of any limitations or potential issues.
 
-To start the development server with hot-reload, run the following command. The server will be accessible at [http://localhost:3000](http://localhost:3000):
+## Contributors
 
-```bash
-yarn dev
-```
+- Matt Redmond - Creator and maintainer of the Traffic Signal Kit project.
 
-(Repeat for npm, pnpm, and bun with respective commands.)
+## Feedback and Contributions
 
-### Building for Production
+Feedback, suggestions, bug reports, and contributions are welcome! If you have any ideas for new tools, improvements to existing tools, or general feedback about the project, feel free to open an issue or submit a pull request on GitHub.
 
-To build your project for production, use:
+## License
 
-```bash
-yarn build
-```
+The Traffic Signal Kit project is licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute the code for educational or personal projects. Refer to the LICENSE file for more information.
 
-(Repeat for npm, pnpm, and bun with respective commands.)
+---
 
-Once the build process is completed, your application will be ready for deployment in a production environment.
-
-## 💪 Support Vuetify Development
-
-This project is built with [Vuetify](https://vuetifyjs.com/en/), a UI Library with a comprehensive collection of Vue components. Vuetify is an MIT licensed Open Source project that has been made possible due to the generous contributions by our [sponsors and backers](https://vuetifyjs.com/introduction/sponsors-and-backers/). If you are interested in supporting this project, please consider:
-
-- [Requesting Enterprise Support](https://support.vuetifyjs.com/)
-- [Sponsoring John on Github](https://github.com/users/johnleider/sponsorship)
-- [Sponsoring Kael on Github](https://github.com/users/kaelwd/sponsorship)
-- [Supporting the team on Open Collective](https://opencollective.com/vuetify)
-- [Becoming a sponsor on Patreon](https://www.patreon.com/vuetify)
-- [Becoming a subscriber on Tidelift](https://tidelift.com/subscription/npm/vuetify)
-- [Making a one-time donation with Paypal](https://paypal.me/vuetify)
-
-## 📑 License
-[MIT](http://opensource.org/licenses/MIT)
-
-Copyright (c) 2016-present Vuetify, LLC
+Happy coding and have fun trying out Traffic Signal Kit! 🚦✨

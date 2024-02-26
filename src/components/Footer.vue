@@ -6,12 +6,13 @@
       <v-spacer></v-spacer>
 
       <v-btn
-        v-for="icon in icons"
-        :key="icon"
+        v-for="icon in footerIcons"
+        :key="icon.id"
         class="mx-4"
-        :icon="icon"
+        :icon="icon.icon"
         variant="plain"
         size="small"
+        :href="icon.link"
       ></v-btn>
     </div>
 
@@ -34,7 +35,18 @@
 <script>
 export default {
   data: () => ({
-    icons: ["mdi-github", "mdi-linkedin"],
+    footerIcons: [
+      {
+        id: 1,
+        icon: "mdi-github",
+        link: "https://github.com/redmond2742/TrafficSignalKit",
+      },
+      {
+        id: 2,
+        icon: "mdi-linkedin",
+        link: "https://www.linkedin.com/in/matt-redmond-00700a36/",
+      },
+    ],
   }),
 };
 </script>

@@ -311,7 +311,7 @@ export default {
         year,
         month - 1,
         day,
-        Number(hour),
+        Number(hour), //+ this.usaTimezones[this.timezoneOffset],
         minute,
         second,
         millisecond * 100
@@ -325,17 +325,6 @@ export default {
       return buildDate.toISOString();
     },
     createTimestampDate(timestamp) {
-      const date1 = new Date(
-        Date.UTC(
-          70,
-          0,
-          0,
-          0,
-          0,
-          Math.floor(parseFloat(timestamp / 10)),
-          (timestamp % 10) * 100
-        )
-      );
       const date = new Date(
         70,
         0,
@@ -389,7 +378,6 @@ export default {
         minute: "numeric",
         second: "numeric",
         fractionalSecondDigits: 2,
-        timeZone: this.timezoneOffset,
       };
       const locale = navigator.language;
 

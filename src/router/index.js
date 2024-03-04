@@ -4,6 +4,7 @@ import SplitCalculator from '../views/SplitCalculator'
 import HighResDataExplainer from '../views/HighResDataExplainer'
 import About from '../views/About'
 import TermsOfService from '../views/TermsOfService'
+import GpxPlotter from '../views/GpxPlotter'
 
 const routes = [
     {
@@ -28,9 +29,14 @@ const routes = [
     },
     {
         path: '/explainer',
-        name:     'HighResDataExplainer',
+        name: 'HighResDataExplainer',
         component: HighResDataExplainer,
     },
+    {
+        path: '/gpx',
+        name: 'gpxPlotter',
+        component: GpxPlotter,
+    }
 
 ]
 

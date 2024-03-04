@@ -72,7 +72,8 @@
     <b>February: </b>
     <router-link to="/explainer">High Resolution Data Explainer</router-link> -
     Tabulate high resolution data <br />
-    <b>March: </b>Time Space Diagram Visualizer <br />
+    <b>March: </b>
+    <router-link to="/gpx">Time Space Diagram Visualizer</router-link> <br />
     <b>April: </b> <br />
     <b>May: </b> <br />
     <b>June: </b> <br />

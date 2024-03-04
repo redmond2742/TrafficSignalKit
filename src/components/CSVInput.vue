@@ -1,7 +1,16 @@
 <template>
   <div>
+    <div>
+      <v-radio-group v-model="timezoneOffset" inline>
+        <v-radio label="PST (GMT-8)" value="America/Los_Angeles"></v-radio>
+        <v-radio label="MST (GMT-7)" value="America/Denver"></v-radio>
+        <v-radio label="CST (GMT-6)" value="America/Chicago"></v-radio>
+        <v-radio label="EST (GMT-5)" value="America/New_York"></v-radio>
+      </v-radio-group>
+    </div>
+
     <div class="grow-wrap">
-      <textarea name="text" id="csvInput" v-model="csvData"></textarea>
+      <InputBox v-model="inputData" />
 
       <v-card>
         <v-tabs v-model="tab" bg-color="primary" center>
@@ -51,6 +60,7 @@
             </v-window-item>
 
             <v-window-item value="two">
+              Still working on this view of the data
               <span>
                 <div>
                   <dl>
@@ -95,19 +105,30 @@
 </template>
 
 <script>
+import InputBox from "./InputBox.vue";
+
 export default {
+  components: { InputBox },
   props: {
     csvDataProcessed: Function,
   },
   data() {
     return {
       tab: null,
-      csvData: "",
+      inputData: "",
       filter: "",
       humanDate: 0,
       rowData: [],
+      timezoneOffset: "America/Los_Angeles",
       timeSeriesText: [],
+      usaTimezones: {
+        "America/New_York": -5, // UTC offset: -5 hours
+        "America/Chicago": -6, // UTC offset: -6 hours
+        "America/Denver": -7, // UTC offset: -7 hours
+        "America/Los_Angeles": -8, // UTC offset: -8 hours
+      },
       enumerations: {
+        //https://docs.lib.purdue.edu/cgi/viewcontent.cgi?article=1003&context=jtrpdata
         0: "Phase On",
         1: "Phase Begin Green",
         2: "Phase Check",
@@ -121,10 +142,20 @@ export default {
         10: "Phase Begin Red Clearance",
         11: "Phase End Red Clearance",
         12: "Phase Inactive",
+        13: "Extension Timer Gap Out",
+        14: "Phase Skipped",
+        15: "Extension Timer Reduction Start",
+        16: "Extension Timer Minimum Achieved",
+        17: "Added initial Complete",
+        18: "Next Phase Decision",
+        19: "TSP Early Force Off",
+        20: "Preemption Force Off",
         21: "Pedestrian Begin Walk",
         22: "Pedestrian Begin Clearance",
         23: "Pedestrian Begin Solid Don’t Walk",
         24: "Pedestrian Dark",
+        25: "Extended Pedestrian Change Interval",
+        26: "Oversized Pedestrian Served",
         31: "Barrier Termination",
         32: "FYA – Begin Permissive",
         33: "FYA – End Permissive",
@@ -137,6 +168,13 @@ export default {
         47: "Phase Omit Off",
         48: "Pedestrian Omit On",
         49: "Pedestrian Omit Off",
+        50: "MAX 1 In-Effect",
+        51: "MAX 2 In-Effect",
+        52: "Dynamic MAX In-Effect",
+        53: "Dynamic MAX Step Up",
+        54: "Dynamic MAX Step Down",
+        55: "Advance Warning Sign On",
+        56: "Advance Warning Sign Off",
         61: "Overlap Begin Green",
         62: "Overlap Begin Trailing Green (Extension)",
         63: "Overlap Begin Yellow",
@@ -147,6 +185,8 @@ export default {
         68: "Pedestrian Overlap Begin Clearance",
         69: "Pedestrian Overlap Begin Solid Don’t Walk",
         70: "Pedestrian Overlap Dark",
+        71: "Advance Warning Sign On",
+        72: "Advance Warning Sign Off",
         81: "Detector Off",
         82: "Detector On",
         83: "Detector Restored",
@@ -159,6 +199,8 @@ export default {
         90: "PedDetector On",
         91: "Pedestrian Detector Failed",
         92: "Pedestrian Detector Restored",
+        93: "TSP Detector Off",
+        94: "TSP Detector On",
         101: "Preempt Advance Warning Input",
         102: "Preempt (Call) Input On",
         103: "Preempt Gate Down Input Received",
@@ -174,6 +216,10 @@ export default {
         113: "TSP Adjustment to Early Green",
         114: "TSP Adjustment to Extend Green",
         115: "TSP Check Out",
+        116: "Preemption Force Off",
+        117: "TSP Early Force Off",
+        120: "TSP Service Start",
+        121: "TSP Service End",
         131: "Coord Pattern Change",
         132: "Cycle Length Change",
         133: "Offset Length Change",
@@ -193,8 +239,13 @@ export default {
         147: "Split 14 Change",
         148: "Split 15 Change",
         149: "Split 16 Change",
-        150: "Coord cycle state change",
-        151: "Coordinated phase yield point",
+        150: "Coord Cycle State Change",
+        151: "Coordinated Phase Yield Point",
+        152: "Coordinated Phase Begin",
+        153: "Logic Statement True",
+        154: "Logic Statement False",
+        155: "Unit Control Status Change",
+        156: "Additional Cycle Length Change",
         171: "Test Input on",
         172: "Test Input off",
         173: "Unit Flash Status change",
@@ -209,6 +260,25 @@ export default {
         182: "Power Failure Detected",
         184: "Power Restored",
         185: "Vendor Specific Alarm",
+        200: "Alarm On",
+        201: "Alarm Off",
+        202: "Aux Switch On/Off",
+        203: "Split 17 Change",
+        204: "Split 18 Change",
+        205: "Split 19 Change",
+        206: "Split 20 Change",
+        207: "Split 21 Change",
+        208: "Split 22 Change",
+        209: "Split 23 Change",
+        210: "Split 24 Change",
+        211: "Split 25 Change",
+        212: "Split 26 Change",
+        213: "Split 27 Change",
+        214: "Split 28 Change",
+        215: "Split 29 Change",
+        216: "Split 30 Change",
+        217: "Split 31 Change",
+        218: "Split 32 Change",
       },
       transitionStates: {
         0: "Free",
@@ -222,24 +292,116 @@ export default {
     };
   },
   methods: {
-    convertTimestamp(ts) {
+    convertToISO(input) {
+      // Split the input string into date and time components
+      console.log(input);
+      console.log(input.split(" "));
+      let [dateStr, timeStr] = input.toString().split(" ");
+
+      // Split the date components into month, day, and year
+      const [month, day, year] = dateStr.split("/");
+
+      // Split the time components into hour, minute, second, and millisecond
+      const [hour, minute, secondAndMillisecond] = timeStr.split(":");
+      const [second, millisecond] = secondAndMillisecond.split(".");
+
+      // Create a new Date object using the components
+      console.log(year);
+      const buildDate = new Date(
+        year,
+        month - 1,
+        day,
+        Number(hour),
+        minute,
+        second,
+        millisecond * 100
+      );
+      console.log("DAY:" + day);
+      console.log(buildDate.toISOString());
+      console.log("offset: ");
+      console.log(buildDate.toTimeString());
+
+      // Return the ISO timestamp representation of the Date object
+      return buildDate.toISOString();
+    },
+    createTimestampDate(timestamp) {
+      const date1 = new Date(
+        Date.UTC(
+          70,
+          0,
+          0,
+          0,
+          0,
+          Math.floor(parseFloat(timestamp / 10)),
+          (timestamp % 10) * 100
+        )
+      );
+      const date = new Date(
+        70,
+        0,
+        0,
+        this.usaTimezones[this.timezoneOffset],
+        0,
+        timestamp / 10,
+        (timestamp % 10) * 100
+      );
+      console.log(
+        this.timezoneOffset + "check: " + this.usaTimezones[this.timezoneOffset]
+      );
+      // Format the date components - not used
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      const seconds = String(date.getSeconds()).padStart(2, "0");
+      const milliseconds = String(date.getMilliseconds()).padStart(3, "0");
+
+      // Construct the formatted date string
+      const formattedDate = date.toLocaleDateString(); //`${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+
+      return date;
+    },
+
+    convertTimestamp(ts, humanReadable = "true") {
       console.log("ts: " + ts);
-      const date = new Date(Date.UTC(70, 0, 0, 0, 0, ts / 10, ts % 10));
+      let iso_ts;
+      let inputDate;
+
+      // Check if the input is in epoch timestamp or locale string
+      if (/^\d+(\.\d+)?$/.test(ts)) {
+        inputDate = this.createTimestampDate(ts);
+      } else {
+        console.log("running this.convertTimestamp else");
+        iso_ts = this.convertToISO(ts);
+        console.log("iso_ts: " + iso_ts);
+        inputDate = new Date(iso_ts);
+      }
+
       // Convert the date to a human-readable format
-      console.log(date);
+      console.log("input date in ConvertTimestamp: " + inputDate);
       const options = {
-        weekday: "long",
+        weekday: "short",
         year: "numeric",
         month: "long",
         day: "numeric",
         hour: "numeric",
         minute: "numeric",
         second: "numeric",
-        fractionalSecondDigits: 3,
-        timeZone: "UTC",
+        fractionalSecondDigits: 2,
+        timeZone: this.timezoneOffset,
       };
-      this.humanDate = date.toLocaleDateString(undefined, options);
-      return date.toLocaleDateString(undefined, options);
+      const locale = navigator.language;
+
+      this.humanDate = inputDate.toLocaleDateString(undefined, options);
+      console.log(
+        "humanDate" + this.humanDate + "timezone: " + this.timezoneOffset
+      );
+      if (humanReadable) {
+        return this.humanDate;
+      } else {
+        return inputDate.getTime() / 100;
+      }
     },
     parameterSwitch(e) {
       if (e < 24 || (e >= 41 && e < 60)) {
@@ -272,11 +434,67 @@ export default {
         return "Channel";
       }
     },
+    formatDate(inputDateTime) {
+      let date;
+      const reDateTime = /^\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2}:\d{2}\.\d$/;
+      const reTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d+)?Z?$/;
+
+      // Use .test() to check if the string matches the pattern
+
+      // Check if the input is in ISO timestamp format
+      if (reTimestamp.test(inputDateTime)) {
+        date = new Date(inputDateTime);
+      } else if (reDateTime.test(inputDateTime)) {
+        date = new Date(
+          input.replace(/(\d{2})\/(\d{2})\/(\d{2})/, "20$3-$1-$2")
+        );
+      } else {
+        console.log("not able to process Date");
+      }
+
+      const days = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      const dayOfWeek = days[date.getDay()];
+
+      // Formatting the date
+      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+
+      // Formatting the time
+      const formattedTime = `${date
+        .getHours()
+        .toString()
+        .padStart(2, "0")}:${date
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}:${date
+        .getSeconds()
+        .toString()
+        .padStart(2, "0")}.${date
+        .getMilliseconds()
+        .toString()
+        .padStart(3, "0")}`;
+
+      return `${dayOfWeek}, ${formattedDate} ${formattedTime}`;
+    },
     processCSV() {
-      const rows = this.csvData.split("\n");
+      let dateTimeObj;
+      let dateTimeString;
+      const rows = this.inputData.split("\n");
       const processedData = rows.map((row) => {
         const values = row.split(",");
-        this.convertTimestamp(Number(values[0]));
+        this.convertTimestamp(values[0]);
+        dateTimeString = this.convertTimestamp(values[0]);
+
+        //this.convertTimestamp(Number(values[0]));
         let tempEnumeration;
         this.enumerations[Number(values[1])]
           ? (tempEnumeration = this.enumerations[Number(values[1])])
@@ -289,7 +507,7 @@ export default {
         }
 
         const explainInfo = {
-          timestamp: this.humanDate,
+          timestamp: dateTimeString, //this.humanDate,
           enumeration: tempEnumeration,
           channel: Number(values[2]),
         };
@@ -297,7 +515,7 @@ export default {
         console.log(typeof explainInfo.enumeration);
         return explainInfo;
       });
-      //this.csvDataProcessed(processedData);
+      //this.inputDataProcessed(processedData);
 
       console.log(processedData);
     },
@@ -322,21 +540,34 @@ export default {
 
     processTimeSeriesData() {
       const signalStates = {};
-      console.log(this.csvData);
+      let inputDate;
 
-      const rows = this.csvData.split("\n");
+      const options = {
+        weekday: "short",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+        fractionalSecondDigits: 2,
+        timeZone: "UTC",
+      };
+      const locale = navigator.language;
+      let displayDate;
+
+      this.humanDate = inputDate.toLocaleDateString(undefined, options);
+
+      console.log(this.inputData);
+
+      const rows = this.inputData.split("\n");
 
       rows.map((row) => {
         const [timestamp, state, chan] = row.split(", ");
-        const time = Math.floor(parseFloat(timestamp));
-        console.log(
-          "Time: " +
-            time +
-            " " +
-            typeof time +
-            " " +
-            this.convertTimestamp(time)
-        );
+        inputDate = this.convertTimestamp(timestamp, false);
+        console.log("inputDate in processtimeseries: " + inputDate);
+        const time = inputDate; //Math.floor(parseFloat(inputDate));
+        console.log("Time: " + time + " " + typeof time);
 
         if (signalStates[time]) {
           signalStates[time].push({ state, chan });
@@ -355,7 +586,9 @@ export default {
               }`
           )
           .join();
-        output.push([`${this.convertTimestamp(Number(time))}`, `${states}`]);
+        displayDate = time.toLocaleDateString(undefined, options);
+        //output.push([`${this.convertTimestamp(Number(time))}`, `${states}`]);
+        output.push([`${displayDate}`, `${states}`]);
         console.log(states);
       }
       this.timeSeriesText = output;
@@ -385,7 +618,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .grow-wrap {
   /* easy way to plop the elements on top of each other and have them both sized based on the tallest one's height */
   display: grid;

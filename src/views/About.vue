@@ -8,8 +8,9 @@
           <v-expansion-panel-text>
             In 2024, I'm diving into Vue.js with Signal Kit. Each month, I'll
             build a practical traffic signal-related tool to learn different Vue
-            aspects. ChatGPT will help scale it up fast. These tools won't be
-            polished; they're just proof of concepts (<a
+            aspects. I am building in public and using ChatGPT will help scale
+            it up fast. These tools won't be polished; they're just proof of
+            concepts (<a
               href="https://www.corporate-rebels.com/blog/musks-algorithm-to-cut-bureaucracy"
               >automation comes last</a
             >). Your feedback (with the heart button) guides my future
@@ -24,8 +25,20 @@
             update.
 
             <ul>
-              <li>host</li>
-              <li>March Project!</li>
+              <li>Explainer: input for timezone offset</li>
+              <li>
+                Release Notes on Github for each month's release, put crossed
+                off items in here into there
+              </li>
+              <li>
+                March Project!- array of data to plot time and distance for
+                pasted in GPX file
+              </li>
+              <li>
+                Create a Template for each month that can be easily build upon
+                with todo to add to router and other stuff to add. include
+                dropdown menu
+              </li>
             </ul>
           </v-expansion-panel-text>
         </v-expansion-panel>

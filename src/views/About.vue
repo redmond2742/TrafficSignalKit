@@ -25,19 +25,25 @@
             update.
 
             <ul>
-              <li>Explainer: input for timezone offset</li>
               <li>
                 Release Notes on Github for each month's release, put crossed
                 off items in here into there
               </li>
+              <li>TSD: reset zoom button, pan option.</li>
               <li>
-                March Project!- array of data to plot time and distance for
-                pasted in GPX file
+                add signal at a certain distance (across all time) based on the
+                signal distance for that run.
               </li>
               <li>
-                Create a Template for each month that can be easily build upon
-                with todo to add to router and other stuff to add. include
-                dropdown menu
+                consider quick stats of distance, travel time and etc. to show
+                up at bottom
+              </li>
+              <li>
+                Make it look awesome with 3 different variations to choose from
+              </li>
+              <li>
+                Consider setting max x and y axes values based on min and max of
+                actual values in data
               </li>
             </ul>
           </v-expansion-panel-text>

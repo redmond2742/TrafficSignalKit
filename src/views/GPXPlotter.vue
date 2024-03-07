@@ -22,28 +22,26 @@
 
       <v-expansion-panel title="Example: Using This Tool" value="example">
         <v-expansion-panel-text>
-          &lt; trkseg &gt; &lt; trkpt lat="37.91553" lon="-122.06590" &gt; &lt;
-          ele &gt; 43 &lt; /ele &gt; &lt; time &gt; 2024-03-02T19:28:13.174Z
-          &lt; /time &gt; &lt; speed &gt; 16.13 &lt; /speed &gt; &lt; course
-          &gt; 175.89 &lt; /course &gt; &lt; /trkpt &gt; &lt; trkpt
-          lat="37.91538" lon="-122.06589" &gt; &lt; ele &gt; 42 &lt; /ele &gt;
-          &lt; time &gt; 2024-03-02T19:28:14.195Z &lt; /time &gt; &lt; speed
-          &gt; 15.07 &lt; /speed &gt; &lt; course &gt; 175.99 &lt; /course &gt;
-          &lt; /trkpt &gt; &lt; trkpt lat="37.91512" lon="-122.06587" &gt; &lt;
-          ele &gt; 42 &lt; /ele &gt; &lt; time &gt; 2024-03-02T19:28:16.181Z
-          &lt; /time &gt; &lt; speed &gt; 11.15 &lt; /speed &gt; &lt; course
-          &gt; 175.46 &lt; /course &gt; &lt; /trkpt &gt; &lt; trkpt
-          lat="37.91502" lon="-122.06586" &gt; &lt; ele &gt; 42 &lt; /ele &gt;
-          &lt; time &gt; 2024-03-02T19:28:17.209Z &lt; /time &gt; &lt; speed
-          &gt; 8.39 &lt; /speed &gt; &lt; course &gt; 175.78 &lt; /course &gt;
-          &lt; /trkpt &gt; &lt; trkpt lat="37.91487" lon="-122.06585" &gt; &lt;
-          ele &gt; 41 &lt; /ele &gt; &lt; time &gt; 2024-03-02T19:28:19.213Z
-          &lt; /time &gt; &lt; speed &gt; 4.08 &lt; /speed &gt; &lt; course &gt;
-          178.03 &lt; /course &gt; &lt; /trkpt &gt; &lt; /trkseg &gt;
+          &lt;?xml version=&quot;1.0&quot;?&gt; &lt;gpx version=&quot;1.0&quot;
+          creator=&quot;Ultra GPS Logger&quot;
+          xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
+          xmlns=&quot;http://www.topografix.com/GPX/1/0&quot;
+          xsi:schemaLocation=&quot;http://www.topografix.com/GPX/1/0
+          http://www.topografix.com/GPX/1/0/gpx.xsd&quot;&gt; &lt;!-- segment:
+          Walnut_Creek category: Car --&gt; &lt;trk&gt;
+          &lt;name&gt;&lt;![CDATA[Walnut_Creek]]&gt;&lt;/name&gt; &lt;trkseg&gt;
+          &lt;trkpt lat=&quot;37.91553&quot;
+          lon=&quot;-122.06590&quot;&gt;&lt;ele&gt;43&lt;/ele&gt;&lt;time&gt;2024-03-02T19:28:13.174Z&lt;/time&gt;&lt;speed&gt;16.13&lt;/speed&gt;&lt;course&gt;175.89&lt;/course&gt;&lt;/trkpt&gt;
+          &lt;trkpt lat=&quot;37.91538&quot;
+          lon=&quot;-122.06589&quot;&gt;&lt;ele&gt;42&lt;/ele&gt;&lt;time&gt;2024-03-02T19:28:14.195Z&lt;/time&gt;&lt;speed&gt;15.07&lt;/speed&gt;&lt;course&gt;175.99&lt;/course&gt;&lt;/trkpt&gt;
+          &lt;trkpt lat=&quot;37.91512&quot;
+          lon=&quot;-122.06587&quot;&gt;&lt;ele&gt;42&lt;/ele&gt;&lt;time&gt;2024-03-02T19:28:16.181Z&lt;/time&gt;&lt;speed&gt;11.15&lt;/speed&gt;&lt;course&gt;175.46&lt;/course&gt;&lt;/trkpt&gt;
+          &lt;/trkseg&gt; &lt;/trk&gt; &lt;/gpx&gt;
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
   </div>
+  <br />
   <processGPX></processGPX>
 </template>
 <script>

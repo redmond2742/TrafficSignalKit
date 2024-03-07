@@ -9,6 +9,9 @@
   "dependencies": {
     "@mdi/font": "7.0.96",
     "@we-gold/gpxjs": "^1.0.6",
+    "chart.js": "^4.4.2",
+    "chartjs-plugin-zoom": "^2.0.1",
+    "gpx-parser-builder": "^1.1.0",
     "gpxparser": "^3.0.8",
     "roboto-fontface": "*",
     "vite-plugin-favicons-inject": "^2.2.0",

@@ -3,11 +3,13 @@
     <Header></Header>
 
     <v-row>
-      <v-col sm="1"></v-col>
-      <v-col>
-        <router-view></router-view>
-      </v-col>
-      <v-col sm="1"></v-col>
+      <v-col md="1" xs="0"></v-col>
+    </v-row>
+    <v-col>
+      <router-view></router-view>
+    </v-col>
+    <v-row>
+      <v-col md="1" xs="0"></v-col>
     </v-row>
 
     <Footer> </Footer>

@@ -37,6 +37,10 @@
           &lt;trkpt lat=&quot;37.91512&quot;
           lon=&quot;-122.06587&quot;&gt;&lt;ele&gt;42&lt;/ele&gt;&lt;time&gt;2024-03-02T19:28:16.181Z&lt;/time&gt;&lt;speed&gt;11.15&lt;/speed&gt;&lt;course&gt;175.46&lt;/course&gt;&lt;/trkpt&gt;
           &lt;/trkseg&gt; &lt;/trk&gt; &lt;/gpx&gt;
+
+          <br /><br /><br />
+          37.9013511000743, -122.064401378189 <br />
+          37.90495039889445, -122.06575265782921
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>

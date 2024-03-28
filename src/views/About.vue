@@ -38,6 +38,7 @@
                 timing runs like: Emissions, Bus stop dwell, signal control
                 delay,
               </li>
+              <li>add intersection label name on y-axis</li>
               <li>
                 Consider Make it look awesome with 3 different variations to
                 choose from

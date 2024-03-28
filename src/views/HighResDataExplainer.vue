@@ -45,6 +45,12 @@
             the controller and converted to a Comma Seperated Value (CSV) file
             through a vendor defined process. That CSV file can be copied into
             this tool for the data to be clearly explained.
+            <br />
+            Future Features to Consider
+
+            <ul>
+              <li>Export table of results</li>
+            </ul>
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -116,14 +122,7 @@ export default {
 </script>
 
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
+
 
 p {
   text-align: left;

@@ -1,7 +1,8 @@
 <template>
   <v-app>
-    <Header></Header>
+    <!-- Your webpage content goes here -->
 
+    <Header></Header>
     <v-row>
       <v-col md="1" xs="0"></v-col>
     </v-row>
@@ -11,7 +12,6 @@
     <v-row>
       <v-col md="1" xs="0"></v-col>
     </v-row>
-
     <Footer> </Footer>
   </v-app>
 </template>
@@ -31,3 +31,4 @@ export default {
   }),
 };
 </script>
+<style></style>

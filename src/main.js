@@ -11,8 +11,16 @@ import { registerPlugins } from '@/plugins'
 import App from './App.vue'
 import router from './router'
 
+
 // Composables
 import { createApp } from 'vue'
+import { createVuetify } from 'vuetify'
+
+export default createVuetify({
+    theme: {
+      defaultTheme: 'dark'
+    }
+  })
 
 
 const app = createApp(App)

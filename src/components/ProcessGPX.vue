@@ -87,6 +87,7 @@ export default {
       let signalDistance = [];
       let signalStartTime = 0;
       let signalEndTime = 0;
+      let startGPXTime = 0;
 
       if (false) {
         console.log(error);
@@ -97,25 +98,14 @@ export default {
 
         try {
           let gpxPoints = gpx.tracks[0].points;
+          startGPXTime = gpxPoints[0].time.getTime() / 1000; //milliseconds to seconds
 
           // If no signal information is provided, then plot GPX points only.
           if (this.signalLocations === "") {
             console.log("No Signal Locations Entered");
 
-            for (j = 0; j < gpx.tracks[0].points.length - 1; j++) {
-              currentLoc = [gpxPoints[j].lat, gpxPoints[j].lon];
-              nextLoc = [gpxPoints[j + 1].lat, gpxPoints[j + 1].lon];
-              totalCumlDistance += this.earthDistance(
-                nextLoc,
-                currentLoc,
-                false
-              );
-              // store data for ploting time space of gpx track
-              this.scatterData.push({
-                x: gpxPoints[j].time.getTime() / 1000, //milliseconds to seconds
-                y: totalCumlDistance, //cumulative Distance,
-              });
-            }
+            this.loadGPXPoints(gpxPoints);
+
             // append gpx chart data set
             this.push_element(
               this.chartDataSet,
@@ -154,28 +144,16 @@ export default {
             }
             console.log(signalObj);
 
-            for (i = 0; i < gpx.tracks[0].points.length - 1; i++) {
-              currentLoc = [gpxPoints[i].lat, gpxPoints[i].lon];
-              nextLoc = [gpxPoints[i + 1].lat, gpxPoints[i + 1].lon];
-              totalCumlDistance += this.earthDistance(
-                nextLoc,
-                currentLoc,
-                false
-              );
-
-              // store data for ploting time space of gpx track
-              this.scatterData.push({
-                x: gpxPoints[i].time.getTime() / 1000, //milliseconds to seconds
-                y: totalCumlDistance, //cumulative Distance,
-              });
-            }
+            this.loadGPXPoints(gpxPoints);
 
             // Plot start and end time for a signal location
             for (let m = 0; m <= signalObj.length - 1; m++) {
-              signalStartTime = gpxPoints[0].time.getTime() / 1000;
+              signalStartTime =
+                gpxPoints[0].time.getTime() / 1000 - startGPXTime;
               signalEndTime =
                 gpxPoints[gpx.tracks[0].points.length - 1].time.getTime() /
-                1000;
+                  1000 -
+                startGPXTime;
 
               let signalResult = this.findCumulativeDistanceFromSignalObj(
                 m,
@@ -227,9 +205,19 @@ export default {
         y: y_data,
       };
     },
-    append_items(list, items) {
-      for (item in items) {
-        list.append(item);
+    loadGPXPoints(gpxFile) {
+      let totalCumlDistance = 0;
+      for (let j = 0; j < gpxFile.length - 1; j++) {
+        let currentLoc = [gpxFile[j].lat, gpxFile[j].lon];
+        let nextLoc = [gpxFile[j + 1].lat, gpxFile[j + 1].lon];
+        totalCumlDistance += this.earthDistance(nextLoc, currentLoc, false);
+
+        // store data for ploting time space of gpx track
+        this.scatterData.push({
+          x:
+            gpxFile[j].time.getTime() / 1000 - gpxFile[0].time.getTime() / 1000,
+          y: totalCumlDistance, //cumulative Distance,
+        });
       }
     },
     push_element(a, e) {

@@ -2,7 +2,10 @@
   <v-container class="grey lighten-5">
     <div class="left-justify-text">
       <v-expansion-panels v-model="gpxPanel" multiple>
-        <v-expansion-panel title="Signal Data" value="about">
+        <v-expansion-panel
+          title="Signal Locations as CSV: Name,Latitude,Longitude"
+          value="about"
+        >
           <v-expansion-panel-text>
             <div class="grow-wrap">
               <InputBox v-model="signalLocations" />
@@ -17,11 +20,20 @@
     <InputBox v-model="inputData" />
   </div>
   <br />
-  <v-btn @click="bProcessGPX">Plot</v-btn>
-  <v-btn @click="resetZoom">Reset Zoom</v-btn>
+  <div class="button-container">
+    <v-btn color="primary" @click="bProcessGPX">Plot</v-btn>
+    <span class="button-space"></span>
+  </div>
 
   <br />
+  <div class="metrics-container">
+    <metric :data="travelTime"></metric>
+    <metric :data="travelDist"></metric>
+    <metric :data="avgSpeed"></metric>
+  </div>
   <div>
+    <v-btn color="info" @click="resetZoom">Reset Zoom</v-btn>
+
     <canvas ref="scatterPlotCanvas"></canvas>
   </div>
 </template>
@@ -31,11 +43,12 @@ import InputBox from "./InputBox.vue";
 import gpxParser from "gpxparser";
 import { Chart } from "chart.js/auto"; // https://www.chartjs.org/
 import zoomPlugin from "chartjs-plugin-zoom"; // https://www.chartjs.org/chartjs-plugin-zoom/latest/guide/animations.html
+import Metric from "./Metric.vue";
 
 Chart.register(zoomPlugin);
 
 export default {
-  components: { InputBox },
+  components: { InputBox, Metric },
   props: {},
   data() {
     return {
@@ -48,6 +61,21 @@ export default {
       signalPlotData: [],
       chartDataSet: [],
       allScatterPlotData: null,
+      travelTime: {
+        label: "Travel Time",
+        value: "N/A",
+        unit: "",
+      },
+      travelDist: {
+        label: "Travel Distance",
+        value: 0,
+        unit: "",
+      },
+      avgSpeed: {
+        label: "Avg. Speed",
+        value: 0,
+        unit: "",
+      },
     };
   },
   mounted() {},
@@ -72,6 +100,7 @@ export default {
         return distance * 0.621371 * 5280; //converted to feet
       }
     },
+    handleUpdateTravelTime() {},
 
     bProcessGPX(input) {
       //let gpxParser = require("gpxparser");
@@ -113,6 +142,7 @@ export default {
             );
             // create the scatter data for plotting
             this.allScatterPlotData = this.createScatterData(this.chartDataSet);
+
             this.renderChart();
             // If signal locations are provided, then plot those and the GPX file
           } else {
@@ -205,9 +235,26 @@ export default {
         y: y_data,
       };
     },
+    formatDuration(seconds) {
+      let hours = Math.floor(seconds / 3600);
+      let minutes = Math.floor((seconds % 3600) / 60);
+      let remainingSeconds = (seconds % 60).toFixed(2);
+
+      let formattedValue = `${this.padZero(hours)}:${this.padZero(
+        minutes
+      )}:${this.padZero(remainingSeconds)}`;
+
+      return formattedValue;
+    },
+
+    padZero(num) {
+      return num.toString().padStart(2, "0");
+    },
     loadGPXPoints(gpxFile) {
       let totalCumlDistance = 0;
-      for (let j = 0; j < gpxFile.length - 1; j++) {
+      let totalSeconds = 0;
+      let gpxFileLength = gpxFile.length;
+      for (let j = 0; j < gpxFileLength - 1; j++) {
         let currentLoc = [gpxFile[j].lat, gpxFile[j].lon];
         let nextLoc = [gpxFile[j + 1].lat, gpxFile[j + 1].lon];
         totalCumlDistance += this.earthDistance(nextLoc, currentLoc, false);
@@ -219,6 +266,27 @@ export default {
           y: totalCumlDistance, //cumulative Distance,
         });
       }
+      //Set Metric Variables
+      if (totalCumlDistance > 5280) {
+        this.travelDist.value = (totalCumlDistance / 5280).toFixed(2);
+        this.travelDist.unit = "miles";
+      } else {
+        this.travelDist.value = totalCumlDistance.toFixed(2);
+        this.travelDist.unit = "Feet";
+      }
+
+      totalSeconds =
+        gpxFile[gpxFileLength - 1].time.getTime() / 1000 -
+        gpxFile[0].time.getTime() / 1000;
+
+      this.travelTime.value = this.formatDuration(totalSeconds);
+      this.travelTime.unit = "hh:mm:ss.ms";
+
+      this.avgSpeed.value = (
+        (totalCumlDistance / totalSeconds) *
+        0.68181818
+      ).toFixed(1);
+      this.avgSpeed.unit = "MPH";
     },
     push_element(a, e) {
       // push element e into array
@@ -368,5 +436,17 @@ textarea {
 }
 signaltextarea {
   height: 200px;
+}
+.metrics-container {
+  display: flex;
+  justify-content: center;
+}
+
+/* Adjust spacing between metrics if needed */
+.metrics-container > * {
+  margin-right: 20px; /* Adjust margin as needed */
+}
+.button-space {
+  margin-left: 20px;
 }
 </style>

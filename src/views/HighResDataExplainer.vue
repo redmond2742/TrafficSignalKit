@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>High Resolution Data Explainer</h1>
+    <h1 class="h1-center-text">High Resolution Data Explainer</h1>
     <!--
 
         <label for="csvInput">Enter your High Resolution Controller Enumerations as CSV data</label> <br>
@@ -122,8 +122,6 @@ export default {
 </script>
 
 <style>
-
-
 p {
   text-align: left;
 }

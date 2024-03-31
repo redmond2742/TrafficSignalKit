@@ -3,8 +3,7 @@
     <div class="title-justify">
       <v-app-bar-title>
         <router-link to="/about"
-          ><b> Traffic Signal Kit</b>
-          <span class="beta">beta</span></router-link
+          ><b>Traffic Signal Kit</b> <span class="beta">beta</span></router-link
         ></v-app-bar-title
       >
     </div>
@@ -14,8 +13,11 @@
     <router-link to="/split-calculator">
       <v-btn to="/split-calculator"> Split Calculator </v-btn>
     </router-link>
-    <router-link to="/split-calculator">
-      <v-btn to="/explainer"> High Resolution Explainer </v-btn>
+    <router-link to="/explainer">
+      <v-btn to="/explainer"> High Res. Explainer </v-btn>
+    </router-link>
+    <router-link to="/gpx">
+      <v-btn to="/gpx">Time Space Visualizer </v-btn>
     </router-link>
 
     <template v-slot:append>
@@ -76,8 +78,8 @@ a {
   display: flex;
   justify-content: center;
 }
-title-justify {
+.title-justify {
   justify-content: flex-start;
-  padding: 0.25em;
+  margin-left: 10px;
 }
 </style>

@@ -4,6 +4,7 @@ import Vue from '@vitejs/plugin-vue'
 import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 import ViteFonts from 'unplugin-fonts/vite'
 import vitePluginFaviconsInject from 'vite-plugin-favicons-inject'
+import { ViteFaviconsPlugin } from 'vite-plugin-favicon';
 
 // Utilities
 import { defineConfig } from 'vite'
@@ -16,7 +17,7 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    vitePluginFaviconsInject('./src/assets/favicon-16x16.png'),
+    ViteFaviconsPlugin('./src/assets/favicon-16x16.png'),
     Vue({
       template: { transformAssetUrls },
       

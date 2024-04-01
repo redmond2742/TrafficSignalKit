@@ -38,7 +38,7 @@ Please note that the tools developed as part of the Traffic Signal Kit are inten
 
 ## Feedback and Contributions
 
-Feedback, suggestions, bug reports, and contributions are welcome! If you have any ideas for new tools, improvements to existing tools, or general feedback about the project, feel free to open an issue or submit a pull request on GitHub.
+Feedback, suggestions, bug reports, and contributions are welcome! If you have any ideas for new tools, improvements to existing tools, or general feedback about the project, feel free to open an issue, submit a pull request on GitHub or [fill out this feedback survey](https://forms.gle/eWchSuYdDwG6MsTx9).
 
 ## License
 
@@ -46,4 +46,4 @@ The Traffic Signal Kit project is licensed under the [MIT License](LICENSE). Fee
 
 ---
 
-Happy coding and have fun trying out Traffic Signal Kit! 🚦✨
+Thanks for checking out Traffic Signal Kit! 🚦✨

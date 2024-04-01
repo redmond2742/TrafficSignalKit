@@ -87,7 +87,8 @@
       <router-link to="/explainer">High Resolution Data Explainer</router-link>
       - Tabulate high resolution data <br />
       <b>March: </b>
-      <router-link to="/gpx">Time Space Diagram Visualizer</router-link> <br />
+      <router-link to="/gpx">Time Space Diagram Visualizer</router-link> - Plot
+      GPX files as a Time Space Diagram (w/ signal locations)<br />
       <b>April: </b> <br />
       <b>May: </b> <br />
       <b>June: </b> <br />

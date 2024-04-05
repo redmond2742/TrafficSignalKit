@@ -27,28 +27,7 @@
               update.
 
               <ul>
-                <li>
-                  add signal at a certain distance (across all time) based on
-                  the signal distance for that run. Boolean function for If
-                  approaching point or moving away from point, that's the
-                  approximate distance, pick a distance from there. or average
-                  distance between those two points.
-                </li>
-                <li>
-                  consider table of quick stats of distance, travel time and
-                  etc. to show up at bottom. Also look at common metrics for
-                  signal timing runs like: Emissions, Bus stop dwell, signal
-                  control delay,
-                </li>
-                <li>add intersection label name on y-axis</li>
-                <li>
-                  Consider Make it look awesome with 3 different variations to
-                  choose from
-                </li>
-                <li>
-                  Consider setting max x and y axes values based on min and max
-                  of actual values in data
-                </li>
+                <li>April's Feature</li>
                 <li>
                   Release Notes on Github for each month's release, put crossed
                   off items in here into there
@@ -89,7 +68,7 @@
       <b>March: </b>
       <router-link to="/gpx">Time Space Diagram Visualizer</router-link> - Plot
       GPX files as a Time Space Diagram (w/ signal locations)<br />
-      <b>April: </b> <br />
+      <b>April: </b>Work In Progress<br />
       <b>May: </b> <br />
       <b>June: </b> <br />
       <b>July: </b> <br />

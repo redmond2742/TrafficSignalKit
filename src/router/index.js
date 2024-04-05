@@ -36,8 +36,12 @@ const routes = [
         path: '/gpx',
         name: 'gpxPlotter',
         component: GPXPlotter,
+    },
+    {
+        path: '/:pathMatch(.*)*',
+        name: "not-found",
+        component: About,
     }
-
 ]
 
 const router = createRouter({

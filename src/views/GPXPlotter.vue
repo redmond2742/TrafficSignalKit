@@ -5,20 +5,52 @@
 
     <div class="left-justify-text">
       <v-expansion-panels v-model="panel" multiple>
-        <v-expansion-panel title="About: GPX Processor" value="about">
+        <v-expansion-panel
+          title="About: GPX Time Space Visualizer"
+          value="about"
+        >
           <v-expansion-panel-text>
-            All About GPX Processor <br />
-            GPX, or GPS Exchange Format, is an XML schema designed as a common
-            GPS data format for software applications.
+            A time-space diagram provides a comprehensive visualization of the
+            spatiotemporal behavior of traffic movements, making it an
+            invaluable tool for analyzing GPX files and adjusting signal timing.
+            By plotting the geographical positions of vehicles over time,
+            time-space diagrams offer a clear representation of how traffic
+            flows through a given area, highlighting congestion patterns, travel
+            speeds, and traffic density variations.
+            <br /><br />
+            GPX, short for GPS Exchange Format, serves as a standardized XML
+            schema tailored to facilitate the exchange of GPS data across
+            various software applications. When incorporated into GPX
+            files—repositories of GPS data capturing vehicle
+            trajectories—time-space diagrams emerge as powerful tools for
+            traffic engineers and planners. These diagrams enable a
+            comprehensive evaluation of existing signal timing plans, offering
+            insights into traffic dynamics and identifying areas ripe for
+            enhancement. By tracking vehicle movements through intersections and
+            along road segments over time, decision-makers gain the ability to
+            pinpoint congestion hotspots and fine-tune signal phasing and timing
+            parameters accordingly. This optimization process, in turn, drives
+            improvements in overall traffic efficiency and safety. Moreover,
+            time-space diagrams play a crucial role in assessing proposed signal
+            timing adjustments, providing visual simulations that highlight
+            potential impacts on traffic flow dynamics. Armed with this
+            information, stakeholders can make informed decisions, leading to
+            the implementation of more effective traffic management strategies.
           </v-expansion-panel-text>
         </v-expansion-panel>
 
         <v-expansion-panel
-          title="Detailed Explination: GPX Time Space"
+          title="GPX Time Space Visualizer TODO List"
           value="detailed-explain"
         >
           <v-expansion-panel-text>
-            Technical Details of this Tool.
+            Consider adding "metrics" for day of week, date and start time of
+            gpx file and "signal control delay if near a signal"
+            <br /><br />
+            colored points for gpx track
+            <br /><br />
+            Graph X and Y axis labels, and alternative design color options
+            preferences
           </v-expansion-panel-text>
         </v-expansion-panel>
 

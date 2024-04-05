@@ -1,18 +1,18 @@
 <template>
   <v-app>
-    <!-- Your webpage content goes here -->
-
-    <Header></Header>
-    <v-row>
-      <v-col md="1" xs="0"></v-col>
-    </v-row>
-    <v-col>
-      <router-view></router-view>
-    </v-col>
-    <v-row>
-      <v-col md="1" xs="0"></v-col>
-    </v-row>
-    <Footer> </Footer>
+    <div>
+      <Header></Header>
+      <v-row>
+        <v-col md="1" xs="0"></v-col>
+      </v-row>
+      <v-col>
+        <router-view></router-view>
+      </v-col>
+      <v-row>
+        <v-col md="1" xs="0"></v-col>
+      </v-row>
+      <Footer> </Footer>
+    </div>
   </v-app>
 </template>
 

@@ -26,11 +26,25 @@
   </div>
 
   <br />
-  <div class="metrics-container">
-    <metric :data="travelTime"></metric>
-    <metric :data="travelDist"></metric>
-    <metric :data="avgSpeed"></metric>
-  </div>
+
+  <v-row>
+    <v-col cols="4"></v-col>
+    <div class="metrics-container">
+      <metric :data="travelTime"></metric>
+      <metric :data="travelDist"></metric>
+      <metric :data="avgSpeed"></metric>
+    </div>
+  </v-row>
+  <v-row>
+    <v-col cols="4"></v-col>
+    <div class="metrics-container">
+      <metric :data="numStops"></metric>
+      <metric :data="durationStops"></metric>
+      <metric :data="avgDurationStops"></metric>
+    </div>
+  </v-row>
+
+  <br />
   <div>
     <v-btn color="info" @click="resetZoom">Reset Zoom</v-btn>
 
@@ -75,6 +89,21 @@ export default {
         label: "Avg. Speed",
         value: 0,
         unit: "",
+      },
+      numStops: {
+        label: "Number of Stops",
+        value: 0,
+        unit: "Count",
+      },
+      durationStops: {
+        label: "Duration of Stops",
+        value: 0,
+        unit: "Seconds",
+      },
+      avgDurationStops: {
+        label: "Avg. Duration of Stops",
+        value: 0,
+        unit: "Seconds",
       },
     };
   },
@@ -250,21 +279,107 @@ export default {
     padZero(num) {
       return num.toString().padStart(2, "0");
     },
+
+    //to be removed.
+    calculateStops(trackPoints, speedThreshold, stopDurationThreshold) {
+      let stops = 0;
+      let consecutiveLowSpeedPoints = 0;
+      let stopStartTime = null;
+      let totalStopDuration = 0;
+
+      for (let i = 0; i < trackPoints.length - 1; i++) {
+        const currentPoint = trackPoints[i];
+        const nextPoint = trackPoints[i + 1];
+
+        // Calculate distance between two points (you may have your own method for this)
+        const distance = calculateDistance(currentPoint, nextPoint);
+
+        // Calculate time difference between two points
+        const timeDiffInSeconds =
+          (nextPoint.timestamp - currentPoint.timestamp) / 1000;
+
+        // Calculate speed (distance / time)
+        const speed = distance / timeDiffInSeconds;
+
+        // Check if speed is below the threshold
+        if (speed < speedThreshold) {
+          if (stopStartTime === null) {
+            stopStartTime = currentPoint.timestamp;
+          }
+          consecutiveLowSpeedPoints++;
+        } else {
+          if (
+            stopStartTime !== null &&
+            consecutiveLowSpeedPoints * timeDiffInSeconds >=
+              stopDurationThreshold
+          ) {
+            stops++;
+            totalStopDuration += consecutiveLowSpeedPoints * timeDiffInSeconds;
+            stopStartTime = null; // Reset stop start time
+          }
+          consecutiveLowSpeedPoints = 0;
+        }
+      }
+
+      return {
+        numberOfStops: stops,
+        totalStopDuration: totalStopDuration,
+      };
+    },
+
     loadGPXPoints(gpxFile) {
       let totalCumlDistance = 0;
       let totalSeconds = 0;
       let gpxFileLength = gpxFile.length;
+      const speedThreshold = 3; // mph?
+      const stopDurationThreshold = 3; // seconds
+      let stops = 0;
+      let consecutiveLowSpeedPoints = 0;
+      let stopStartTime = null;
+      let totalStopDuration = 0;
+      let distance = 0;
+      let timeDiffInSeconds = 0;
+
       for (let j = 0; j < gpxFileLength - 1; j++) {
         let currentLoc = [gpxFile[j].lat, gpxFile[j].lon];
         let nextLoc = [gpxFile[j + 1].lat, gpxFile[j + 1].lon];
-        totalCumlDistance += this.earthDistance(nextLoc, currentLoc, false);
+        distance = this.earthDistance(nextLoc, currentLoc, false);
+        totalCumlDistance += distance; //for timespace cuml distance
 
-        // store data for ploting time space of gpx track
-        this.scatterData.push({
-          x:
-            gpxFile[j].time.getTime() / 1000 - gpxFile[0].time.getTime() / 1000,
-          y: totalCumlDistance, //cumulative Distance,
-        });
+        timeDiffInSeconds =
+          (gpxFile[j + 1].time.getTime() - gpxFile[j].time.getTime()) / 1000;
+
+        const speed = (distance / timeDiffInSeconds) * 0.681818;
+        if (speed < speedThreshold) {
+          if (stopStartTime === null) {
+            stopStartTime = gpxFile[j].time.getTime() / 1000;
+          }
+          consecutiveLowSpeedPoints++;
+        } else {
+          if (
+            stopStartTime !== null &&
+            consecutiveLowSpeedPoints * timeDiffInSeconds >=
+              stopDurationThreshold
+          ) {
+            stops++;
+            totalStopDuration += consecutiveLowSpeedPoints * timeDiffInSeconds;
+            stopStartTime = null; // reset stop start time
+          }
+          consecutiveLowSpeedPoints = 0;
+        }
+        this.numStops.value = stops;
+        this.durationStops.value = totalStopDuration.toFixed(2);
+        this.avgDurationStops.value = (
+          this.durationStops.value / this.numStops.value
+        ).toFixed(2);
+
+        this.scatterData // store data for ploting time space of gpx track
+          .push({
+            x:
+              gpxFile[j].time.getTime() / 1000 -
+              gpxFile[0].time.getTime() / 1000,
+            y: totalCumlDistance, //cumulative Distance,
+          });
       }
       //Set Metric Variables
       if (totalCumlDistance > 5280) {

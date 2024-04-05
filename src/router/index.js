@@ -5,6 +5,7 @@ import HighResDataExplainer from '../views/HighResDataExplainer'
 import About from '../views/About'
 import TermsOfService from '../views/TermsOfService'
 import GPXPlotter from '../views/GPXPlotter'
+import SplitHistory from '../views/SplitHistory'
 
 const routes = [
     {
@@ -36,6 +37,11 @@ const routes = [
         path: '/gpx',
         name: 'gpxPlotter',
         component: GPXPlotter,
+    },
+    {
+        path: '/split-history',
+        name: 'splitHistory',
+        component: SplitHistory,
     },
     {
         path: '/:pathMatch(.*)*',

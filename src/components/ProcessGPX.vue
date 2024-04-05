@@ -21,8 +21,18 @@
   </div>
   <br />
   <div class="button-container">
-    <v-btn color="primary" @click="bProcessGPX">Plot</v-btn>
-    <span class="button-space"></span>
+    <v-row>
+      <v-btn color="primary" @click="bProcessGPX">Plot</v-btn>
+      <hr />
+      <hr />
+      <hr />
+
+      <v-switch
+        v-model="switchValue"
+        color="primary"
+        label="Show Speeds as Color"
+      ></v-switch>
+    </v-row>
   </div>
 
   <br />
@@ -67,11 +77,13 @@ export default {
   data() {
     return {
       gpxPanel: ["signal locations"],
+      switchValue: false,
       tracks: [],
       inputData: "",
       signalLocations: "",
       outputData: "",
       scatterData: [],
+      colorsData: [],
       signalPlotData: [],
       chartDataSet: [],
       allScatterPlotData: null,
@@ -165,10 +177,22 @@ export default {
             this.loadGPXPoints(gpxPoints);
 
             // append gpx chart data set
-            this.push_element(
-              this.chartDataSet,
-              this.createGPXTrack("GPX Track", this.scatterData)
-            );
+            if (this.switchValue) {
+              this.push_element(
+                this.chartDataSet,
+                this.createGPXTrack(
+                  "GPX Track (Red:<10mph, Yellow:<20mph,Green:>20mph)",
+                  this.scatterData,
+                  this.colorsData
+                )
+              );
+            } else {
+              this.push_element(
+                this.chartDataSet,
+                this.createGPXTrack("GPX Track", this.scatterData)
+              );
+            }
+
             // create the scatter data for plotting
             this.allScatterPlotData = this.createScatterData(this.chartDataSet);
 
@@ -240,10 +264,21 @@ export default {
             }
 
             // append gpx chart data set
-            this.push_element(
-              this.chartDataSet,
-              this.createGPXTrack("GPX Track", this.scatterData)
-            );
+            if (this.switchValue) {
+              this.push_element(
+                this.chartDataSet,
+                this.createGPXTrack(
+                  "GPX Track (Red:<10mph, Yellow:<20mph,Green:>20mph)",
+                  this.scatterData,
+                  this.colorsData
+                )
+              );
+            } else {
+              this.push_element(
+                this.chartDataSet,
+                this.createGPXTrack("GPX Track", this.scatterData)
+              );
+            }
 
             // create the scatter data for plotting
             this.allScatterPlotData = this.createScatterData(this.chartDataSet);
@@ -349,8 +384,9 @@ export default {
         timeDiffInSeconds =
           (gpxFile[j + 1].time.getTime() - gpxFile[j].time.getTime()) / 1000;
 
-        const speed = (distance / timeDiffInSeconds) * 0.681818;
-        if (speed < speedThreshold) {
+        const speedMPH = (distance / timeDiffInSeconds) * 0.681818; // ft/sec to MPH
+
+        if (speedMPH < speedThreshold) {
           if (stopStartTime === null) {
             stopStartTime = gpxFile[j].time.getTime() / 1000;
           }
@@ -380,6 +416,8 @@ export default {
               gpxFile[0].time.getTime() / 1000,
             y: totalCumlDistance, //cumulative Distance,
           });
+
+        this.colorsData.push(this.speedToColor(speedMPH));
       }
       //Set Metric Variables
       if (totalCumlDistance > 5280) {
@@ -406,6 +444,17 @@ export default {
     push_element(a, e) {
       // push element e into array
       a.push(e);
+    },
+    speedToColor(speed) {
+      let color;
+      if (speed < 10) {
+        color = "red";
+      } else if (speed < 20) {
+        color = "yellow";
+      } else {
+        color = "green";
+      }
+      return color;
     },
     parseCSVToSignalObj(csvString) {
       // Split the CSV string into individual lines
@@ -473,15 +522,17 @@ export default {
         fill: false,
       };
     },
-    createGPXTrack(gpxName, gpxData) {
+    createGPXTrack(gpxName, gpxData, speedArray = []) {
       return {
         label: gpxName,
         data: gpxData,
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
-        borderColor: "rgba(255, 99, 132, 1)",
+        backgroundColor: "rgba(0, 0, 0, .7)",
+        borderColor: "rgba(0, 0, 0, 1)",
         borderWidth: 1,
         showLine: true,
         fill: false,
+        pointBackgroundColor: speedArray,
+        pointBorderColor: speedArray,
       };
     },
     createScatterData(d) {

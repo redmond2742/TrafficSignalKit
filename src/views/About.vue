@@ -16,7 +16,9 @@
                 href="https://www.corporate-rebels.com/blog/musks-algorithm-to-cut-bureaucracy"
                 >automation comes last</a
               >). Your feedback (with the heart button) guides my future
-              resources. Let's see where this journey takes us! 🚦
+              resources. The goal is to understand the landscape of these tools
+              without getting cought up in feature creep. Remember, bare bones
+              proof of concepts!
             </v-expansion-panel-text>
           </v-expansion-panel>
 
@@ -28,6 +30,8 @@
 
               <ul>
                 <li>April's Feature</li>
+                <li>Navigation drop down menu for all tools</li>
+                <li>Blog Setup in Nav bar</li>
                 <li>
                   Release Notes on Github for each month's release, put crossed
                   off items in here into there

@@ -14,13 +14,7 @@ export default {
 </script>
 
 <template>
-  <textarea
-    type="text"
-    rows="5"
-    no-resize
-    v-model="inputData"
-    @input="emitInput"
-  />
+  <textarea type="text" rows="20" v-model="inputData" @input="emitInput" />
 </template>
 
 <style scoped>

@@ -36,6 +36,13 @@
   </div>
 
   <br />
+  <v-row>
+    <v-col cols="2"></v-col>
+    <div class="metrics-container">
+      <metric :data="datetime"></metric>
+    </div>
+    <v-col cols="2"></v-col>
+  </v-row>
 
   <v-row>
     <v-col cols="4"></v-col>
@@ -91,6 +98,11 @@ export default {
         label: "Travel Time",
         value: "N/A",
         unit: "",
+      },
+      datetime: {
+        label: "Full Date Timestamp",
+        value: "",
+        unit: "full date",
       },
       travelDist: {
         label: "Travel Distance",
@@ -434,6 +446,8 @@ export default {
 
       this.travelTime.value = this.formatDuration(totalSeconds);
       this.travelTime.unit = "hh:mm:ss.ms";
+
+      this.datetime.value = gpxFile[0].time;
 
       this.avgSpeed.value = (
         (totalCumlDistance / totalSeconds) *

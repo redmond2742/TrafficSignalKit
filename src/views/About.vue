@@ -30,8 +30,6 @@
 
               <ul>
                 <li>April's Feature</li>
-                <li>Navigation drop down menu for all tools</li>
-                <li>Blog Setup in Nav bar</li>
                 <li>
                   Release Notes on Github for each month's release, put crossed
                   off items in here into there
@@ -54,6 +52,11 @@
               see historical information About what happened at a traffic
               signal. It allows me to dive deep into what the controller was
               actually doing.
+              <br />
+              I use the
+              <router-link to="/gpx">Time Space Visualizer</router-link> to see
+              how delays at signals effect the travel of a bike or vehicle along
+              a signalized corridor.
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>

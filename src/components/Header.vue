@@ -7,18 +7,50 @@
         ></v-app-bar-title
       >
     </div>
+    <hr />
+
+    <div class="text-center">
+      <v-menu :location="bottom">
+        <template v-slot:activator="{ props }">
+          <v-btn v-bind="props"> 2024' Q1 Tools</v-btn>
+        </template>
+
+        <v-list>
+          <v-list-item v-for="(item, index) in q1Items" :key="index">
+            <v-list-item-title
+              ><router-link :to="item.path"
+                >{{ item.title }}
+              </router-link></v-list-item-title
+            >
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
+    <div class="text-center">
+      <v-menu :location="bottom">
+        <template v-slot:activator="{ props }">
+          <v-btn v-bind="props"> 2024' Q2 Tools</v-btn>
+        </template>
+
+        <v-list>
+          <v-list-item v-for="(item, index) in q2Items" :key="index">
+            <v-list-item-title
+              ><router-link :to="item.path"
+                >{{ item.title }}
+              </router-link></v-list-item-title
+            >
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
+
+    <!--
+    <router-link v-for="route in routes" :key="route.path" :to="route.path">
+    {{route.name}}
+  </router-link>
+    -->
 
     <v-spacer></v-spacer>
-
-    <router-link to="/split-calculator">
-      <v-btn to="/split-calculator"> Split Calculator </v-btn>
-    </router-link>
-    <router-link to="/explainer">
-      <v-btn to="/explainer"> High Res. Explainer </v-btn>
-    </router-link>
-    <router-link to="/gpx">
-      <v-btn to="/gpx">Time Space Visualizer </v-btn>
-    </router-link>
 
     <template v-slot:append>
       <v-btn large plain
@@ -52,12 +84,17 @@
 <script>
 export default {
   data: () => ({
-    items: [
-      // { title: 'Split Calculator'},
-      // { title: 'Click Me' },
-      // { title: 'Click Me' },
-      // { title: 'Click Me 2' },
+    q1Items: [
+      { title: "January: Split Calculator", path: "/split-calculator" },
+      { title: "Feburary: High Res. Explainer", path: "/explainer" },
+      { title: "March: Time Space Visualizer", path: "/gpx" },
     ],
+    q2Items: [
+      { title: "April: Split History", path: "/split-history" },
+      { title: "May: TBD", path: "" },
+      { title: "June: TBD", path: "" },
+    ],
+
     dialog: false,
   }),
 };

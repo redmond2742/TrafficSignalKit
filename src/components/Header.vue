@@ -10,7 +10,7 @@
     <hr />
 
     <div class="text-center">
-      <v-menu :location="bottom">
+      <v-menu>
         <template v-slot:activator="{ props }">
           <v-btn v-bind="props"> 2024' Q1 Tools</v-btn>
         </template>
@@ -27,7 +27,7 @@
       </v-menu>
     </div>
     <div class="text-center">
-      <v-menu :location="bottom">
+      <v-menu>
         <template v-slot:activator="{ props }">
           <v-btn v-bind="props"> 2024' Q2 Tools</v-btn>
         </template>

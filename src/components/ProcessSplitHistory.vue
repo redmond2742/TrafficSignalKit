@@ -9,6 +9,7 @@
 
 <script>
 import InputBox from "../components/InputBox.vue";
+import enumerationObj from "../data/enumerations.json";
 
 export default {
   components: {
@@ -17,78 +18,74 @@ export default {
   data() {
     return {
       inputData: "",
+      hdDataObj: [],
     };
   },
   methods: {
-    calculatePhaseDurations() {
+    getEventDescriptor(codeValue) {
+      let value = "";
+      enumerationObj.find((item) => {
+        //console.log("log" + item.eventDescriptor);
+
+        //console.log(item.eventCode);
+        //console.log(codeValue);
+        if (item.eventCode === parseInt(codeValue)) {
+          value = item.eventDescriptor;
+        }
+      });
+      return value;
+    },
+    getParameterType(codeValue) {
+      let value = "";
+      enumerationObj.find((item) => {
+        if (item.eventCode === parseInt(codeValue)) {
+          value = item.parameterType;
+        }
+      });
+      return value;
+    },
+
+    getEventDescription(eventCode) {
+      let value = "";
+      enumerationObj.find((item) => {
+        if (item.eventCode === parseInt(eventCode)) {
+          value = item.description;
+        }
+      });
+      return value;
+    },
+    loadCsv2JsonObj() {
       // Parse CSV data into an array of objects
-      const rows = this.inputData
-        .split("\n")
-        .map((row) => row.trim().split(","));
+      const lines = this.inputData.split("\n");
 
-      // Filter out rows with phases 1-8
-      const filteredRows = rows.filter((row) => row[2] >= 1 && row[2] <= 8);
+      console.log(lines);
 
-      // Initialize variables to store phase durations
-      const phaseDurations = {};
+      lines.forEach((line) => {
+        const [timestamp, eventCode, parameter] = line.trim().split(", ");
 
-      let phaseStartTime = null;
-      let currentPhase = null;
+        this.hdDataObj.push({
+          eventCode: parseInt(eventCode),
+          eventDescriptor: this.getEventDescriptor(eventCode),
+          parameterType: this.getParameterType(eventCode),
+          parameterCode: parseInt(parameter),
+          description: this.getEventDescription(eventCode),
+        });
+      });
+      console.log(this.hdDataObj);
 
-      // Iterate over filtered rows to calculate phase durations
-      for (let i = 0; i < filteredRows.length; i++) {
-        const currentRow = filteredRows[i];
-        const timestamp = parseInt(currentRow[0]);
-        const enumeration = parseInt(rows[i][1]);
-        const phase = parseInt(currentRow[2]);
-
-        // TODO: Build up a Cycle Length with each phase having a Green time, Yellow Time and termination type
-        // if the phase is repeating, close out that cycle length
-        /*
-            Push these values into each pahse.
-            const examplePhase = {
-                phaseNumber: 1,
-                greenTime: 30, // seconds
-                yellowTime: 5, // seconds
-                phaseTerminationType: 'Force Off'
-            };
-
-        Push phases into a cycle length.
-
-            IF phase is 1-8, then add to create a phase object.
-            -look at enumeration: append state color and start/end time to that phase
-            -if end time, then determine the termination of the phase reason from enumeration
-            -if more than one phase has been served, then if repeated phase shows up, consider that a cycle legnth and start over. Calculate cycle time.
-            
-
-
-        */
-
-        if (enumeration === 0 && phaseStartTime === null) {
-          // Phase starts
-          phaseStartTime = timestamp;
-          currentPhase = phase;
-        } else if (enumeration === 1) {
-          phaseState = "Green";
+      return this.hdDataObj;
+    },
+    buildCycleItem(dataObj) {
+      dataObj.forEach((obj) => {
+        if (obj.parameterType === "Phase") {
+          console.log("Condition met for object Phase", obj);
         }
-
-        if (!phaseDurations[phase]) {
-          phaseDurations[phase] = 0;
-        }
-
-        if (i < filteredRows.length - 1) {
-          const nextRow = filteredRows[i + 1];
-          const nextTimestamp = parseInt(nextRow[0]);
-          phaseDurations[phase] += nextTimestamp - timestamp;
-        }
-      }
-
-      // Convert durations from milliseconds to seconds
-      for (let phase in phaseDurations) {
-        phaseDurations[phase] /= 1000;
-      }
-      console.log(phaseDurations);
-      return phaseDurations;
+      });
+    },
+    calculatePhaseDurations() {
+      console.log("test");
+      this.loadCsv2JsonObj();
+      this.buildCycleItem(this.hdDataObj);
     },
   },
 };

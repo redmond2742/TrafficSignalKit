@@ -1,0 +1,1052 @@
+[
+    {
+        "eventCode": 0,
+        "eventDescriptor": "Phase On",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": 1,
+        "eventDescriptor": "Phase Begin Green",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "2",
+        "eventDescriptor": "Phase Check",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "3",
+        "eventDescriptor": "Phase Min Complete",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "4",
+        "eventDescriptor": "Phase Gap Out",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "5",
+        "eventDescriptor": "Phase Max Out",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "6",
+        "eventDescriptor": "Phase Force Off",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "7",
+        "eventDescriptor": "Phase Green Termination",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "8",
+        "eventDescriptor": "Phase Begin Yellow Clearance",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "9",
+        "eventDescriptor": "Phase End Yellow Clearance",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "10",
+        "eventDescriptor": "Phase Begin Red Clearance",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": 11,
+        "eventDescriptor": "Phase End Red Clearance",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "12",
+        "eventDescriptor": "Phase Inactive",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "13",
+        "eventDescriptor": "Extension Timer Gap Out",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "14",
+        "eventDescriptor": "Phase Skipped",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "15",
+        "eventDescriptor": "Extension Timer Reduction Start",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "16",
+        "eventDescriptor": "Extension Timer Minimum Achieved",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "17",
+        "eventDescriptor": "Added initial Complete",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "18",
+        "eventDescriptor": "Next Phase Decision",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "19",
+        "eventDescriptor": "TSP Early Force Off",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "20",
+        "eventDescriptor": "Preemption Force Off",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "21",
+        "eventDescriptor": "Pedestrian Begin Walk",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "22",
+        "eventDescriptor": "Pedestrian Begin Clearance",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "23",
+        "eventDescriptor": "Pedestrian Begin Solid Don\u2019t Walk",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "24",
+        "eventDescriptor": "Pedestrian Dark",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "25",
+        "eventDescriptor": "Extended Pedestrian Change Interval",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "26",
+        "eventDescriptor": "Oversized Pedestrian Served",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "31",
+        "eventDescriptor": "Barrier Termination",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "32",
+        "eventDescriptor": "FYA \u2013 Begin Permissive",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "33",
+        "eventDescriptor": "FYA \u2013 End Permissive",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "41",
+        "eventDescriptor": "Phase Hold Active",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "42",
+        "eventDescriptor": "Phase Hold Released",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "43",
+        "eventDescriptor": "Phase Call Registered",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": 44,
+        "eventDescriptor": "Phase Call Dropped",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "45",
+        "eventDescriptor": "Pedestrian Call Registered",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "46",
+        "eventDescriptor": "Phase Omit On",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "47",
+        "eventDescriptor": "Phase Omit Off",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "48",
+        "eventDescriptor": "Pedestrian Omit On",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "49",
+        "eventDescriptor": "Pedestrian Omit Off",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "50",
+        "eventDescriptor": "MAX 1 In-Effect",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "51",
+        "eventDescriptor": "MAX 2 In-Effect",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "52",
+        "eventDescriptor": "Dynamic MAX In-Effect",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "53",
+        "eventDescriptor": "Dynamic MAX Step Up",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "54",
+        "eventDescriptor": "Dynamic MAX Step Down",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "55",
+        "eventDescriptor": "Advance Warning Sign On",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "56",
+        "eventDescriptor": "Advance Warning Sign Off",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "61",
+        "eventDescriptor": "Overlap Begin Green",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "62",
+        "eventDescriptor": "Overlap Begin Trailing Green (Extension)",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "63",
+        "eventDescriptor": "Overlap Begin Yellow",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "64",
+        "eventDescriptor": "Overlap Begin Red Clearance",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "65",
+        "eventDescriptor": "Overlap Off (Inactive with red indication)",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "66",
+        "eventDescriptor": "Overlap Dark",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "67",
+        "eventDescriptor": "Pedestrian Overlap Begin Walk",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "68",
+        "eventDescriptor": "Pedestrian Overlap Begin Clearance",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "69",
+        "eventDescriptor": "Pedestrian Overlap Begin Solid Don\u2019t Walk",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "70",
+        "eventDescriptor": "Pedestrian Overlap Dark",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "71",
+        "eventDescriptor": "Advance Warning Sign On",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "72",
+        "eventDescriptor": "Advance Warning Sign Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "81",
+        "eventDescriptor": "Detector Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "82",
+        "eventDescriptor": "Detector On",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "83",
+        "eventDescriptor": "Detector Restored",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "84",
+        "eventDescriptor": "Detector Fault- Other",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "85",
+        "eventDescriptor": "Detector Fault- Watchdog Fault",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "86",
+        "eventDescriptor": "Detector Fault- Open Loop Fault",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "87",
+        "eventDescriptor": "Detector Fault- Shorted Loop Fault",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "88",
+        "eventDescriptor": "Detector Fault- Excessive Change Fault",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "89",
+        "eventDescriptor": "PedDetector Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "90",
+        "eventDescriptor": "PedDetector On",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "91",
+        "eventDescriptor": "Pedestrian Detector Failed",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "92",
+        "eventDescriptor": "Pedestrian Detector Restored",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "93",
+        "eventDescriptor": "TSP Detector Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "94",
+        "eventDescriptor": "TSP Detector On",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "101",
+        "eventDescriptor": "Preempt Advance Warning Input",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "102",
+        "eventDescriptor": "Preempt (Call) Input On",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "103",
+        "eventDescriptor": "Preempt Gate Down Input Received",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "104",
+        "eventDescriptor": "Preempt (Call) Input Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "105",
+        "eventDescriptor": "Preempt Entry Started",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "106",
+        "eventDescriptor": "Preemption Begin Track Clearance",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "107",
+        "eventDescriptor": "Preemption Begin Dwell Service",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "108",
+        "eventDescriptor": "Preemption Link Active On",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "109",
+        "eventDescriptor": "Preemption Link Active Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "110",
+        "eventDescriptor": "Preemption Max Presence Exceeded",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "111",
+        "eventDescriptor": "Preemption Begin Exit Interval",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "112",
+        "eventDescriptor": "TSP Check In",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "113",
+        "eventDescriptor": "TSP Adjustment to Early Green",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "114",
+        "eventDescriptor": "TSP Adjustment to Extend Green",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "115",
+        "eventDescriptor": "TSP Check Out",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "116",
+        "eventDescriptor": "Preemption Force Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "117",
+        "eventDescriptor": "TSP Early Force Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "120",
+        "eventDescriptor": "TSP Service Start",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "121",
+        "eventDescriptor": "TSP Service End",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "131",
+        "eventDescriptor": "Coord Pattern Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "132",
+        "eventDescriptor": "Cycle Length Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "133",
+        "eventDescriptor": "Offset Length Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "134",
+        "eventDescriptor": "Split 1 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "135",
+        "eventDescriptor": "Split 2 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "136",
+        "eventDescriptor": "Split 3 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "137",
+        "eventDescriptor": "Split 4 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "138",
+        "eventDescriptor": "Split 5 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "139",
+        "eventDescriptor": "Split 6 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "140",
+        "eventDescriptor": "Split 7 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "141",
+        "eventDescriptor": "Split 8 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "142",
+        "eventDescriptor": "Split 9 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "143",
+        "eventDescriptor": "Split 10 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "144",
+        "eventDescriptor": "Split 11 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "145",
+        "eventDescriptor": "Split 12 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "146",
+        "eventDescriptor": "Split 13 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "147",
+        "eventDescriptor": "Split 14 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "148",
+        "eventDescriptor": "Split 15 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "149",
+        "eventDescriptor": "Split 16 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "150",
+        "eventDescriptor": "Coord Cycle State Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "151",
+        "eventDescriptor": "Coordinated Phase Yield Point",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "152",
+        "eventDescriptor": "Coordinated Phase Begin",
+        "parameterType": "Phase",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "153",
+        "eventDescriptor": "Logic Statement True",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "154",
+        "eventDescriptor": "Logic Statement False",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "155",
+        "eventDescriptor": "Unit Control Status Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "156",
+        "eventDescriptor": "Additional Cycle Length Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "171",
+        "eventDescriptor": "Test Input on",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "172",
+        "eventDescriptor": "Test Input off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "173",
+        "eventDescriptor": "Unit Flash Status change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "174",
+        "eventDescriptor": "Unit Alarm Status 1 change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "175",
+        "eventDescriptor": "Alarm Group State Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "176",
+        "eventDescriptor": "Special Function Output on",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "177",
+        "eventDescriptor": "Special Function Output off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "178",
+        "eventDescriptor": "Manual control enable off/on",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "179",
+        "eventDescriptor": "Interval Advance off/on",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "180",
+        "eventDescriptor": "Stop Time Input off/on",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "181",
+        "eventDescriptor": "Controller Clock Updated",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "182",
+        "eventDescriptor": "Power Failure Detected",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "184",
+        "eventDescriptor": "Power Restored",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "185",
+        "eventDescriptor": "Vendor Specific Alarm",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "200",
+        "eventDescriptor": "Alarm On",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "201",
+        "eventDescriptor": "Alarm Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "202",
+        "eventDescriptor": "Aux Switch On/Off",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "203",
+        "eventDescriptor": "Split 17 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "204",
+        "eventDescriptor": "Split 18 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "205",
+        "eventDescriptor": "Split 19 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "206",
+        "eventDescriptor": "Split 20 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "207",
+        "eventDescriptor": "Split 21 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "208",
+        "eventDescriptor": "Split 22 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "209",
+        "eventDescriptor": "Split 23 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "210",
+        "eventDescriptor": "Split 24 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "211",
+        "eventDescriptor": "Split 25 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "212",
+        "eventDescriptor": "Split 26 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "213",
+        "eventDescriptor": "Split 27 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "214",
+        "eventDescriptor": "Split 28 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "215",
+        "eventDescriptor": "Split 29 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "216",
+        "eventDescriptor": "Split 30 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "217",
+        "eventDescriptor": "Split 31 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    },
+    {
+        "eventCode": "218",
+        "eventDescriptor": "Split 32 Change",
+        "parameterType": "Other",
+        "parameterCode": "",
+        "description": ""
+    }
+]

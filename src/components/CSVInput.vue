@@ -127,8 +127,8 @@ export default {
         "America/Denver": -7, // UTC offset: -7 hours
         "America/Los_Angeles": -8, // UTC offset: -8 hours
       },
+      //https://docs.lib.purdue.edu/cgi/viewcontent.cgi?article=1003&context=jtrpdata
       enumerations: {
-        //https://docs.lib.purdue.edu/cgi/viewcontent.cgi?article=1003&context=jtrpdata
         0: "Phase On",
         1: "Phase Begin Green",
         2: "Phase Check",

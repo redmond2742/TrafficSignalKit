@@ -13,6 +13,8 @@
         variant="plain"
         size="small"
         :href="icon.link"
+        target="_blank"
+        rel="noopener"
       ></v-btn>
     </div>
 

@@ -258,15 +258,12 @@ export default {
                 this.signalPlotData,
                 this.createScatterXY(
                   signalStartTime,
-                  signalResult.correspondingValue
+                  signalResult.cumulativeDist
                 )
               );
               this.push_element(
                 this.signalPlotData,
-                this.createScatterXY(
-                  signalEndTime,
-                  signalResult.correspondingValue
-                )
+                this.createScatterXY(signalEndTime, signalResult.cumulativeDist)
               );
               this.push_element(
                 this.chartDataSet,
@@ -507,22 +504,22 @@ export default {
 
     findCumulativeDistanceFromSignalObj(arrayIndex, signalObj) {
       let minDistance = Number.MAX_VALUE;
-      let correspondingValue = null;
+      let cumulativeDist = 0;
       let distances = signalObj[arrayIndex].distances;
 
       // Iterate over the first dimension of the 2D array
       for (let i = 0; i < distances.length; i++) {
         // Find the minimum value in the current row
-        const minInRow = Math.min(...distances[i]);
+        const minInRow = Math.min(distances[i][0]); // find min distance between gpx point and signal location.
         if (minInRow < minDistance) {
           minDistance = minInRow;
-          correspondingValue = distances[i][1]; // Assuming the second column index is 1
+          cumulativeDist = distances[i][1]; // save the cumulative distance (column 1) if this is the closest point to a signal.
         }
       }
-      // Return an object containing the minimum distance and corresponding value
+      // Return an object containing the minimum distance and cumulative distance for signal location
       return {
         minDistance: minDistance,
-        correspondingValue: correspondingValue,
+        cumulativeDist: cumulativeDist,
       };
     },
     createSignal(signalName, signalData) {

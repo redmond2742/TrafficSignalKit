@@ -25,7 +25,7 @@
           <v-expansion-panel title="Top TODO Items" value="detailed-explain">
             <v-expansion-panel-text>
               To move quickly, everything about this website is very much a work
-              in progress. Below is a list of the active ttems I am working to
+              in progress. Below is a list of the active items I am working to
               update.
 
               <ul>

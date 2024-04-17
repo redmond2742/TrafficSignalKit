@@ -71,11 +71,15 @@
       Adjust Splits and Cycle lengths <br />
       <b>February: </b>
       <router-link to="/explainer">High Resolution Data Explainer</router-link>
-      - Tabulate high resolution data <br />
+      - Tabulate High Resolution Data <br />
       <b>March: </b>
       <router-link to="/gpx">Time Space Diagram Visualizer</router-link> - Plot
       GPX files as a Time Space Diagram (w/ signal locations)<br />
-      <b>April: </b>Work In Progress<br />
+      <b>April: </b
+      ><router-link to="/split-history"
+        >High Resolution Split History</router-link
+      >
+      - Display Phase and Cycle Times from High Resolution Data<br />
       <b>May: </b> <br />
       <b>June: </b> <br />
       <b>July: </b> <br />

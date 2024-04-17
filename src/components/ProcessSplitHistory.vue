@@ -19,16 +19,17 @@ export default {
     return {
       inputData: "",
       hdDataObj: [],
+      phasesInCycle: [
+        {
+          phase: -1,
+        },
+      ],
     };
   },
   methods: {
     getEventDescriptor(codeValue) {
       let value = "";
       enumerationObj.find((item) => {
-        //console.log("log" + item.eventDescriptor);
-
-        //console.log(item.eventCode);
-        //console.log(codeValue);
         if (item.eventCode === parseInt(codeValue)) {
           value = item.eventDescriptor;
         }
@@ -44,7 +45,6 @@ export default {
       });
       return value;
     },
-
     getEventDescription(eventCode) {
       let value = "";
       enumerationObj.find((item) => {
@@ -54,6 +54,25 @@ export default {
       });
       return value;
     },
+    setGreenStart(obj, timestamp) {
+      obj.push({
+        GreenStart: timestamp,
+      });
+    },
+    setGreenEnd(obj, timestamp) {
+      obj.push({
+        GreenEnd: timestamp,
+      });
+    },
+    createPhase(phaseNumber) {
+      let phaseObj = [
+        {
+          phase: phaseNumber,
+        },
+      ];
+      return phaseObj;
+    },
+
     loadCsv2JsonObj() {
       // Parse CSV data into an array of objects
       const lines = this.inputData.split("\n");
@@ -64,6 +83,7 @@ export default {
         const [timestamp, eventCode, parameter] = line.trim().split(", ");
 
         this.hdDataObj.push({
+          timestamp: timestamp,
           eventCode: parseInt(eventCode),
           eventDescriptor: this.getEventDescriptor(eventCode),
           parameterType: this.getParameterType(eventCode),
@@ -78,13 +98,35 @@ export default {
     buildCycleItem(dataObj) {
       dataObj.forEach((obj) => {
         if (obj.parameterType === "Phase") {
-          console.log("Condition met for object Phase", obj);
+          console.log("this is a phase obj");
+
+          //TODO: need to load events into phase JSON object.
+
+          /*
+          this.phasesInCycle.find((item) => {
+            if (item.phase === parseInt(obj.parameterCode)) {
+              // switch statement method for all relevant enumerations
+              // one working case for now:
+              if (obj.eventCode === 1) {
+                console.log("Running else to build cl array - enum 1");
+                this.setGreenStart(item, obj.timestamp);
+              } else if (obj.eventCode === 7) {
+                this.setGreenEnd(item, obj.timestamp);
+              }
+            } else {
+              item = this.createPhase(obj.parameterCode);
+              console.log("Running else to build cl array");
+            }
+            this.phasesInCycle.push(item);
+          });
+        }
+        console.log(this.phasesInCycle);
+      }); */
         }
       });
     },
     calculatePhaseDurations() {
-      console.log("test");
-      this.loadCsv2JsonObj();
+      this.loadCsv2JsonObj(); //load all the enumerations into JSON obj.
       this.buildCycleItem(this.hdDataObj);
     },
   },

@@ -1,13 +1,13 @@
 [
     {
-        "eventCode": 0,
+        "eventCode": "0",
         "eventDescriptor": "Phase On",
         "parameterType": "Phase",
         "parameterCode": "",
         "description": ""
     },
     {
-        "eventCode": 1,
+        "eventCode": "1",
         "eventDescriptor": "Phase Begin Green",
         "parameterType": "Phase",
         "parameterCode": "",

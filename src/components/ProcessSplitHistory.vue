@@ -21,19 +21,11 @@ export default {
       hdDataObj: [],
       countCycles: 1,
       phasesInCycle: [],
-      phaseArray: [
-        [{}, {}, {}, {}, {}, {}, {}, {}], // Row 0
-        [{}, {}, {}, {}, {}, {}, {}, {}], // Row 1
-        [{}, {}, {}, {}, {}, {}, {}, {}], // Row 2
-        [{}, {}, {}, {}, {}, {}, {}, {}], // Row 3
-        [{}, {}, {}, {}, {}, {}, {}, {}], // Row 4
-        [{}, {}, {}, {}, {}, {}, {}, {}], // Row 5
-        [{}, {}, {}, {}, {}, {}, {}, {}], // Row 6
-        [{}, {}, {}, {}, {}, {}, {}, {}], // Row 7
-        [{}, {}, {}, {}, {}, {}, {}, {}], // Row 8
-      ],
+      phaseArray: [],
+      phaseElementsCount: 8, //update based on available JS items logged for each phase
     };
   },
+  computed: {},
   methods: {
     getEventDescriptor(codeValue) {
       let value = "";
@@ -71,49 +63,45 @@ export default {
       }).length;
 
       const totalElements = arr.length;
+      //console.log("filled in: " + filledValues + "/" + totalElements);
 
       return (filledValues / totalElements) * 100;
     },
-    calcCycleCompletionPercent() {
-      let cycleComplete = 0;
-      let totalPhaseComplete = 0;
-      let countUsedPhases = this.phaseArray.length;
-      for (let i = 0; i < this.phaseArray.length; i++) {
-        let phaseComplete;
-        phaseComplete = this.calcPhaseCompletionPercent(this.phaseArray[i]);
-        totalPhaseComplete += phaseComplete;
-        if (phaseComplete === 0) {
-          countUsedPhases--;
+    calcPhaseComplete(phaseNum) {
+      let completedItems = 0;
+      let obj = this.phaseArray[phaseNum];
+
+      for (let key in obj) {
+        if (obj.hasOwnProperty(key)) {
+          completedItems++;
         }
       }
-      cycleComplete = totalPhaseComplete / (countUsedPhases * 100);
-      console.log(this.phaseArray);
-      if (cycleComplete === 1.0) {
-        console.log("STARTING NEW CYCLE");
-        this.countCycles++;
-        this.phasesInCycle = [];
-        this.phaseArray = [
-          [{}, {}, {}, {}, {}, {}, {}, {}], // Row 0
-          [{}, {}, {}, {}, {}, {}, {}, {}], // Row 1
-          [{}, {}, {}, {}, {}, {}, {}, {}], // Row 2
-          [{}, {}, {}, {}, {}, {}, {}, {}], // Row 3
-          [{}, {}, {}, {}, {}, {}, {}, {}], // Row 4
-          [{}, {}, {}, {}, {}, {}, {}, {}], // Row 5
-          [{}, {}, {}, {}, {}, {}, {}, {}], // Row 6
-          [{}, {}, {}, {}, {}, {}, {}, {}], // Row 7
-          [{}, {}, {}, {}, {}, {}, {}, {}], // Row 8
-        ];
-        //print entire existing cycle
-        // Clear Array Variables (phasesInCycle & phaseArray matrix)
-        //set flag and send into event code if statments,
+      return (completedItems / this.phaseElementsCount) * 100;
+    },
+    isCycleComplete() {
+      let ringBarrier1 = false;
+      let ringBarrier2 = false;
+
+      for (let phase of this.phasesInCycle) {
+        if (phase === 1 || phase === 2 || phase === 5 || phase === 6) {
+          //ring barrier 1 phases
+
+          if (this.calcPhaseComplete(phase) === 100) {
+            ringBarrier1 = true;
+          }
+        } else if (phase === 3 || phase === 4 || phase === 7 || phase === 8) {
+          //ring barrier 2 phases
+          if (this.calcPhaseComplete(phase) === 100) {
+            ringBarrier2 = true;
+          }
+        }
       }
+      return ringBarrier1 && ringBarrier2;
     },
 
     loadCsv2JsonObj() {
       // Parse CSV data into an array of objects
       const lines = this.inputData.split("\n");
-
-      console.log(lines);
 
       lines.forEach((line) => {
         const [timestamp, eventCode, parameter] = line.trim().split(", ");
@@ -129,82 +117,55 @@ export default {
           description: this.getEventDescription(eventCodeInt),
         });
       });
-      console.log(this.hdDataObj);
 
       return this.hdDataObj;
     },
     buildCycleItem(dataObj) {
       dataObj.forEach((obj) => {
         if (obj.parameterType === "Phase") {
-          // if this.phaseArray.includes[obj.parameterCode][HAS GreenENDTime]
-          /*
-          0 - Phase
-          1 - green start time
-          2 - green end time
-          3 - start yellow time
-          4 - end yellow time
-          5 - start red time
-          6 - end red time
-          7 - reason for termination
+          let phaseNum = obj.parameterCode;
 
-          */
-
-          if (this.phasesInCycle.includes(obj.parameterCode)) {
-            if (
-              this.calcPhaseCompletionPercent(
-                this.phaseArray[obj.parameterCode]
-              ) === 100
-            ) {
-              this.calcCycleCompletionPercent();
-            }
-
-            if (obj.eventCode === 1) {
-              this.phaseArray[obj.parameterCode][1].greenTimeStart =
-                obj.timestamp;
-            } else if (obj.eventCode === 6) {
-              this.phaseArray[obj.parameterCode][7].phaseTerminationReason =
-                "Force Off";
-              obj.timestamp;
-            } else if (obj.eventCode === 5) {
-              this.phaseArray[obj.parameterCode][7].phaseTerminationReason =
-                "Max Out";
-              obj.timestamp;
-            } else if (obj.eventCode === 4) {
-              this.phaseArray[obj.parameterCode][7].phaseTerminationReason =
-                "Gap Out";
-              obj.timestamp;
-            } else if (obj.eventCode === 14) {
-              this.phaseArray[obj.parameterCode][7].phaseTerminationReason =
-                "Skipped";
-              obj.timestamp;
-            } else if (obj.eventCode === 7) {
-              this.phaseArray[obj.parameterCode][2].greenTimeEnd =
-                obj.timestamp;
+          if (this.phasesInCycle.includes(phaseNum)) {
+            if (obj.eventCode === 7) {
+              this.phaseArray[phaseNum].greenTimeEnd = obj.timestamp;
             } else if (obj.eventCode === 8) {
-              this.phaseArray[obj.parameterCode][3].yellowTimeStart =
-                obj.timestamp;
+              this.phaseArray[phaseNum].yellowTimeStart = obj.timestamp;
             } else if (obj.eventCode === 9) {
-              this.phaseArray[obj.parameterCode][4].yellowTimeEnd =
-                obj.timestamp;
+              this.phaseArray[phaseNum].yellowTimeEnd = obj.timestamp;
             } else if (obj.eventCode === 10) {
-              this.phaseArray[obj.parameterCode][5].redTimeStart =
-                obj.timestamp;
+              this.phaseArray[phaseNum].redTimeStart = obj.timestamp;
             } else if (obj.eventCode === 11) {
-              this.phaseArray[obj.parameterCode][6].redTimeEnd = obj.timestamp;
+              this.phaseArray[phaseNum].redTimeEnd = obj.timestamp;
+            } else if (obj.eventCode === 6) {
+              this.phaseArray[phaseNum].phaseTerminationReason = "Force Off";
+            } else if (obj.eventCode === 5) {
+              this.phaseArray[phaseNum].phaseTerminationReason = "Max Out";
+            } else if (obj.eventCode === 4) {
+              this.phaseArray[phaseNum].phaseTerminationReason = "Gap Out";
+            } else if (obj.eventCode === 14) {
+              this.phaseArray[phaseNum].phaseTerminationReason = "Skipped";
             }
           } else {
-            this.phasesInCycle.push(obj.parameterCode);
-            this.phaseArray[obj.parameterCode][0].phase = obj.parameterCode;
             if (obj.eventCode === 1) {
-              this.phaseArray[obj.parameterCode][1].greenTimeStart =
-                obj.timestamp;
-              //this.phaseArray[0] = [{ greenTimeStart: obj.timestamp }];
+              this.phaseArray[phaseNum] = [];
+              this.phaseArray[phaseNum].phase = phaseNum;
+              this.phaseArray[phaseNum].greenTimeStart = obj.timestamp;
+
+              this.phasesInCycle.push(phaseNum); //append phase to cycle array since it has a start time
             }
-            //this.phaseArray[0] = [{ phase: obj.parameterCode }];
           }
 
-          //TODO: need to load events into phase JSON object.
-          // TODO: load up a array of phases served thus far, and then clear them out after a cycle
+          if (this.isCycleComplete()) {
+            console.log(
+              "Phases in Cycle: " + this.phasesInCycle + " STARTING NEW CYCLE :"
+            );
+            this.countCycles++;
+            this.phasesInCycle = [];
+            this.phaseArray = [];
+          }
+
+          //TODO: calculate green, yellow, red times - computed props?
+          // TODO: display table of split times for each cycle
 
           /*
           this.phasesInCycle.find((item) => {
@@ -232,8 +193,7 @@ export default {
     calculatePhaseDurations() {
       this.loadCsv2JsonObj(); //load all the enumerations into JSON obj.
       this.buildCycleItem(this.hdDataObj);
-      console.log(this.phasesInCycle);
-      console.log(this.phaseArray);
+
       console.log("Total Cycle Count: " + this.countCycles);
       this.countCycles = 0;
     },

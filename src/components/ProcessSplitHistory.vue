@@ -78,21 +78,68 @@ export default {
       }
       return (completedItems / this.phaseElementsCount) * 100;
     },
+    calcPhaseDurations(phaseJSON, ph) {
+      let phaseDurationArray = [];
+      let oneCycleArray = [];
+      for (let i = 0; i < ph.length; i++) {
+        let curPhaseObj = phaseJSON[ph[i]];
+        console.log(curPhaseObj);
+        phaseDurationArray[i] = [];
+        phaseDurationArray[i].phase = ph[i];
+        phaseDurationArray[i].gTime =
+          curPhaseObj.greenTimeEnd - curPhaseObj.greenTimeStart;
+        phaseDurationArray[i].yTime =
+          curPhaseObj.yellowTimeEnd - curPhaseObj.yellowTimeStart;
+        phaseDurationArray[i].rTime =
+          curPhaseObj.redTimeEnd - curPhaseObj.redTimeStart;
+        phaseDurationArray[i].termReason = curPhaseObj.phaseTerminationReason;
+        phaseDurationArray[i].start = curPhaseObj.greenTimeStart;
+      }
+      oneCycleArray.push(phaseDurationArray);
+
+      return oneCycleArray;
+    },
+    calcSplitDuration(phArr) {
+      let cycleDuration = [];
+      let splitTime = [];
+      let curPhase = phArr[0];
+      for (let i = 0; i < curPhase.length; i++) {
+        splitTime[i] = [];
+        splitTime[i] =
+          curPhase[i].gTime + curPhase[i].yTime + curPhase[i].rTime;
+        console.log(splitTime[i]);
+      }
+      return splitTime;
+      //console.log(splitTime[i]);
+    },
     isCycleComplete() {
       let ringBarrier1 = false;
       let ringBarrier2 = false;
 
-      for (let phase of this.phasesInCycle) {
-        if (phase === 1 || phase === 2 || phase === 5 || phase === 6) {
-          //ring barrier 1 phases
+      let ring1Phases = [1, 2, 5, 6];
+      let ring2Phases = [3, 4, 7, 8];
 
+      let incompleteR1Phases = [];
+      let incompleteR2Phases = [];
+
+      for (let phase of this.phasesInCycle) {
+        if (ring1Phases.includes(phase)) {
           if (this.calcPhaseComplete(phase) === 100) {
-            ringBarrier1 = true;
+            incompleteR1Phases = ring1Phases.filter((item) => item !== phase);
+            for (let partialPhase of incompleteR1Phases) {
+              if (this.calcPhaseComplete(partialPhase) === 100) {
+                ringBarrier1 = true;
+              }
+            }
           }
-        } else if (phase === 3 || phase === 4 || phase === 7 || phase === 8) {
-          //ring barrier 2 phases
+        } else if (ring2Phases.includes(phase)) {
           if (this.calcPhaseComplete(phase) === 100) {
-            ringBarrier2 = true;
+            incompleteR2Phases = ring2Phases.filter((item) => item !== phase);
+            for (let partialPhase of incompleteR2Phases) {
+              if (this.calcPhaseComplete(partialPhase) === 100) {
+                ringBarrier2 = true;
+              }
+            }
           }
         }
       }
@@ -159,6 +206,15 @@ export default {
             console.log(
               "Phases in Cycle: " + this.phasesInCycle + " STARTING NEW CYCLE :"
             );
+            // take in phaseArray item and perform g,y,r duration calculations.
+            let phaseDur = this.calcPhaseDurations(
+              this.phaseArray,
+              this.phasesInCycle
+            );
+            console.log(phaseDur);
+
+            let cycleFromPhases = this.calcSplitDuration(phaseDur);
+            console.log(cycleFromPhases);
             this.countCycles++;
             this.phasesInCycle = [];
             this.phaseArray = [];

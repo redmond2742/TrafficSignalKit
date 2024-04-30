@@ -23,7 +23,28 @@ export default {
       phasesInCycle: [],
       phaseArray: [],
       phaseElementsCount: 8, //update based on available JS items logged for each phase
+
+      buildingB1: false,
+      buildingB2: false,
+
+      completedB1: false,
+      completedB2: false,
+
+      allB1Phases: [1, 2, 5, 6],
+      allB2Phases: [3, 4, 7, 8],
+
+      incompleteB1Phases: [],
+      incompleteB2Phases: [],
+      completedB1Phases: [],
+      completedB2Phases: [],
+      unusedPhases: [],
+      activeB1Phases: [],
+      activeB2Phases: [],
     };
+  },
+  created() {
+    // Resetting the variable in the created hook
+    this.phaseArray = [];
   },
   computed: {},
   methods: {
@@ -79,19 +100,20 @@ export default {
       return (completedItems / this.phaseElementsCount) * 100;
     },
     calcPhaseDurations(phaseJSON, ph) {
+      //TODO: update from ms to Seconds!!
       let phaseDurationArray = [];
       let oneCycleArray = [];
       for (let i = 0; i < ph.length; i++) {
         let curPhaseObj = phaseJSON[ph[i]];
-        console.log(curPhaseObj);
+        //console.log(curPhaseObj);
         phaseDurationArray[i] = [];
         phaseDurationArray[i].phase = ph[i];
         phaseDurationArray[i].gTime =
-          curPhaseObj.greenTimeEnd - curPhaseObj.greenTimeStart;
+          (curPhaseObj.greenTimeEnd - curPhaseObj.greenTimeStart) / 100;
         phaseDurationArray[i].yTime =
-          curPhaseObj.yellowTimeEnd - curPhaseObj.yellowTimeStart;
+          (curPhaseObj.yellowTimeEnd - curPhaseObj.yellowTimeStart) / 100;
         phaseDurationArray[i].rTime =
-          curPhaseObj.redTimeEnd - curPhaseObj.redTimeStart;
+          (curPhaseObj.redTimeEnd - curPhaseObj.redTimeStart) / 100;
         phaseDurationArray[i].termReason = curPhaseObj.phaseTerminationReason;
         phaseDurationArray[i].start = curPhaseObj.greenTimeStart;
       }
@@ -112,16 +134,219 @@ export default {
       return splitTime;
       //console.log(splitTime[i]);
     },
-    isCycleComplete() {
-      let ringBarrier1 = false;
-      let ringBarrier2 = false;
+    isCycleComplete(ph) {
+      let activePhase = ph;
 
-      let ring1Phases = [1, 2, 5, 6];
-      let ring2Phases = [3, 4, 7, 8];
+      //console.log("PHASE in CycleFn: " + this.calcPhaseComplete(ph));
 
-      let incompleteR1Phases = [];
-      let incompleteR2Phases = [];
+      console.log(
+        "PHASES IN CYCLE:" +
+          this.phasesInCycle +
+          " & " +
+          ph +
+          " is " +
+          this.calcPhaseComplete(ph) +
+          "% complete."
+      );
 
+      if (ph === 2) {
+        console.log(this.phaseArray[ph]);
+      }
+
+      let incompletePhases = this.phasesInCycle;
+      this.unusedPhases = this.allB1Phases.concat(this.B2Phases);
+
+      let activePhases = this.phasesInCycle;
+
+      this.activeB1Phases = this.allB1Phases.filter((el) =>
+        activePhases.includes(el)
+      );
+      this.activeB2Phases = this.allB2Phases.filter((el) =>
+        activePhases.includes(el)
+      );
+
+      let allPhases = this.allB1Phases.concat(this.allB2Phases);
+
+      /*
+        1. if phasesInCycle are greater than 0% complete?
+            YES:
+             A. Set buildingR#=True,
+             B. filter out this phase from unusedPhases
+             C. add this phase to incompleteR#Phases
+            if ph=100%, add to completed phase in Ring#
+             A. filter out this phase from incomplete phaseR#
+             B. add to completed phase in R#
+              if completedR#Phases === ring#Phases.filter(unusedPhases)
+                YES: completedR# = True
+                    -> move to next ring phases.
+
+                    Clear out variables.
+
+            NO: buildingR#=False
+
+      */
+
+      if (this.calcPhaseComplete(activePhase) > 0) {
+        console.log(activePhase + " phase is greater than zero % complete");
+
+        this.unusedPhases = this.unusedPhases.filter(
+          (item) => item !== activePhase
+        );
+
+        if (this.allB1Phases.includes(activePhase)) {
+          console.log("building Barrier 1");
+          console.log(this.activeB1Phases);
+          if (!this.activeB1Phases.includes(activePhase)) {
+            this.activeB1Phases.push(activePhase);
+          }
+          this.buildingB1 = true;
+          if (!this.incompleteB1Phases.includes(activePhase)) {
+            this.incompleteB1Phases.push(activePhase);
+          }
+        } else if (this.allB2Phases.includes(activePhase)) {
+          console.log("building Barrier 2");
+          console.log(this.activeB2Phases);
+          if (!this.activeB2Phases.includes(activePhase)) {
+            this.activeB2Phases.push(activePhase);
+          }
+          this.buildingB2 = true;
+          if (!this.incompleteB2Phases.includes(activePhase)) {
+            this.incompleteB2Phases.push(activePhase);
+          }
+        }
+
+        if (this.calcPhaseComplete(activePhase) === 100) {
+          console.log("Phase " + activePhase + " is complete!");
+          // Ring 1
+          if (
+            this.buildingB1 === true &&
+            this.completedB1 === false &&
+            this.allB1Phases.includes(activePhase)
+          ) {
+            this.incompleteB1Phases = this.incompleteB1Phases.filter(
+              (item) => item !== activePhase
+            );
+            if (!this.completedB1Phases.includes(activePhase)) {
+              this.completedB1Phases.push(activePhase);
+            }
+            this.completedB1Phases.sort();
+            this.activeB1Phases.sort();
+
+            console.log(this.completedB1Phases);
+            console.log(this.activeB1Phases);
+
+            if (
+              this.completedB1Phases.length === this.activeB1Phases.length &&
+              this.completedB1Phases.every(
+                (value, index) => value === this.activeB1Phases[index]
+              )
+            ) {
+              this.buildingB1 = false;
+              this.completedB1 = true;
+              console.log("B1 Complete");
+              // eventually reset some variables
+            }
+          }
+          // Ring 2
+          else if (
+            this.buildingB2 === true &&
+            this.completedB2 === false &&
+            this.allB2Phases.includes(activePhase)
+          ) {
+            this.incompleteB2Phases = this.incompleteB2Phases.filter(
+              (item) => item !== activePhase
+            );
+            if (!this.completedB2Phases.includes(activePhase)) {
+              this.completedB2Phases.push(activePhase);
+            }
+            this.completedB2Phases.sort();
+            this.activeB2Phases.sort();
+
+            console.log("CB2" + this.completedB2Phases);
+            console.log("AB2" + this.activeB2Phases);
+
+            if (
+              this.completedB2Phases.length === this.activeB2Phases.length &&
+              this.completedB2Phases.every(
+                (value, index) => value === this.activeB2Phases[index]
+              )
+            ) {
+              this.buildingB2 = false;
+              this.completedB2 = true;
+              console.log("B2 Complete");
+
+              // eventually reset some variables
+            }
+          }
+        } else if (this.completedB1 && this.completedB2) {
+          ("CYCLE COMPLETE - INCREMENT AND CLEAR VARIABLES");
+          this.incompleteB1Phases = this.incompleteB2Phases = [];
+          this.completedB1Phases = this.completedB2Phases = [];
+          this.unusedPhases = [];
+          this.activeB1Phases = this.activeB2Phases = [];
+          this.completedB1 = this.completedB2 = false;
+          return true;
+        }
+      } else {
+        return this.completedB1 && this.completedB2;
+      }
+      /*
+      unusedPhases = allPhases.filter((item) => item !== activePhases);
+
+      incompleteR1Phases = incompletePhases.filter((value) =>
+        ring1Phases.includes(value)
+      );
+      incompleteR2Phases = incompletePhases.filter((value) =>
+        ring2Phases.includes(value)
+      );
+
+
+      from active phases, if it reaches 100% remove from list of active phases.
+
+
+      if (incompleteR1Phases.length > 0 && incompleteR2Phases.length > 0) {
+        for (let i = 0; i < incompleteR1Phases.length; i++) {
+          // Check if the current phase is present in activePhases
+          if (activePhases.includes(incompleteR1Phases[i])) {
+            // Check if any active phase is complete
+            if (
+              activePhases.some(
+                (phase) => this.calcPhaseComplete(phase) === 100
+              )
+            ) {
+              // Filter out completed phases from incompletePhases
+              //console.log("filtering out Ring 1 phase");
+              incompletePhases.splice(i, 1);
+              i--; // Decrement the index to account for the removed item
+              if (incompleteR1Phases.length === 0) {
+                ringBarrier1 = true;
+              }
+            }
+          }
+        }
+        for (let i = 0; i < incompleteR2Phases.length; i++) {
+          // Check if the current phase is present in activePhases
+          if (activePhases.includes(incompleteR2Phases[i])) {
+            // Check if any active phase is complete
+            if (
+              activePhases.some(
+                (phase) => this.calcPhaseComplete(phase) === 100
+              )
+            ) {
+              // Filter out completed phases from incompletePhases
+              //console.log("filtering out Ring 2 phase");
+              incompletePhases.splice(i, 1);
+              i--; // Decrement the index to account for the removed item
+              if (incompleteR2Phases.length === 0) {
+                ringBarrier2 = true;
+              }
+            }
+          }
+        }
+      }
+       */
+
+      /*
       for (let phase of this.phasesInCycle) {
         if (ring1Phases.includes(phase)) {
           if (this.calcPhaseComplete(phase) === 100) {
@@ -143,7 +368,7 @@ export default {
           }
         }
       }
-      return ringBarrier1 && ringBarrier2;
+      */
     },
 
     loadCsv2JsonObj() {
@@ -172,7 +397,13 @@ export default {
         if (obj.parameterType === "Phase") {
           let phaseNum = obj.parameterCode;
 
-          if (this.phasesInCycle.includes(phaseNum)) {
+          if (
+            this.phasesInCycle.includes(phaseNum) &&
+            this.phaseArray[phaseNum].greenTimeStart
+          ) {
+            console.log(
+              phaseNum + " is " + this.phasesInCycle.includes(phaseNum)
+            );
             if (obj.eventCode === 7) {
               this.phaseArray[phaseNum].greenTimeEnd = obj.timestamp;
             } else if (obj.eventCode === 8) {
@@ -192,32 +423,30 @@ export default {
             } else if (obj.eventCode === 14) {
               this.phaseArray[phaseNum].phaseTerminationReason = "Skipped";
             }
+
+            if (this.isCycleComplete(phaseNum)) {
+              console.log("STARTING NEW CYCLE");
+              // take in phaseArray item and perform g,y,r duration calculations.
+              let phaseDur = this.calcPhaseDurations(
+                this.phaseArray,
+                this.phasesInCycle
+              );
+              //console.log(phaseDur);
+
+              let cycleFromPhases = this.calcSplitDuration(phaseDur);
+              console.log(cycleFromPhases);
+              this.countCycles++;
+              this.phasesInCycle = [];
+              this.phaseArray = [];
+            }
           } else {
             if (obj.eventCode === 1) {
               this.phaseArray[phaseNum] = [];
               this.phaseArray[phaseNum].phase = phaseNum;
               this.phaseArray[phaseNum].greenTimeStart = obj.timestamp;
-
+              console.log("does this run for the first ph2");
               this.phasesInCycle.push(phaseNum); //append phase to cycle array since it has a start time
             }
-          }
-
-          if (this.isCycleComplete()) {
-            console.log(
-              "Phases in Cycle: " + this.phasesInCycle + " STARTING NEW CYCLE :"
-            );
-            // take in phaseArray item and perform g,y,r duration calculations.
-            let phaseDur = this.calcPhaseDurations(
-              this.phaseArray,
-              this.phasesInCycle
-            );
-            console.log(phaseDur);
-
-            let cycleFromPhases = this.calcSplitDuration(phaseDur);
-            console.log(cycleFromPhases);
-            this.countCycles++;
-            this.phasesInCycle = [];
-            this.phaseArray = [];
           }
 
           //TODO: calculate green, yellow, red times - computed props?

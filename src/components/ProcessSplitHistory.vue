@@ -279,12 +279,14 @@ export default {
             }
           }
         } else if (this.completedB1 && this.completedB2) {
-          ("CYCLE COMPLETE - INCREMENT AND CLEAR VARIABLES");
+          console.log("CYCLE COMPLETE - INCREMENT AND CLEAR VARIABLES");
           this.incompleteB1Phases = this.incompleteB2Phases = [];
           this.completedB1Phases = this.completedB2Phases = [];
           this.unusedPhases = [];
           this.activeB1Phases = this.activeB2Phases = [];
           this.completedB1 = this.completedB2 = false;
+          this.countCycles++;
+          console.log(this.countCycles);
           return true;
         }
       } else {
@@ -435,7 +437,7 @@ export default {
 
               let cycleFromPhases = this.calcSplitDuration(phaseDur);
               console.log(cycleFromPhases);
-              this.countCycles++;
+
               this.phasesInCycle = [];
               this.phaseArray = [];
             }
@@ -480,7 +482,6 @@ export default {
       this.buildCycleItem(this.hdDataObj);
 
       console.log("Total Cycle Count: " + this.countCycles);
-      this.countCycles = 0;
     },
   },
 };

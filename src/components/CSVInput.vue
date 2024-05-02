@@ -294,8 +294,7 @@ export default {
   methods: {
     convertToISO(input) {
       // Split the input string into date and time components
-      console.log(input);
-      console.log(input.split(" "));
+
       let [dateStr, timeStr] = input.toString().split(" ");
 
       // Split the date components into month, day, and year
@@ -324,31 +323,44 @@ export default {
       // Return the ISO timestamp representation of the Date object
       return buildDate.toISOString();
     },
-    createTimestampDate(timestamp) {
-      const date = new Date(
-        70,
-        0,
-        0,
-        this.usaTimezones[this.timezoneOffset],
-        0,
-        timestamp / 10,
-        (timestamp % 10) * 100
-      );
-      console.log(
-        this.timezoneOffset + "check: " + this.usaTimezones[this.timezoneOffset]
-      );
-      // Format the date components - not used
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const hours = String(date.getHours()).padStart(2, "0");
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-      const seconds = String(date.getSeconds()).padStart(2, "0");
-      const milliseconds = String(date.getMilliseconds()).padStart(3, "0");
+    createTimestampDate(timestamp, timeOnly = false) {
+      const date = new Date();
+      if (timeOnly) {
+        const [hours, minutes, seconds] = timestamp.split(/[:\.]/);
 
-      // Construct the formatted date string
-      const formattedDate = date.toLocaleDateString(); //`${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+        // Set hours, minutes, and seconds to the current date
+        date.setHours(parseInt(hours, 10));
+        date.setMinutes(parseInt(minutes, 10));
+        date.setSeconds(parseInt(seconds, 10));
+        console.log(date);
+      } else {
+        const date = new Date(
+          70,
+          0,
+          0,
+          this.usaTimezones[this.timezoneOffset],
+          0,
+          timestamp / 10,
+          (timestamp % 10) * 100
+        );
 
+        console.log(
+          this.timezoneOffset +
+            "check: " +
+            this.usaTimezones[this.timezoneOffset]
+        );
+        // Format the date components - not used
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
+        const milliseconds = String(date.getMilliseconds()).padStart(3, "0");
+
+        // Construct the formatted date string
+        const formattedDate = date.toLocaleDateString(); //`${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+      }
       return date;
     },
 
@@ -356,10 +368,14 @@ export default {
       console.log("ts: " + ts);
       let iso_ts;
       let inputDate;
+      const timestampOnlyRegex = /^(0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]\.\d$/;
 
-      // Check if the input is in epoch timestamp or locale string
+      // Check if the input is in epoch timestamp or locale string or just time
       if (/^\d+(\.\d+)?$/.test(ts)) {
         inputDate = this.createTimestampDate(ts);
+      } else if (timestampOnlyRegex.test(ts)) {
+        console.log("Valid timestamp Only format");
+        inputDate = this.createTimestampDate(ts, true);
       } else {
         console.log("running this.convertTimestamp else");
         iso_ts = this.convertToISO(ts);

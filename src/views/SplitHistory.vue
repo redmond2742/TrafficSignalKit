@@ -1,7 +1,7 @@
 <template>
   &nbsp;
   <div>
-    <h1 class="h1-center-text">High Resolution Split Report</h1>
+    <h1 class="h1-center-text">High Resolution Split History</h1>
     <!--
   
           <label for="csvInput">Enter your High Resolution Controller Enumerations as CSV data</label> <br>
@@ -27,32 +27,32 @@
               >PDF</a
             >] to generate a Split Report of the signal for each of the phases.
             It ignores all the detection events (for now).
+            <p>
+              Every 10th of a second (100 millisecond resolution) the controller
+              can log the state of over 150 different aspects of the traffic
+              signal. Enumerations numbers clearly state an event description
+              and assigns a parameter number such as a Phase or Channel number
+              to each event. Each event includes a timestamp of when this
+              occured. Six Traffic controller vendors (in no particular order:
+              Econolite, Siemens, Peek, McCain, Intelight and Trafficware) have
+              incorporated standardized data logging enumerations. These can be
+              transfered from the controller and converted to a Comma Seperated
+              Value (CSV) file through a vendor defined process. That CSV file
+              can be copied into this tool to see a split report.
+            </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
 
         <v-expansion-panel
-          title="Detailed Explination: CSV Formatted Data"
+          title="Detailed Explination About This Tool"
           value="detailed-explain"
         >
           <v-expansion-panel-text>
-            Every 10th of a second (100 millisecond resolution) the controller
-            can log the state of over 150 different aspects of the traffic
-            signal. Enumerations numbers clearly state an event description and
-            assigns a parameter number such as a Phase or Channel number to each
-            event. Each event includes a timestamp of when this occured. Six
-            Traffic controller vendors (in no particular order: Econolite,
-            Siemens, Peek, McCain, Intelight and Trafficware) have incorporated
-            standardized data logging enumerations. These can be transfered from
-            the controller and converted to a Comma Seperated Value (CSV) file
-            through a vendor defined process. That CSV file can be copied into
-            this tool to see a split report.
-            <br /><br />
-            Future Features to Consider:
-
+            This tool attempts to calculate the duration of each phase from the
+            high resolution data and provide a reason for the phase ending.<br />
+            <b>Features Available in this tool:</b>
             <ul>
               <li>See a table of each phase and how long it ran for</li>
-              <li>See a start time of that cycle</li>
-              <li>Calculate a Cycle Time</li>
               <li>Show if split was gapped out, maxed out or forced off</li>
             </ul>
           </v-expansion-panel-text>
@@ -65,12 +65,23 @@
               shown here:
             </p>
             <pre>
-16764359675, 0, 6
-16764359675, 1, 6
-16764359675, 1, 5
-16764359677, 7, 6
-16764359678, 7, 5
-16764359678, 8, 6
+16764339605, 1, 6
+16764339605, 1, 2
+16764339809, 7, 2
+16764339809, 7, 6
+16764339809, 8, 2
+16764339809, 8, 6
+16764339809, 4, 2
+16764339809, 4, 6
+16764339949, 9, 2
+16764339949, 9, 6
+16764339949, 10, 2
+16764339949, 10, 6
+16764340049, 12, 2
+16764340049, 12, 6
+16764340049, 11, 2
+16764340049, 11, 6
+
               </pre
             >
             <p>

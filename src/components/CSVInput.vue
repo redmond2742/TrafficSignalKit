@@ -324,44 +324,27 @@ export default {
       return buildDate.toISOString();
     },
     createTimestampDate(timestamp, timeOnly = false) {
-      const date = new Date();
       if (timeOnly) {
         const [hours, minutes, seconds] = timestamp.split(/[:\.]/);
-
-        // Set hours, minutes, and seconds to the current date
+        const date = new Date();
         date.setHours(parseInt(hours, 10));
         date.setMinutes(parseInt(minutes, 10));
         date.setSeconds(parseInt(seconds, 10));
-        console.log(date);
+        return date;
       } else {
+        const timestampSeconds = Math.floor(timestamp / 10);
+        const timestampMilliseconds = (timestamp % 10) * 100;
         const date = new Date(
-          70,
+          1970,
+          0,
+          1,
           0,
           0,
-          this.usaTimezones[this.timezoneOffset],
-          0,
-          timestamp / 10,
-          (timestamp % 10) * 100
+          timestampSeconds,
+          timestampMilliseconds
         );
-
-        console.log(
-          this.timezoneOffset +
-            "check: " +
-            this.usaTimezones[this.timezoneOffset]
-        );
-        // Format the date components - not used
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        const hours = String(date.getHours()).padStart(2, "0");
-        const minutes = String(date.getMinutes()).padStart(2, "0");
-        const seconds = String(date.getSeconds()).padStart(2, "0");
-        const milliseconds = String(date.getMilliseconds()).padStart(3, "0");
-
-        // Construct the formatted date string
-        const formattedDate = date.toLocaleDateString(); //`${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+        return date;
       }
-      return date;
     },
 
     convertTimestamp(ts, humanReadable = "true") {

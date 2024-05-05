@@ -5,6 +5,40 @@
   <div>
     <v-btn @click="calculatePhaseDurations" color="primary">Process</v-btn>
   </div>
+  <v-card-text>
+    <v-window v-model="tab">
+      <v-window-item value="table-view">
+        <div>
+          <input
+            type="text"
+            placeholder="Filter by start timestamp, phase or duration values"
+            v-model="filter"
+          />
+          <table>
+            <thead>
+              <tr>
+                <th>Start Timestamp</th>
+                <th>Phase</th>
+                <th>Duration (seconds)</th>
+                <th>Phase Termination Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(row, index) in filteredRows"
+                :key="`employee-${index}`"
+              >
+                <td v-html="highlightMatches(row.timestampStart)"></td>
+                <td v-html="row.phase"></td>
+                <td v-html="row.duration"></td>
+                <td v-html="row.termReason"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </v-window-item>
+    </v-window>
+  </v-card-text>
 </template>
 
 <script>
@@ -17,7 +51,10 @@ export default {
   },
   data() {
     return {
+      tab: null,
       inputData: "",
+      rowData: [],
+      filter: "",
       hdDataObj: [],
       countCycles: 1,
       phasesInCycle: [],
@@ -46,8 +83,122 @@ export default {
     // Resetting the variable in the created hook
     this.phaseArray = [];
   },
-  computed: {},
+  computed: {
+    filteredRows() {
+      return this.rowData.filter((row) => {
+        const timestamp = row.timestampStart.toString().toLowerCase();
+        const enumeration = row.phase.toString().toLowerCase();
+        const channel = row.duration.toString();
+        const searchTerm = this.filter.toLowerCase();
+        return (
+          timestamp.includes(searchTerm) ||
+          enumeration.includes(searchTerm) ||
+          channel.includes(searchTerm)
+        );
+      });
+    },
+  },
   methods: {
+    convertToISO(input) {
+      // Split the input string into date and time components
+
+      let [dateStr, timeStr] = input.toString().split(" ");
+
+      // Split the date components into month, day, and year
+      const [month, day, year] = dateStr.split("/");
+
+      // Split the time components into hour, minute, second, and millisecond
+      const [hour, minute, secondAndMillisecond] = timeStr.split(":");
+      const [second, millisecond] = secondAndMillisecond.split(".");
+
+      // Create a new Date object using the components
+      console.log(year);
+      const buildDate = new Date(
+        year,
+        month - 1,
+        day,
+        Number(hour), //+ this.usaTimezones[this.timezoneOffset],
+        minute,
+        second,
+        millisecond * 100
+      );
+      console.log("DAY:" + day);
+      console.log(buildDate.toISOString());
+      console.log("offset: ");
+      console.log(buildDate.toTimeString());
+
+      // Return the ISO timestamp representation of the Date object
+      return buildDate.toISOString();
+    },
+    createTimestampDate(timestamp, timeOnly = false) {
+      if (timeOnly) {
+        const [hours, minutes, seconds] = timestamp.split(/[:\.]/);
+        const date = new Date();
+        date.setHours(parseInt(hours, 10));
+        date.setMinutes(parseInt(minutes, 10));
+        date.setSeconds(parseInt(seconds, 10));
+        return date;
+      } else {
+        const timestampSeconds = Math.floor(timestamp / 10);
+        const timestampMilliseconds = (timestamp % 10) * 100;
+        const date = new Date(
+          1970,
+          0,
+          1,
+          0,
+          0,
+          timestampSeconds,
+          timestampMilliseconds
+        );
+        return date;
+      }
+    },
+
+    convertTimestamp(ts, humanReadable = "true") {
+      console.log("ts: " + ts);
+      let iso_ts;
+      let inputDate;
+      const timestampOnlyRegex = /^(0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]\.\d$/;
+
+      // Check if the input is in epoch timestamp or locale string or just time
+      if (/^\d+(\.\d+)?$/.test(ts)) {
+        //timestamp
+        inputDate = this.createTimestampDate(ts);
+        console.log("timestamp with date and time");
+      } else if (timestampOnlyRegex.test(ts)) {
+        // time only value (no date)
+        console.log("Valid timestamp Only format");
+        inputDate = this.createTimestampDate(ts, true);
+      } else {
+        console.log("running this.convertTimestamp else");
+        iso_ts = this.convertToISO(ts);
+        console.log("iso_ts: " + iso_ts);
+        inputDate = new Date(iso_ts);
+      }
+
+      // Convert the date to a human-readable format
+      console.log("input date in ConvertTimestamp: " + inputDate);
+      const options = {
+        weekday: "short",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+        fractionalSecondDigits: 2,
+      };
+      const locale = navigator.language;
+
+      this.humanDate = inputDate.toLocaleDateString(undefined, options);
+
+      if (humanReadable) {
+        return this.humanDate;
+      } else {
+        return inputDate.getTime() / 100;
+      }
+    },
+
     getEventDescriptor(codeValue) {
       let value = "";
       enumerationObj.find((item) => {
@@ -99,8 +250,14 @@ export default {
       }
       return (completedItems / this.phaseElementsCount) * 100;
     },
+    calcPhaseSplit(phaseObj, ph) {
+      let curPhaseObj = phaseObj[ph];
+      let splitTime =
+        (curPhaseObj.redTimeStart - curPhaseObj.greenTimeStart) / 10;
+      return splitTime;
+    },
     calcPhaseDurations(phaseJSON, ph) {
-      //TODO: update from ms to Seconds!!
+      //TODO: Confirm ms to Seconds!!
       let phaseDurationArray = [];
       let oneCycleArray = [];
       for (let i = 0; i < ph.length; i++) {
@@ -109,11 +266,11 @@ export default {
         phaseDurationArray[i] = [];
         phaseDurationArray[i].phase = ph[i];
         phaseDurationArray[i].gTime =
-          (curPhaseObj.greenTimeEnd - curPhaseObj.greenTimeStart) / 100;
+          (curPhaseObj.greenTimeEnd - curPhaseObj.greenTimeStart) / 10;
         phaseDurationArray[i].yTime =
-          (curPhaseObj.yellowTimeEnd - curPhaseObj.yellowTimeStart) / 100;
+          (curPhaseObj.yellowTimeEnd - curPhaseObj.yellowTimeStart) / 10;
         phaseDurationArray[i].rTime =
-          (curPhaseObj.redTimeEnd - curPhaseObj.redTimeStart) / 100;
+          (curPhaseObj.redTimeEnd - curPhaseObj.redTimeStart) / 10;
         phaseDurationArray[i].termReason = curPhaseObj.phaseTerminationReason;
         phaseDurationArray[i].start = curPhaseObj.greenTimeStart;
       }
@@ -133,6 +290,21 @@ export default {
       }
       return splitTime;
       //console.log(splitTime[i]);
+    },
+    highlightMatches(text) {
+      if (typeof text === "string") {
+        const matchExists = text
+          .toLowerCase()
+          .includes(this.filter.toLowerCase());
+        if (!matchExists) return text;
+        const re = new RegExp(this.filter, "ig");
+        return text.replace(
+          re,
+          (matchedText) => `<strong>${matchedText}</strong>`
+        );
+      } else {
+        console.log("number, not text");
+      }
     },
     isCycleComplete(ph) {
       let activePhase = ph;
@@ -217,6 +389,7 @@ export default {
 
         if (this.calcPhaseComplete(activePhase) === 100) {
           console.log("Phase " + activePhase + " is complete!");
+
           // Ring 1
           if (
             this.buildingB1 === true &&
@@ -292,85 +465,6 @@ export default {
       } else {
         return this.completedB1 && this.completedB2;
       }
-      /*
-      unusedPhases = allPhases.filter((item) => item !== activePhases);
-
-      incompleteR1Phases = incompletePhases.filter((value) =>
-        ring1Phases.includes(value)
-      );
-      incompleteR2Phases = incompletePhases.filter((value) =>
-        ring2Phases.includes(value)
-      );
-
-
-      from active phases, if it reaches 100% remove from list of active phases.
-
-
-      if (incompleteR1Phases.length > 0 && incompleteR2Phases.length > 0) {
-        for (let i = 0; i < incompleteR1Phases.length; i++) {
-          // Check if the current phase is present in activePhases
-          if (activePhases.includes(incompleteR1Phases[i])) {
-            // Check if any active phase is complete
-            if (
-              activePhases.some(
-                (phase) => this.calcPhaseComplete(phase) === 100
-              )
-            ) {
-              // Filter out completed phases from incompletePhases
-              //console.log("filtering out Ring 1 phase");
-              incompletePhases.splice(i, 1);
-              i--; // Decrement the index to account for the removed item
-              if (incompleteR1Phases.length === 0) {
-                ringBarrier1 = true;
-              }
-            }
-          }
-        }
-        for (let i = 0; i < incompleteR2Phases.length; i++) {
-          // Check if the current phase is present in activePhases
-          if (activePhases.includes(incompleteR2Phases[i])) {
-            // Check if any active phase is complete
-            if (
-              activePhases.some(
-                (phase) => this.calcPhaseComplete(phase) === 100
-              )
-            ) {
-              // Filter out completed phases from incompletePhases
-              //console.log("filtering out Ring 2 phase");
-              incompletePhases.splice(i, 1);
-              i--; // Decrement the index to account for the removed item
-              if (incompleteR2Phases.length === 0) {
-                ringBarrier2 = true;
-              }
-            }
-          }
-        }
-      }
-       */
-
-      /*
-      for (let phase of this.phasesInCycle) {
-        if (ring1Phases.includes(phase)) {
-          if (this.calcPhaseComplete(phase) === 100) {
-            incompleteR1Phases = ring1Phases.filter((item) => item !== phase);
-            for (let partialPhase of incompleteR1Phases) {
-              if (this.calcPhaseComplete(partialPhase) === 100) {
-                ringBarrier1 = true;
-              }
-            }
-          }
-        } else if (ring2Phases.includes(phase)) {
-          if (this.calcPhaseComplete(phase) === 100) {
-            incompleteR2Phases = ring2Phases.filter((item) => item !== phase);
-            for (let partialPhase of incompleteR2Phases) {
-              if (this.calcPhaseComplete(partialPhase) === 100) {
-                ringBarrier2 = true;
-              }
-            }
-          }
-        }
-      }
-      */
     },
 
     loadCsv2JsonObj() {
@@ -424,6 +518,24 @@ export default {
               this.phaseArray[phaseNum].phaseTerminationReason = "Gap Out";
             } else if (obj.eventCode === 14) {
               this.phaseArray[phaseNum].phaseTerminationReason = "Skipped";
+            }
+
+            if (this.calcPhaseComplete(phaseNum) === 100) {
+              console.log("Phase " + phaseNum + " is complete!!!");
+              let dateTimeString;
+              const phaseSplit = {
+                timestampStart: (dateTimeString = this.convertTimestamp(
+                  this.phaseArray[phaseNum].greenTimeStart
+                )),
+                phase: phaseNum,
+                duration: this.calcPhaseSplit(this.phaseArray, phaseNum),
+                termReason: this.phaseArray[phaseNum].phaseTerminationReason,
+              };
+
+              this.rowData.push(phaseSplit);
+
+              //clear phase data
+              this.phaseArray[phaseNum] = "";
             }
 
             if (this.isCycleComplete(phaseNum)) {

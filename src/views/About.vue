@@ -16,14 +16,16 @@
                 href="https://www.corporate-rebels.com/blog/musks-algorithm-to-cut-bureaucracy"
                 >automation comes last</a
               >). Your feedback (with the heart button) guides my future
-              resources. Let's see where this journey takes us! 🚦
+              resources. The goal is to understand the landscape of these tools
+              without getting cought up in feature creep. Remember, bare bones
+              proof of concepts!
             </v-expansion-panel-text>
           </v-expansion-panel>
 
           <v-expansion-panel title="Top TODO Items" value="detailed-explain">
             <v-expansion-panel-text>
               To move quickly, everything about this website is very much a work
-              in progress. Below is a list of the active ttems I am working to
+              in progress. Below is a list of the active items I am working to
               update.
 
               <ul>
@@ -50,6 +52,11 @@
               see historical information About what happened at a traffic
               signal. It allows me to dive deep into what the controller was
               actually doing.
+              <br />
+              I use the
+              <router-link to="/gpx">Time Space Visualizer</router-link> to see
+              how delays at signals effect the travel of a bike or vehicle along
+              a signalized corridor.
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
@@ -64,11 +71,15 @@
       Adjust Splits and Cycle lengths <br />
       <b>February: </b>
       <router-link to="/explainer">High Resolution Data Explainer</router-link>
-      - Tabulate high resolution data <br />
+      - Tabulate High Resolution Data <br />
       <b>March: </b>
       <router-link to="/gpx">Time Space Diagram Visualizer</router-link> - Plot
       GPX files as a Time Space Diagram (w/ signal locations)<br />
-      <b>April: </b>Work In Progress<br />
+      <b>April: </b
+      ><router-link to="/split-history"
+        >High Resolution Split History</router-link
+      >
+      - Display Phase and Cycle Times from High Resolution Data<br />
       <b>May: </b> <br />
       <b>June: </b> <br />
       <b>July: </b> <br />

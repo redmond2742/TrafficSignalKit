@@ -49,8 +49,10 @@
             <br /><br />
             colored points for gpx track
             <br /><br />
-            Graph X and Y axis labels, and alternative design color options
-            preferences
+            Graph X and Y axis labels and signal labels, and alternative design
+            color options preferences
+            <br /><br />
+            randomly assign colors to each of the signals that are added
           </v-expansion-panel-text>
         </v-expansion-panel>
 

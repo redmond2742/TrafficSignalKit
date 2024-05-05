@@ -1,5 +1,6 @@
 <template>
   <div>
+    &nbsp;
     <h1 class="h1-center-text">High Resolution Data Explainer</h1>
     <!--
 
@@ -46,10 +47,13 @@
             through a vendor defined process. That CSV file can be copied into
             this tool for the data to be clearly explained.
             <br />
-            Future Features to Consider
+            <b>Future Features to Consider:</b>
 
             <ul>
-              <li>Export table of results</li>
+              <li>
+                Export table of results as Excel:
+                https://www.delftstack.com/howto/javascript/exprt-html-table-to-excel-javascript/
+              </li>
             </ul>
           </v-expansion-panel-text>
         </v-expansion-panel>

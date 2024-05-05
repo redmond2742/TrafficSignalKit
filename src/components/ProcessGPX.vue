@@ -21,11 +21,28 @@
   </div>
   <br />
   <div class="button-container">
-    <v-btn color="primary" @click="bProcessGPX">Plot</v-btn>
-    <span class="button-space"></span>
+    <v-row>
+      <v-btn color="primary" @click="bProcessGPX">Plot</v-btn>
+      <hr />
+      <hr />
+      <hr />
+
+      <v-switch
+        v-model="switchValue"
+        color="primary"
+        label="Show Speeds as Color"
+      ></v-switch>
+    </v-row>
   </div>
 
   <br />
+  <v-row>
+    <v-col cols="2"></v-col>
+    <div class="metrics-container">
+      <metric :data="datetime"></metric>
+    </div>
+    <v-col cols="2"></v-col>
+  </v-row>
 
   <v-row>
     <v-col cols="4"></v-col>
@@ -67,11 +84,13 @@ export default {
   data() {
     return {
       gpxPanel: ["signal locations"],
+      switchValue: false,
       tracks: [],
       inputData: "",
       signalLocations: "",
       outputData: "",
       scatterData: [],
+      colorsData: [],
       signalPlotData: [],
       chartDataSet: [],
       allScatterPlotData: null,
@@ -79,6 +98,11 @@ export default {
         label: "Travel Time",
         value: "N/A",
         unit: "",
+      },
+      datetime: {
+        label: "Full Date Timestamp",
+        value: "",
+        unit: "full date",
       },
       travelDist: {
         label: "Travel Distance",
@@ -165,10 +189,22 @@ export default {
             this.loadGPXPoints(gpxPoints);
 
             // append gpx chart data set
-            this.push_element(
-              this.chartDataSet,
-              this.createGPXTrack("GPX Track", this.scatterData)
-            );
+            if (this.switchValue) {
+              this.push_element(
+                this.chartDataSet,
+                this.createGPXTrack(
+                  "GPX Track (Red:<10mph, Yellow:<20mph,Green:>20mph)",
+                  this.scatterData,
+                  this.colorsData
+                )
+              );
+            } else {
+              this.push_element(
+                this.chartDataSet,
+                this.createGPXTrack("GPX Track", this.scatterData)
+              );
+            }
+
             // create the scatter data for plotting
             this.allScatterPlotData = this.createScatterData(this.chartDataSet);
 
@@ -222,15 +258,12 @@ export default {
                 this.signalPlotData,
                 this.createScatterXY(
                   signalStartTime,
-                  signalResult.correspondingValue
+                  signalResult.cumulativeDist
                 )
               );
               this.push_element(
                 this.signalPlotData,
-                this.createScatterXY(
-                  signalEndTime,
-                  signalResult.correspondingValue
-                )
+                this.createScatterXY(signalEndTime, signalResult.cumulativeDist)
               );
               this.push_element(
                 this.chartDataSet,
@@ -240,10 +273,21 @@ export default {
             }
 
             // append gpx chart data set
-            this.push_element(
-              this.chartDataSet,
-              this.createGPXTrack("GPX Track", this.scatterData)
-            );
+            if (this.switchValue) {
+              this.push_element(
+                this.chartDataSet,
+                this.createGPXTrack(
+                  "GPX Track (Red:<10mph, Yellow:<20mph,Green:>20mph)",
+                  this.scatterData,
+                  this.colorsData
+                )
+              );
+            } else {
+              this.push_element(
+                this.chartDataSet,
+                this.createGPXTrack("GPX Track", this.scatterData)
+              );
+            }
 
             // create the scatter data for plotting
             this.allScatterPlotData = this.createScatterData(this.chartDataSet);
@@ -349,8 +393,9 @@ export default {
         timeDiffInSeconds =
           (gpxFile[j + 1].time.getTime() - gpxFile[j].time.getTime()) / 1000;
 
-        const speed = (distance / timeDiffInSeconds) * 0.681818;
-        if (speed < speedThreshold) {
+        const speedMPH = (distance / timeDiffInSeconds) * 0.681818; // ft/sec to MPH
+
+        if (speedMPH < speedThreshold) {
           if (stopStartTime === null) {
             stopStartTime = gpxFile[j].time.getTime() / 1000;
           }
@@ -380,6 +425,8 @@ export default {
               gpxFile[0].time.getTime() / 1000,
             y: totalCumlDistance, //cumulative Distance,
           });
+
+        this.colorsData.push(this.speedToColor(speedMPH));
       }
       //Set Metric Variables
       if (totalCumlDistance > 5280) {
@@ -397,6 +444,8 @@ export default {
       this.travelTime.value = this.formatDuration(totalSeconds);
       this.travelTime.unit = "hh:mm:ss.ms";
 
+      this.datetime.value = gpxFile[0].time;
+
       this.avgSpeed.value = (
         (totalCumlDistance / totalSeconds) *
         0.68181818
@@ -406,6 +455,17 @@ export default {
     push_element(a, e) {
       // push element e into array
       a.push(e);
+    },
+    speedToColor(speed) {
+      let color;
+      if (speed < 10) {
+        color = "red";
+      } else if (speed < 20) {
+        color = "yellow";
+      } else {
+        color = "green";
+      }
+      return color;
     },
     parseCSVToSignalObj(csvString) {
       // Split the CSV string into individual lines
@@ -444,22 +504,22 @@ export default {
 
     findCumulativeDistanceFromSignalObj(arrayIndex, signalObj) {
       let minDistance = Number.MAX_VALUE;
-      let correspondingValue = null;
+      let cumulativeDist = 0;
       let distances = signalObj[arrayIndex].distances;
 
       // Iterate over the first dimension of the 2D array
       for (let i = 0; i < distances.length; i++) {
         // Find the minimum value in the current row
-        const minInRow = Math.min(...distances[i]);
+        const minInRow = Math.min(distances[i][0]); // find min distance between gpx point and signal location.
         if (minInRow < minDistance) {
           minDistance = minInRow;
-          correspondingValue = distances[i][1]; // Assuming the second column index is 1
+          cumulativeDist = distances[i][1]; // save the cumulative distance (column 1) if this is the closest point to a signal.
         }
       }
-      // Return an object containing the minimum distance and corresponding value
+      // Return an object containing the minimum distance and cumulative distance for signal location
       return {
         minDistance: minDistance,
-        correspondingValue: correspondingValue,
+        cumulativeDist: cumulativeDist,
       };
     },
     createSignal(signalName, signalData) {
@@ -473,15 +533,17 @@ export default {
         fill: false,
       };
     },
-    createGPXTrack(gpxName, gpxData) {
+    createGPXTrack(gpxName, gpxData, speedArray = []) {
       return {
         label: gpxName,
         data: gpxData,
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
-        borderColor: "rgba(255, 99, 132, 1)",
+        backgroundColor: "rgba(0, 0, 0, .7)",
+        borderColor: "rgba(0, 0, 0, 1)",
         borderWidth: 1,
         showLine: true,
         fill: false,
+        pointBackgroundColor: speedArray,
+        pointBorderColor: speedArray,
       };
     },
     createScatterData(d) {

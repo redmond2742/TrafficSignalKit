@@ -85,8 +85,8 @@
               </pre
             >
             <p>
-              Paste this in the text box below to explain when these
-              enumerations and corresponding phases or channels occurred.
+              Paste this in the text box below to show the split history of the
+              high resolution data.
             </p>
             <br />
           </v-expansion-panel-text>

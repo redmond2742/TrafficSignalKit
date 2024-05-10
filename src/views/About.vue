@@ -80,7 +80,7 @@
         >High Resolution Split History</router-link
       >
       - Display Phase and Cycle Times from High Resolution Data<br />
-      <b>May: </b> <br />
+      <b>May: </b> Current Work in Progress <br />
       <b>June: </b> <br />
       <b>July: </b> <br />
       <b>August: </b> <br />

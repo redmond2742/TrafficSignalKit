@@ -3,7 +3,7 @@
     <h1>New Month Template</h1>
 
     <h2>Follow these steps for new Page Each Month</h2>
-    <p>
+    <ul>
       <li>git branch MONTH-NAME</li>
       <li>
         create new view and components, add to router as import and object in
@@ -14,7 +14,7 @@
       <li>
         git add ., git commit -m "new tool desc.", git push origin head -u
       </li>
-    </p>
+    </ul>
   </div>
 </template>
 

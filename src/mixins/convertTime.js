@@ -1,5 +1,23 @@
 export default {
     methods: {
+
+        /*
+            input: date-time, time only, timestamp
+            output: js object with the following:
+
+                utcTimestamp(seconds):
+                DisplayDateTime:
+                original date:
+                noDate (boolean):
+
+
+
+            Sort input accordingly, based on Reg.Ex.
+
+            
+
+        */
+
         convertToISO(input) {
             // Split the input string into date and time components
       
@@ -59,13 +77,14 @@ export default {
             console.log("ts: " + ts);
             let iso_ts;
             let inputDate;
+            const epochRegex = /^\d+(\.\d+)?$/;
             const timestampOnlyRegex = /^(0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]\.\d$/;
       
             // Check if the input is in epoch timestamp or locale string or just time
-            if (/^\d+(\.\d+)?$/.test(ts)) {
+            if (epochRegex.test(ts)) {
               inputDate = this.createTimestampDate(ts);
             } else if (timestampOnlyRegex.test(ts)) {
-              console.log("Valid timestamp Only format");
+              console.log("Valid time Only format");
               inputDate = this.createTimestampDate(ts, true);
             } else {
               console.log("running this.convertTimestamp else");

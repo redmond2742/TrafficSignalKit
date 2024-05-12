@@ -106,6 +106,7 @@
 
 <script>
 import InputBox from "./InputBox.vue";
+import convertTime from "../mixins/convertTime";
 
 export default {
   mixins: [convertTime],

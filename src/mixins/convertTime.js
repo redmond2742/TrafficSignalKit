@@ -35,6 +35,9 @@ export default {
             if (timeOnly) {
               const [hours, minutes, seconds] = timestamp.split(/[:\.]/);
               const date = new Date();
+              date.setFullYear(1970);
+              date.setMonth(1);
+              date.setDate(1);
               date.setHours(parseInt(hours, 10));
               date.setMinutes(parseInt(minutes, 10));
               date.setSeconds(parseInt(seconds, 10));
@@ -63,31 +66,37 @@ export default {
             const epochRegex = /^\d{2}\d{2}\d{2}\d{3}\d{1,3}$/;//   /^\d+(\.\d+)?$/;
             const timestampOnlyRegex = /^(0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]\.\d$/;
             const dateTimeRegex = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):\d{2}:\d{2}\.\d*/;
-      
+            const secondEpochTimestampRegex = /^\d+\.\d{2}$/;
             // Check if the input is in epoch timestamp or locale string or just time
             if (epochRegex.test(ts)) {
               inputDate = this.createTimestampDate(ts);
               convertedTimeFormats.new = true;
               convertedTimeFormats.calculatable = true;
-              console.log("EPOCH TIME DETECTED")
-            } else if (timestampOnlyRegex.test(ts)) {
+              console.log("EPOCH MS TIME DETECTED")
+            } else if (secondEpochTimestampRegex.test(ts)){
+                inputDate = new Date(ts *100)
+                console.log("EPOCH SECONDS TIME DETECTED")
+                convertedTimeFormats.new = true; //don't show the date that is set to 1/1/1970
+                convertedTimeFormats.calculatable = true;
+            }
+            else if (timestampOnlyRegex.test(ts)) {
               console.log("TIME ONLY FORMAT DETECTED");
               inputDate = this.createTimestampDate(ts, true);
-              convertedTimeFormats.new = false;
+              convertedTimeFormats.new = true; //false will not show the 1/1/1970 day
               convertedTimeFormats.calculatable = true;
               console.log(inputDate)
             } else if (dateTimeRegex.test(ts)){
-                console.log("DATE TIME FORMAT DETECTED");
-                iso_ts = this.dtToISO(ts);
-                console.log("iso_ts: " + iso_ts);
-                inputDate = new Date(iso_ts);
-                convertedTimeFormats.new = true;
-                convertedTimeFormats.calculatable = true;
-                console.log(inputDate)
+              console.log("DATE TIME FORMAT DETECTED");
+              iso_ts = this.dtToISO(ts);
+              console.log("iso_ts: " + iso_ts);
+              inputDate = new Date(iso_ts);
+              convertedTimeFormats.new = true;
+              convertedTimeFormats.calculatable = true;
+              console.log(inputDate)
             }  else {
-                console.log(ts+" NO FORMAT DETECTED");
-                convertedTimeFormats.new = false;  
-                convertedTimeFormats.calculatable = false;
+              console.log(ts+" NO FORMAT DETECTED");
+              convertedTimeFormats.new = false;  
+              convertedTimeFormats.calculatable = false;
             }
             
             // Convert the date to a human-readable format

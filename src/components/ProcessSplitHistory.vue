@@ -88,7 +88,7 @@ export default {
   computed: {
     filteredRows() {
       return this.rowData.filter((row) => {
-        const timestamp = row.timestampStart.toString().toLowerCase();
+        const timestamp = row.timestampStart.toLowerCase();
         const enumeration = row.phase.toString().toLowerCase();
         const channel = row.duration.toString();
         const searchTerm = this.filter.toLowerCase();
@@ -159,7 +159,6 @@ export default {
       return splitTime;
     },
     calcPhaseDurations(phaseJSON, ph) {
-      //TODO: accept any time format
       let phaseDurationArray = [];
       let oneCycleArray = [];
       for (let i = 0; i < ph.length; i++) {
@@ -377,7 +376,7 @@ export default {
       const lines = this.inputData.split("\n");
 
       lines.forEach((line) => {
-        const [timestamp, eventCode, parameter] = line.trim().split(", ");
+        const [timestamp, eventCode, parameter] = line.trim().split(",");
 
         let eventCodeInt = parseInt(eventCode);
 
@@ -436,6 +435,7 @@ export default {
               dateTimeObj = this.convertTimestamp(
                 this.phaseArray[phaseNum].greenTimeStart
               );
+              console.log(dateTimeObj.humanReadable);
 
               const phaseSplit = {
                 timestampStart: dateTimeObj.humanReadable,

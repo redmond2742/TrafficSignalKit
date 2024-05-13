@@ -3,7 +3,7 @@
     <InputBox v-model="inputData" />
   </div>
   <div>
-    <v-btn @click="calculatePhaseDurations" color="primary">Process</v-btn>
+    <v-btn @click="plotPhaseDurations" color="primary">Plot</v-btn>
   </div>
   <v-card-text>
     <v-window v-model="tab">

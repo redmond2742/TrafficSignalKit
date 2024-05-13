@@ -29,11 +29,7 @@
               update.
 
               <ul>
-                <li>April's Feature</li>
-                <li>
-                  Release Notes on Github for each month's release, put crossed
-                  off items in here into there
-                </li>
+                <li>May's Feature</li>
               </ul>
             </v-expansion-panel-text>
           </v-expansion-panel>
@@ -57,6 +53,12 @@
               <router-link to="/gpx">Time Space Visualizer</router-link> to see
               how delays at signals effect the travel of a bike or vehicle along
               a signalized corridor.
+              <br />
+              I use the
+              <router-link to="/split-history"
+                >High Resolution Split History</router-link
+              >
+              to see how long phases run for and why they were terminated.
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>

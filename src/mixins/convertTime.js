@@ -1,24 +1,6 @@
 export default {
     methods: {
-
-        /*
-            input: date-time, time only, timestamp
-            output: js object with the following:
-
-                utcTimestamp(seconds):
-                DisplayDateTime:
-                original date:
-                noDate (boolean):
-
-
-
-            Sort input accordingly, based on Reg.Ex.
-
-            
-
-        */
-
-        convertToISO(input) {
+        dtToISO(input) {
             // Split the input string into date and time components
       
             let [dateStr, timeStr] = input.toString().split(" ");
@@ -73,27 +55,43 @@ export default {
             }
           },
       
-          convertTimestamp(ts, humanReadable = "true") {
+          convertTimestamp(ts) {
             console.log("ts: " + ts);
             let iso_ts;
             let inputDate;
-            const epochRegex = /^\d+(\.\d+)?$/;
+            const convertedTimeFormats = {};
+            const epochRegex = /^\d{2}\d{2}\d{2}\d{3}\d{1,3}$/;//   /^\d+(\.\d+)?$/;
             const timestampOnlyRegex = /^(0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]\.\d$/;
+            const dateTimeRegex = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):\d{2}:\d{2}\.\d*/;
       
             // Check if the input is in epoch timestamp or locale string or just time
             if (epochRegex.test(ts)) {
               inputDate = this.createTimestampDate(ts);
+              convertedTimeFormats.new = true;
+              convertedTimeFormats.calculatable = true;
+              console.log("EPOCH TIME DETECTED")
             } else if (timestampOnlyRegex.test(ts)) {
-              console.log("Valid time Only format");
+              console.log("TIME ONLY FORMAT DETECTED");
               inputDate = this.createTimestampDate(ts, true);
-            } else {
-              console.log("running this.convertTimestamp else");
-              iso_ts = this.convertToISO(ts);
-              console.log("iso_ts: " + iso_ts);
-              inputDate = new Date(iso_ts);
+              convertedTimeFormats.new = false;
+              convertedTimeFormats.calculatable = true;
+              console.log(inputDate)
+            } else if (dateTimeRegex.test(ts)){
+                console.log("DATE TIME FORMAT DETECTED");
+                iso_ts = this.dtToISO(ts);
+                console.log("iso_ts: " + iso_ts);
+                inputDate = new Date(iso_ts);
+                convertedTimeFormats.new = true;
+                convertedTimeFormats.calculatable = true;
+                console.log(inputDate)
+            }  else {
+                console.log(ts+" NO FORMAT DETECTED");
+                convertedTimeFormats.new = false;  
+                convertedTimeFormats.calculatable = false;
             }
-      
+            
             // Convert the date to a human-readable format
+         
             console.log("input date in ConvertTimestamp: " + inputDate);
             const options = {
               weekday: "short",
@@ -106,48 +104,26 @@ export default {
               fractionalSecondDigits: 2,
             };
             const locale = navigator.language;
+            if(convertedTimeFormats.new){
+                this.humanDate = inputDate.toLocaleDateString(undefined, options);
+                convertedTimeFormats.humanReadable = String(this.humanDate);
+                convertedTimeFormats.dateObj = inputDate;
+                convertedTimeFormats.secFromEpoch = inputDate.getTime() / 100;
+
+            }
       
-            this.humanDate = inputDate.toLocaleDateString(undefined, options);
+            
+            convertedTimeFormats.OGtimestamp = ts;
+            //convertedTimeFormats.ISOtimestamp = this.dtToISO(ts); //to fix if needed
+          
+            
             console.log(
-              "humanDate" + this.humanDate + "timezone: " + this.timezoneOffset
+              "humanDate" + this.humanDate + "timezone: " + this.timezoneOffset +" / "+convertedTimeFormats.secFromEpoch
             );
-            if (humanReadable) {
-              return this.humanDate;
-            } else {
-              return inputDate.getTime() / 100;
-            }
+
+            return convertedTimeFormats;
           },
-          parameterSwitch(e) {
-            if (e < 24 || (e >= 41 && e < 60)) {
-              return "Phase";
-            } else if (e === 31) {
-              return "Barrier";
-            } else if (e >= 32 && e <= 33) {
-              return "FYA";
-            } else if (e >= 61 && e <= 80) {
-              return "Overlap";
-            } else if (e >= 81 && e <= 89) {
-              return "Detector Channel";
-            } else if (e >= 89 && e <= 100) {
-              return "Pedestrian Detector";
-            } else if (e >= 101 && e <= 111) {
-              return "Preempt";
-            } else if (e >= 112 && e <= 115) {
-              return "TSP";
-            } else if (e === 131) {
-              return "Pattern";
-            } else if (e >= 132 && e <= 133) {
-              return "Seconds";
-            } else if (e >= 134 && e <= 149) {
-              return "New Split time in Seconds";
-            } else if (e === 150) {
-              return "Coordination State Change";
-            } else if (e === 151) {
-              return "Phase";
-            } else {
-              return "Channel";
-            }
-          },
+          
           formatDate(inputDateTime) {
             let date;
             const reDateTime = /^\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2}:\d{2}\.\d$/;

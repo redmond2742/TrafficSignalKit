@@ -297,11 +297,15 @@ export default {
     processCSV() {
       let dateTimeObj;
       let dateTimeString;
+      let dtString;
+
       const rows = this.inputData.split("\n");
       const processedData = rows.map((row) => {
         const values = row.split(",");
-        this.convertTimestamp(values[0]);
+        //this.convertTimestamp(values[0]);
         dateTimeString = this.convertTimestamp(values[0]);
+
+        console.log(typeof dateTimeString.secFromEpoch);
 
         //this.convertTimestamp(Number(values[0]));
         let tempEnumeration;
@@ -315,8 +319,13 @@ export default {
           console.log("The value is not in the array.");
         }
 
+        if (dateTimeString.new) {
+          dtString = dateTimeString.humanReadable; //this.humanDate,
+        } else {
+          dtString = dateTimeString.OGtimestamp;
+        }
         const explainInfo = {
-          timestamp: dateTimeString, //this.humanDate,
+          timestamp: dtString,
           enumeration: tempEnumeration,
           channel: Number(values[2]),
         };
@@ -373,7 +382,7 @@ export default {
 
       rows.map((row) => {
         const [timestamp, state, chan] = row.split(", ");
-        inputDate = this.convertTimestamp(timestamp, false);
+        inputDate = this.convertTimestamp(timestamp).secFromEpoch;
         console.log("inputDate in processtimeseries: " + inputDate);
         const time = inputDate; //Math.floor(parseFloat(inputDate));
         console.log("Time: " + time + " " + typeof time);

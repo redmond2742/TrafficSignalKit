@@ -44,8 +44,10 @@
 <script>
 import InputBox from "../components/InputBox.vue";
 import enumerationObj from "../data/enumerations.json";
+import convertTime from "../mixins/convertTime";
 
 export default {
+  mixins: [convertTime],
   components: {
     InputBox,
   },
@@ -99,106 +101,6 @@ export default {
     },
   },
   methods: {
-    convertToISO(input) {
-      // Split the input string into date and time components
-
-      let [dateStr, timeStr] = input.toString().split(" ");
-
-      // Split the date components into month, day, and year
-      const [month, day, year] = dateStr.split("/");
-
-      // Split the time components into hour, minute, second, and millisecond
-      const [hour, minute, secondAndMillisecond] = timeStr.split(":");
-      const [second, millisecond] = secondAndMillisecond.split(".");
-
-      // Create a new Date object using the components
-      console.log(year);
-      const buildDate = new Date(
-        year,
-        month - 1,
-        day,
-        Number(hour), //+ this.usaTimezones[this.timezoneOffset],
-        minute,
-        second,
-        millisecond * 100
-      );
-      console.log("DAY:" + day);
-      console.log(buildDate.toISOString());
-      console.log("offset: ");
-      console.log(buildDate.toTimeString());
-
-      // Return the ISO timestamp representation of the Date object
-      return buildDate.toISOString();
-    },
-    createTimestampDate(timestamp, timeOnly = false) {
-      if (timeOnly) {
-        const [hours, minutes, seconds] = timestamp.split(/[:\.]/);
-        const date = new Date();
-        date.setHours(parseInt(hours, 10));
-        date.setMinutes(parseInt(minutes, 10));
-        date.setSeconds(parseInt(seconds, 10));
-        return date;
-      } else {
-        const timestampSeconds = Math.floor(timestamp / 10);
-        const timestampMilliseconds = (timestamp % 10) * 100;
-        const date = new Date(
-          1970,
-          0,
-          1,
-          0,
-          0,
-          timestampSeconds,
-          timestampMilliseconds
-        );
-        return date;
-      }
-    },
-
-    convertTimestamp(ts, humanReadable = "true") {
-      console.log("ts: " + ts);
-      let iso_ts;
-      let inputDate;
-      const timestampOnlyRegex = /^(0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]\.\d$/;
-
-      // Check if the input is in epoch timestamp or locale string or just time
-      if (/^\d+(\.\d+)?$/.test(ts)) {
-        //timestamp
-        inputDate = this.createTimestampDate(ts);
-        console.log("timestamp with date and time");
-      } else if (timestampOnlyRegex.test(ts)) {
-        // time only value (no date)
-        console.log("Valid timestamp Only format");
-        inputDate = this.createTimestampDate(ts, true);
-      } else {
-        console.log("running this.convertTimestamp else");
-        iso_ts = this.convertToISO(ts);
-        console.log("iso_ts: " + iso_ts);
-        inputDate = new Date(iso_ts);
-      }
-
-      // Convert the date to a human-readable format
-      console.log("input date in ConvertTimestamp: " + inputDate);
-      const options = {
-        weekday: "short",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        second: "numeric",
-        fractionalSecondDigits: 2,
-      };
-      const locale = navigator.language;
-
-      this.humanDate = inputDate.toLocaleDateString(undefined, options);
-
-      if (humanReadable) {
-        return this.humanDate;
-      } else {
-        return inputDate.getTime() / 100;
-      }
-    },
-
     getEventDescriptor(codeValue) {
       let value = "";
       enumerationObj.find((item) => {
@@ -257,7 +159,7 @@ export default {
       return splitTime;
     },
     calcPhaseDurations(phaseJSON, ph) {
-      //TODO: Confirm ms to Seconds!!
+      //TODO: accept any time format
       let phaseDurationArray = [];
       let oneCycleArray = [];
       for (let i = 0; i < ph.length; i++) {
@@ -274,7 +176,10 @@ export default {
         phaseDurationArray[i].termReason = curPhaseObj.phaseTerminationReason;
         phaseDurationArray[i].start = curPhaseObj.greenTimeStart;
       }
+      console.log("GREENTIME: " + phaseDurationArray[i].gTime);
       oneCycleArray.push(phaseDurationArray);
+
+      console.log(phaseDurationArray[i].gTime);
 
       return oneCycleArray;
     },
@@ -477,7 +382,7 @@ export default {
         let eventCodeInt = parseInt(eventCode);
 
         this.hdDataObj.push({
-          timestamp: timestamp,
+          timestamp: this.convertTimestamp(timestamp),
           eventCode: eventCodeInt,
           eventDescriptor: this.getEventDescriptor(eventCodeInt),
           parameterType: this.getParameterType(eventCodeInt), //Phase or Other
@@ -501,15 +406,20 @@ export default {
               phaseNum + " is " + this.phasesInCycle.includes(phaseNum)
             );
             if (obj.eventCode === 7) {
-              this.phaseArray[phaseNum].greenTimeEnd = obj.timestamp;
+              this.phaseArray[phaseNum].greenTimeEnd =
+                obj.timestamp.secFromEpoch;
+              console.log();
             } else if (obj.eventCode === 8) {
-              this.phaseArray[phaseNum].yellowTimeStart = obj.timestamp;
+              this.phaseArray[phaseNum].yellowTimeStart =
+                obj.timestamp.secFromEpoch;
             } else if (obj.eventCode === 9) {
-              this.phaseArray[phaseNum].yellowTimeEnd = obj.timestamp;
+              this.phaseArray[phaseNum].yellowTimeEnd =
+                obj.timestamp.secFromEpoch;
             } else if (obj.eventCode === 10) {
-              this.phaseArray[phaseNum].redTimeStart = obj.timestamp;
+              this.phaseArray[phaseNum].redTimeStart =
+                obj.timestamp.secFromEpoch;
             } else if (obj.eventCode === 11) {
-              this.phaseArray[phaseNum].redTimeEnd = obj.timestamp;
+              this.phaseArray[phaseNum].redTimeEnd = obj.timestamp.secFromEpoch;
             } else if (obj.eventCode === 6) {
               this.phaseArray[phaseNum].phaseTerminationReason = "Force Off";
             } else if (obj.eventCode === 5) {
@@ -522,11 +432,13 @@ export default {
 
             if (this.calcPhaseComplete(phaseNum) === 100) {
               console.log("Phase " + phaseNum + " is complete!!!");
-              let dateTimeString;
+              let dateTimeObj;
+              dateTimeObj = this.convertTimestamp(
+                this.phaseArray[phaseNum].greenTimeStart
+              );
+
               const phaseSplit = {
-                timestampStart: (dateTimeString = this.convertTimestamp(
-                  this.phaseArray[phaseNum].greenTimeStart
-                )),
+                timestampStart: dateTimeObj.humanReadable,
                 phase: phaseNum,
                 duration: this.calcPhaseSplit(this.phaseArray, phaseNum),
                 termReason: this.phaseArray[phaseNum].phaseTerminationReason,
@@ -557,7 +469,8 @@ export default {
             if (obj.eventCode === 1) {
               this.phaseArray[phaseNum] = [];
               this.phaseArray[phaseNum].phase = phaseNum;
-              this.phaseArray[phaseNum].greenTimeStart = obj.timestamp;
+              this.phaseArray[phaseNum].greenTimeStart =
+                obj.timestamp.secFromEpoch;
               console.log("does this run for the first ph2");
               this.phasesInCycle.push(phaseNum); //append phase to cycle array since it has a start time
             }

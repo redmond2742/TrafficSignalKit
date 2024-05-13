@@ -91,7 +91,7 @@ export default {
     ],
     q2Items: [
       { title: "April: Split History", path: "/split-history" },
-      { title: "May: TBD", path: "" },
+      { title: "May: Phase Plotter", path: "/phase-plotter" },
       { title: "June: TBD", path: "" },
     ],
 

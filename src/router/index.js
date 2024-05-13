@@ -6,6 +6,7 @@ import About from '../views/About'
 import TermsOfService from '../views/TermsOfService'
 import GPXPlotter from '../views/GPXPlotter'
 import SplitHistory from '../views/SplitHistory'
+import HighResPhasePlotter from '../views/HighResPhasePlotter'
 
 const routes = [
     {
@@ -42,6 +43,11 @@ const routes = [
         path: '/split-history',
         name: 'splitHistory',
         component: SplitHistory,
+    },
+    {
+        path: '/phase-plotter',
+        name: 'phasePlotter',
+        component: HighResPhasePlotter,
     },
     {
         path: '/:pathMatch(.*)*',

@@ -1,55 +1,30 @@
 <template>
-  <div class="grow-wrap">
-    <InputBox v-model="inputData" />
-  </div>
-  <div>
-    <v-btn @click="plotPhaseDurations" color="primary">Plot</v-btn>
-  </div>
-  <v-card-text>
-    <v-window v-model="tab">
-      <v-window-item value="table-view">
-        <div>
-          <input
-            type="text"
-            placeholder="Filter by start timestamp, phase or duration values"
-            v-model="filter"
-          />
-          <table>
-            <thead>
-              <tr>
-                <th>Start Timestamp</th>
-                <th>Phase</th>
-                <th>Duration (seconds)</th>
-                <th>Phase Termination Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(row, index) in filteredRows"
-                :key="`employee-${index}`"
-              >
-                <td v-html="highlightMatches(row.timestampStart)"></td>
-                <td v-html="row.phase"></td>
-                <td v-html="row.duration"></td>
-                <td v-html="row.termReason"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </v-window-item>
-    </v-window>
-  </v-card-text>
+  <ProcessSplitHistory
+    @phaseDurationObj="loadPhaseDurationObj"
+  ></ProcessSplitHistory>
 </template>
 
 <script>
-import InputBox from "../components/InputBox.vue";
+import InputBox from "./foundational/InputBox.vue";
 import enumerationObj from "../data/enumerations.json";
+import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
 
 export default {
   components: {
     InputBox,
+    ProcessSplitHistory,
   },
-  data() {},
+  data() {
+    return {
+      phaseDurationObj: "",
+    };
+  },
+  methods: {
+    loadPhaseDurationObj(data) {
+      this.phaseDurationObj = data;
+      console.log("Loading data" + this.phaseDurationObj);
+    },
+  },
 };
 </script>
 

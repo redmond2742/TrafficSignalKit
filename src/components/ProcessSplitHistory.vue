@@ -5,58 +5,25 @@
   <div>
     <v-btn @click="calculatePhaseDurations" color="primary">Process</v-btn>
   </div>
-  <v-card-text>
-    <v-window v-model="tab">
-      <v-window-item value="table-view">
-        <div>
-          <input
-            type="text"
-            placeholder="Filter by start timestamp, phase or duration values"
-            v-model="filter"
-          />
-          <table>
-            <thead>
-              <tr>
-                <th>Start Timestamp</th>
-                <th>Phase</th>
-                <th>Duration (seconds)</th>
-                <th>Phase Termination Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(row, index) in filteredRows"
-                :key="`employee-${index}`"
-              >
-                <td v-html="highlightMatches(row.timestampStart)"></td>
-                <td v-html="row.phase"></td>
-                <td v-html="row.duration"></td>
-                <td v-html="row.termReason"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </v-window-item>
-    </v-window>
-  </v-card-text>
+  <TableDisplaySplit :tableData="rowData"></TableDisplaySplit>
 </template>
 
 <script>
-import InputBox from "../components/InputBox.vue";
+import InputBox from "./foundational/InputBox.vue";
 import enumerationObj from "../data/enumerations.json";
 import convertTime from "../mixins/convertTime";
+import TableDisplaySplit from "./foundational/TableDisplaySplit.vue";
 
 export default {
   mixins: [convertTime],
   components: {
     InputBox,
+    TableDisplaySplit,
   },
   data() {
     return {
-      tab: null,
       inputData: "",
       rowData: [],
-      filter: "",
       hdDataObj: [],
       countCycles: 1,
       phasesInCycle: [],
@@ -85,21 +52,7 @@ export default {
     // Resetting the variable in the created hook
     this.phaseArray = [];
   },
-  computed: {
-    filteredRows() {
-      return this.rowData.filter((row) => {
-        const timestamp = row.timestampStart.toLowerCase();
-        const enumeration = row.phase.toString().toLowerCase();
-        const channel = row.duration.toString();
-        const searchTerm = this.filter.toLowerCase();
-        return (
-          timestamp.includes(searchTerm) ||
-          enumeration.includes(searchTerm) ||
-          channel.includes(searchTerm)
-        );
-      });
-    },
-  },
+  computed: {},
   methods: {
     getEventDescriptor(codeValue) {
       let value = "";
@@ -194,21 +147,6 @@ export default {
       }
       return splitTime;
       //console.log(splitTime[i]);
-    },
-    highlightMatches(text) {
-      if (typeof text === "string") {
-        const matchExists = text
-          .toLowerCase()
-          .includes(this.filter.toLowerCase());
-        if (!matchExists) return text;
-        const re = new RegExp(this.filter, "ig");
-        return text.replace(
-          re,
-          (matchedText) => `<strong>${matchedText}</strong>`
-        );
-      } else {
-        console.log("number, not text");
-      }
     },
     isCycleComplete(ph) {
       let activePhase = ph;
@@ -446,6 +384,9 @@ export default {
 
               this.rowData.push(phaseSplit);
 
+              //run emit method
+              this.emitPhaseDurations(phaseSplit);
+
               //clear phase data
               this.phaseArray[phaseNum] = "";
             }
@@ -475,32 +416,11 @@ export default {
               this.phasesInCycle.push(phaseNum); //append phase to cycle array since it has a start time
             }
           }
-
-          //TODO: calculate green, yellow, red times - computed props?
-          // TODO: display table of split times for each cycle
-
-          /*
-          this.phasesInCycle.find((item) => {
-            if (item.phase === parseInt(obj.parameterCode)) {
-              // switch statement method for all relevant enumerations
-              // one working case for now:
-              if (obj.eventCode === 1) {
-                console.log("Running else to build cl array - enum 1");
-                this.setGreenStart(item, obj.timestamp);
-              } else if (obj.eventCode === 7) {
-                this.setGreenEnd(item, obj.timestamp);
-              }
-            } else {
-              item = this.createPhase(obj.parameterCode);
-              console.log("Running else to build cl array");
-            }
-            this.phasesInCycle.push(item);
-          });
-        }
-        console.log(this.phasesInCycle);
-      }); */
         }
       });
+    },
+    emitPhaseDurations(phData) {
+      this.$emit("phaseDurationObj", phData);
     },
     calculatePhaseDurations() {
       this.loadCsv2JsonObj(); //load all the enumerations into JSON obj.

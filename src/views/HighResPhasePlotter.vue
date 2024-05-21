@@ -98,7 +98,9 @@
       </v-expansion-panels>
     </div>
     <br />
-    <ProcessPhasePlotter></ProcessPhasePlotter>
+    <ProcessPhasePlotter
+      
+    ></ProcessPhasePlotter>
   </div>
 </template>
 
@@ -114,6 +116,7 @@ export default {
     return {
       processedData: null,
       panel: [],
+      phaseDurationObj: "",
     };
   },
   methods: {
@@ -125,6 +128,10 @@ export default {
     },
     none() {
       this.panel = [];
+    },
+    loadPhaseDurationObj(data) {
+      this.phaseDurationObj = data;
+      console.log(this.phaseDurationObj);
     },
   },
 };

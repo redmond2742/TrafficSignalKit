@@ -105,7 +105,7 @@
 </template>
 
 <script>
-import InputBox from "./InputBox.vue";
+import InputBox from "./foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
 
 export default {

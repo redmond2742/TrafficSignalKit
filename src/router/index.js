@@ -7,6 +7,7 @@ import TermsOfService from '../views/TermsOfService'
 import GPXPlotter from '../views/GPXPlotter'
 import SplitHistory from '../views/SplitHistory'
 import HighResPhasePlotter from '../views/HighResPhasePlotter'
+import TrafficSim from '../views/TrafficSim'
 
 const routes = [
     {
@@ -43,6 +44,11 @@ const routes = [
         path: '/split-history',
         name: 'splitHistory',
         component: SplitHistory,
+    },
+    {
+        path: '/traffic-simulator',
+        name: 'trafficSim',
+        component: TrafficSim,
     },
     {
         path: '/phase-plotter',

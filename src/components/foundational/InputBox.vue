@@ -1,3 +1,7 @@
+<template>
+  <textarea type="text" rows="20" v-model="inputData" @input="emitInput" />
+</template>
+
 <script>
 export default {
   data() {
@@ -12,10 +16,6 @@ export default {
   },
 };
 </script>
-
-<template>
-  <textarea type="text" rows="20" v-model="inputData" @input="emitInput" />
-</template>
 
 <style scoped>
 .grow-wrap {

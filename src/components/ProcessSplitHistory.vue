@@ -1,4 +1,10 @@
 <template>
+  <div>
+    <!--
+<TimezoneSelect @updateTimezone="selectedTimezone"></TimezoneSelect>
+
+    -->
+  </div>
   <div class="grow-wrap">
     <InputBox v-model="inputData" />
   </div>
@@ -13,6 +19,7 @@ import InputBox from "./foundational/InputBox.vue";
 import enumerationObj from "../data/enumerations.json";
 import convertTime from "../mixins/convertTime";
 import TableDisplaySplit from "./foundational/TableDisplaySplit.vue";
+import { DateTime } from "luxon";
 
 export default {
   mixins: [convertTime],
@@ -46,6 +53,7 @@ export default {
       unusedPhases: [],
       activeB1Phases: [],
       activeB2Phases: [],
+      timezone: "",
     };
   },
   created() {
@@ -54,6 +62,9 @@ export default {
   },
   computed: {},
   methods: {
+    selectedTimezone(tzData) {
+      this.timezone = tzData;
+    },
     getEventDescriptor(codeValue) {
       let value = "";
       enumerationObj.find((item) => {
@@ -143,7 +154,7 @@ export default {
         splitTime[i] = [];
         splitTime[i] =
           curPhase[i].gTime + curPhase[i].yTime + curPhase[i].rTime;
-        console.log(splitTime[i]);
+        console.log("ST:" + splitTime[i]);
       }
       return splitTime;
       //console.log(splitTime[i]);
@@ -319,7 +330,7 @@ export default {
         let eventCodeInt = parseInt(eventCode);
 
         this.hdDataObj.push({
-          timestamp: this.convertTimestamp(timestamp),
+          timestamp: this.convertTimestamp(timestamp, this.timezone),
           eventCode: eventCodeInt,
           eventDescriptor: this.getEventDescriptor(eventCodeInt),
           parameterType: this.getParameterType(eventCodeInt), //Phase or Other
@@ -370,8 +381,10 @@ export default {
             if (this.calcPhaseComplete(phaseNum) === 100) {
               console.log("Phase " + phaseNum + " is complete!!!");
               let dateTimeObj;
+
               dateTimeObj = this.convertTimestamp(
-                this.phaseArray[phaseNum].greenTimeStart
+                this.phaseArray[phaseNum].greenTimeStart,
+                this.timezone
               );
               console.log(dateTimeObj.humanReadable);
 

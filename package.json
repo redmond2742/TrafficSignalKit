@@ -13,6 +13,7 @@
     "chartjs-plugin-zoom": "^2.0.1",
     "gpx-parser-builder": "^1.1.0",
     "gpxparser": "^3.0.8",
+    "luxon": "^3.4.4",
     "roboto-fontface": "*",
     "vite-plugin-favicons-inject": "^2.2.0",
     "vue": "^3.3.0",

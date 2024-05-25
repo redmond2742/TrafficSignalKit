@@ -1,13 +1,9 @@
 <template>
   <div>
-    <div>
-      <v-radio-group v-model="timezoneOffset" inline>
-        <v-radio label="PST (GMT-8)" value="America/Los_Angeles"></v-radio>
-        <v-radio label="MST (GMT-7)" value="America/Denver"></v-radio>
-        <v-radio label="CST (GMT-6)" value="America/Chicago"></v-radio>
-        <v-radio label="EST (GMT-5)" value="America/New_York"></v-radio>
-      </v-radio-group>
-    </div>
+    <!--
+<TimezoneSelect @updateTimezone="selectedTimezone"></TimezoneSelect>
+
+    -->
 
     <div class="grow-wrap">
       <InputBox v-model="inputData" />
@@ -294,8 +290,12 @@ export default {
     };
   },
   methods: {
+    selectedTimezone(tzData) {
+      this.timezoneOffset = tzData;
+    },
     processCSV() {
       let dateTimeObj;
+      let dateTimeOriginal;
       let dateTimeString;
       let dtString;
 
@@ -303,11 +303,16 @@ export default {
       const processedData = rows.map((row) => {
         const values = row.split(",");
         //this.convertTimestamp(values[0]);
-        dateTimeString = this.convertTimestamp(values[0]);
+        dateTimeOriginal = this.convertTimestamp(
+          values[0],
+          this.timezoneOffset
+        );
 
-        console.log(typeof dateTimeString.secFromEpoch);
+        dateTimeString = this.convertTimestamp(
+          dateTimeOriginal.secFromEpoch,
+          this.timezoneOffset
+        );
 
-        //this.convertTimestamp(Number(values[0]));
         let tempEnumeration;
         this.enumerations[Number(values[1])]
           ? (tempEnumeration = this.enumerations[Number(values[1])])
@@ -320,17 +325,18 @@ export default {
         }
 
         if (dateTimeString.new) {
-          dtString = dateTimeString.humanReadable; //this.humanDate,
+          dtString = dateTimeString.humanReadable;
         } else {
           dtString = dateTimeString.OGtimestamp;
         }
+        console.log("dtString: " + dtString);
         const explainInfo = {
           timestamp: dtString,
           enumeration: tempEnumeration,
           channel: Number(values[2]),
         };
         this.rowData.push(explainInfo);
-        console.log(typeof explainInfo.enumeration);
+        console.log("ts:  " + explainInfo.timestamp);
         return explainInfo;
       });
       //this.inputDataProcessed(processedData);
@@ -355,10 +361,9 @@ export default {
         console.log("number, not text");
       }
     },
-
     processTimeSeriesData() {
       const signalStates = {};
-      let inputDate;
+      let dateData;
 
       const options = {
         weekday: "short",
@@ -374,7 +379,7 @@ export default {
       const locale = navigator.language;
       let displayDate;
 
-      this.humanDate = inputDate.toLocaleDateString(undefined, options);
+      this.humanDate = dateData.toLocaleDateString(undefined, options);
 
       console.log(this.inputData);
 
@@ -382,9 +387,9 @@ export default {
 
       rows.map((row) => {
         const [timestamp, state, chan] = row.split(", ");
-        inputDate = this.convertTimestamp(timestamp).secFromEpoch;
-        console.log("inputDate in processtimeseries: " + inputDate);
-        const time = inputDate; //Math.floor(parseFloat(inputDate));
+        dateData = this.convertTimestamp(timestamp, this.timezoneOffset);
+        console.log("inputDate in processtimeseries: " + dateData);
+        const time = dateData; //Math.floor(parseFloat(inputDate));
         console.log("Time: " + time + " " + typeof time);
 
         if (signalStates[time]) {

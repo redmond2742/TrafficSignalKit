@@ -77,10 +77,10 @@
             <br />
             <pre>
 <b>Timestamp </b>                                      <b>Enumeration</b>          	<b>Channel/Phase</b>
-Tuesday, February 14, 2023 at 4:39:27.005 AM	Phase On	                    6
-Tuesday, February 14, 2023 at 4:39:27.005 AM	Phase Begin Green	            6
-Tuesday, February 14, 2023 at 4:39:27.005 AM	Phase End Red Clearance	        5
-Tuesday, February 14, 2023 at 4:39:27.007 AM	Phase Call Dropped	            6
+Tuesday, February 15, 2023 at 4:39:27.005 AM	Phase On	                    6
+Tuesday, February 15, 2023 at 4:39:27.005 AM	Phase Begin Green	            6
+Tuesday, February 15, 2023 at 4:39:27.005 AM	Phase End Red Clearance	        5
+Tuesday, February 15, 2023 at 4:39:27.007 AM	Phase Call Dropped	            6
 
             </pre>
           </v-expansion-panel-text>

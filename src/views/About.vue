@@ -3,104 +3,98 @@
     &nbsp;
     <h1 class="h1-center-text">Traffic Signal Kit</h1>
 
-    <v-container class="grey lighten-5">
-      <div class="left-justify-text">
-        <v-expansion-panels v-model="panel" multiple>
-          <v-expansion-panel title="About: Traffic Signal Kit" value="about">
-            <v-expansion-panel-text>
-              In 2024, I'm diving into Vue.js with Signal Kit. Each month, I'll
-              build a practical traffic signal-related tool to learn different
-              Vue aspects. I am building in public and using ChatGPT will help
-              scale it up fast. These tools won't be polished; they're just
-              proof of concepts (<a
-                href="https://www.corporate-rebels.com/blog/musks-algorithm-to-cut-bureaucracy"
-                >automation comes last</a
-              >). Your feedback (with the heart button) guides my future
-              resources. The goal is to understand the landscape of these tools
-              without getting cought up in feature creep. Remember, bare bones
-              proof of concepts!
-            </v-expansion-panel-text>
-          </v-expansion-panel>
+    <p>
+      In 2024, I'm diving into Vue.js with Traffic Signal Kit. Each month, I'll
+      build a practical traffic signal-related tool to learn different Vue
+      aspects. I am building in public and using ChatGPT will help scale it up
+      fast. These tools won't be polished; they're just proof of concepts. Your
+      feedback (with the heart button) guides my future resources. The goal is
+      to understand the landscape of these tools without getting cought up in
+      feature creep. Remember, bare bones proof of concepts! To move quickly,
+      everything about this website is very much a work in progress.
+    </p>
 
-          <v-expansion-panel title="Top TODO Items" value="detailed-explain">
-            <v-expansion-panel-text>
-              To move quickly, everything about this website is very much a work
-              in progress. Below is a list of the active items I am working to
-              update.
-
-              <ul>
-                <li>May's Feature</li>
-              </ul>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-
-          <v-expansion-panel title="Example: Using These Tools" value="example">
-            <v-expansion-panel-text>
-              I use the
-              <router-link to="/split-calculator">Split Calculator</router-link>
-              for checking splits in cycle lengths to make sure they add up and
-              if any modifications are necessary how that would impact the ring.
-              <br />
-              I use the
-              <router-link to="/explainer"
-                >High Resolution Data Explainer</router-link
-              >
-              see historical information About what happened at a traffic
-              signal. It allows me to dive deep into what the controller was
-              actually doing.
-              <br />
-              I use the
-              <router-link to="/gpx">Time Space Visualizer</router-link> to see
-              how delays at signals effect the travel of a bike or vehicle along
-              a signalized corridor.
-              <br />
-              I use the
-              <router-link to="/split-history"
-                >High Resolution Split History</router-link
-              >
-              to see how long phases run for and why they were terminated.
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
-      </div>
+    <v-container>
+      <v-row no-gutters>
+        <v-col
+          v-for="(post, index) in posts"
+          :key="index"
+          cols="12"
+          sm="6"
+          md="4"
+          ><v-sheet class="ma-2 pa-2">
+            <DisplayCard
+              :image="post.image"
+              :title="post.title"
+              :description="post.description"
+              :link="post.link"
+              :topics="post.topics"
+          /></v-sheet>
+        </v-col>
+      </v-row>
     </v-container>
-
-    <h2>Calendar</h2>
-
-    <div class="left-justify-text">
-      <b>January: </b>
-      <router-link to="/split-calculator">Split Calculator</router-link> -
-      Adjust Splits and Cycle lengths <br />
-      <b>February: </b>
-      <router-link to="/explainer">High Resolution Data Explainer</router-link>
-      - Tabulate High Resolution Data <br />
-      <b>March: </b>
-      <router-link to="/gpx">Time Space Diagram Visualizer</router-link> - Plot
-      GPX files as a Time Space Diagram (w/ signal locations)<br />
-      <b>April: </b
-      ><router-link to="/split-history"
-        >High Resolution Split History</router-link
-      >
-      - Display Phase and Cycle Times from High Resolution Data<br />
-      <b>May: </b> Current Work in Progress <br />
-      <b>June: </b> <br />
-      <b>July: </b> <br />
-      <b>August: </b> <br />
-      <b>September: </b> <br />
-      <b>October: </b> <br />
-      <b>November: </b> <br />
-      <b>December: </b> <br />
-    </div>
   </div>
 </template>
 
 <script>
+import DisplayCard from "@/components/foundational/DisplayCard.vue";
 export default {
+  components: {
+    DisplayCard,
+  },
   name: "About",
   data() {
     return {
       panel: ["detailed-explain"],
+      posts: [
+        {
+          image:
+            "../src/assets/covershots/trafficsignalkit.com-split-calculator.png",
+          title: "Split Calculator",
+          description: "Verify splits and cycle lengths during adjustments",
+          link: "/split-calculator",
+          topics: ["Coordination", "Split", "Calculator"],
+        },
+        {
+          image:
+            "../src/assets/covershots/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
+          title: "High Resolution Data Explainer",
+          description:
+            "Explore traffic signal controller enumerations and high resolution data logs",
+          link: "/explainer",
+          topics: ["Controller Data", "Enumerations"],
+        },
+        {
+          image:
+            "../src/assets/covershots/trafficsignalkit.com-timespace-diagram-gpx-plot.png",
+          title: "Time Space Diagram Visulizer",
+          description: "Plot a GPX file in a timespace diagram plot",
+          link: "/gpx",
+          topics: ["GPX", "Time space"],
+        },
+        {
+          image:
+            "../src/assets/covershots/trafficsignalkit.com - split history phase termination table.png",
+          title: "High Resolution Split History",
+          description: "Calculate Phase Durations from High Resolution Data",
+          link: "/split-history",
+          topics: ["Controller Data", "Enumerations", "Split"],
+        },
+        {
+          image:
+            "../src/assets/covershots/trafficsignalkit.com - intersection simulator.png",
+          title: "Max Out and Gap Out Traffic Simulator",
+          description: "Simulate Basic Intersection Functionality",
+          link: "/traffic-simulator",
+          topics: ["Simulation", "Basic Timing"],
+        },
+      ],
     };
+  },
+  methods: {
+    checkImg() {
+      console.log(image);
+    },
   },
 };
 </script>
@@ -122,5 +116,10 @@ p {
 }
 li {
   text-align: left;
+}
+
+.v-container {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 </style>

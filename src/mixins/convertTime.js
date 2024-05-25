@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 export default {
     methods: {
         dtToISO(input) {
@@ -58,10 +59,14 @@ export default {
             }
           },
       
-          convertTimestamp(ts) {
+          convertTimestamp(ts,tz) {
             console.log("ts: " + ts);
             let iso_ts;
             let inputDate;
+            let luxonInputDate;
+            console.log("TIMEZONE:"+tz);
+            var rezoned = DateTime.local().setZone("America/Los_Angeles");
+            let descriptiveDateTimeFormat = {...DateTime.DATETIME_FULL_WITH_SECONDS, weekday: 'short', month:'short' };
             const convertedTimeFormats = {};
             const epochRegex = /^\d{2}\d{2}\d{2}\d{3}\d{1,3}$/;//   /^\d+(\.\d+)?$/;
             const timestampOnlyRegex = /^(0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]\.\d$/;
@@ -70,11 +75,16 @@ export default {
             // Check if the input is in epoch timestamp or locale string or just time
             if (epochRegex.test(ts)) {
               inputDate = this.createTimestampDate(ts);
+              console.log("CHECK: "+ts)
+              luxonInputDate = DateTime.fromSeconds(Number(ts)/10);
+
+              console.log("luxon date"+luxonInputDate.toString(DateTime.DATETIME_FULL))
               convertedTimeFormats.new = true;
               convertedTimeFormats.calculatable = true;
               console.log("EPOCH MS TIME DETECTED")
             } else if (secondEpochTimestampRegex.test(ts)){
                 inputDate = new Date(ts *100)
+                luxonInputDate = DateTime.fromSeconds(ts)
                 console.log("EPOCH SECONDS TIME DETECTED")
                 convertedTimeFormats.new = true; //don't show the date that is set to 1/1/1970
                 convertedTimeFormats.calculatable = true;
@@ -82,6 +92,7 @@ export default {
             else if (timestampOnlyRegex.test(ts)) {
               console.log("TIME ONLY FORMAT DETECTED");
               inputDate = this.createTimestampDate(ts, true);
+              luxonInputDate = DateTime.fromISO(ts);
               convertedTimeFormats.new = true; //false will not show the 1/1/1970 day
               convertedTimeFormats.calculatable = true;
               console.log(inputDate)
@@ -90,11 +101,13 @@ export default {
               iso_ts = this.dtToISO(ts);
               console.log("iso_ts: " + iso_ts);
               inputDate = new Date(iso_ts);
+              luxonInputDate = DateTime.fromISO(ts);
               convertedTimeFormats.new = true;
               convertedTimeFormats.calculatable = true;
               console.log(inputDate)
             }  else {
               console.log(ts+" NO FORMAT DETECTED");
+              luxonInputDate = DateTime.fromISO(ts); //try catch?
               convertedTimeFormats.new = false;  
               convertedTimeFormats.calculatable = false;
             }
@@ -102,6 +115,7 @@ export default {
             // Convert the date to a human-readable format
          
             console.log("input date in ConvertTimestamp: " + inputDate);
+            //console.log("input date in Luxor ConvertTimestamp: " + luxonInputDate.toLocaleString(DateTime.DATETIME_FULL));
             const options = {
               weekday: "short",
               year: "numeric",
@@ -112,13 +126,15 @@ export default {
               second: "numeric",
               fractionalSecondDigits: 2,
             };
+
             const locale = navigator.language;
             if(convertedTimeFormats.new){
-                this.humanDate = inputDate.toLocaleDateString(undefined, options);
+                //this.humanDate = inputDate.toLocaleDateString(undefined, options);
+                this.humanDate = luxonInputDate.toLocaleString(descriptiveDateTimeFormat)
                 convertedTimeFormats.humanReadable = String(this.humanDate);
-                convertedTimeFormats.dateObj = inputDate;
-                convertedTimeFormats.secFromEpoch = inputDate.getTime() / 100;
-
+                convertedTimeFormats.dateObj = luxonInputDate; //inputDate;
+                convertedTimeFormats.secFromEpoch =  inputDate.getTime() / 100;
+                
             }
       
             
@@ -127,7 +143,7 @@ export default {
           
             
             console.log(
-              "humanDate" + this.humanDate + "timezone: " + this.timezoneOffset +" / "+convertedTimeFormats.secFromEpoch
+              "humanDate" + this.humanDate + "timezone: " + tz +" / "+convertedTimeFormats.secFromEpoch
             );
 
             return convertedTimeFormats;

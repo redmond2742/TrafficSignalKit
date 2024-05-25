@@ -29,7 +29,7 @@
         </v-row>
         <v-row>
           <v-col cols="12" md="6" sm="4">
-            <h5>Split Clock:</h5>
+            <h5>Phase Clock:</h5>
             <h2>
               <div v-if="isRunning">{{ phClock }}s</div>
             </h2>

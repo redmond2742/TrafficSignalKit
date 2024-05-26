@@ -2,10 +2,10 @@
   <v-card class="mx-auto" max-width="500">
     <router-link :to="link" class="no-decoration">
       <v-img :src="image" height="200px"></v-img>
-      <v-card-title>{{ title }}</v-card-title>
+      <v-card-title class="title">{{ title }}</v-card-title>
       <v-card-text class="description">{{ description }}</v-card-text>
       <v-card-actions class="centered-actions">
-        <v-btn text color="primary" @click.stop="goToLink">Explore Tool</v-btn>
+        <v-btn text color="primary" @click="goToLink">Explore Tool</v-btn>
       </v-card-actions>
       <v-card-subtitle>
         <v-chip-group column>
@@ -50,7 +50,6 @@ export default {
   },
   methods: {
     goToLink() {
-      console.log("test" + this.image);
       window.location.href = this.link;
     },
   },
@@ -93,5 +92,8 @@ export default {
 .centered-actions {
   display: flex;
   justify-content: center; /* Center horizontally */
+}
+.title {
+  word-wrap: wrap;
 }
 </style>

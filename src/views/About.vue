@@ -49,7 +49,7 @@ export default {
       posts: [
         {
           image:
-            "../src/assets/covershots/trafficsignalkit.com-split-calculator.png",
+            "https://lh3.googleusercontent.com/drive-viewer/AKGpihZG2a-Ei2eQLarbqwc-xNl0aXR0bgYKrzMJfpGJHmtc0n0eOcJ9TWzNUioTtrne5UfrWl_CzUSx-D2PS9CAo1rDGpSgwXNLXk8=s1600-rw-v1",
           title: "Split Calculator",
           description: "Verify splits and cycle lengths during adjustments",
           link: "/split-calculator",
@@ -57,7 +57,7 @@ export default {
         },
         {
           image:
-            "../src/assets/covershots/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
+            "https://lh3.googleusercontent.com/drive-viewer/AKGpihZuo8TKJsq699flefyMZbsWWJE8QgA1kAmOS8WtOQxLtpIGH9-qC_LiqF2pS8HT684BDnmLhS8tTPRsYsfl_EWHYovO8OmKZA0=s2560",
           title: "High Resolution Data Explainer",
           description:
             "Explore traffic signal controller enumerations and high resolution data logs",
@@ -66,7 +66,7 @@ export default {
         },
         {
           image:
-            "../src/assets/covershots/trafficsignalkit.com-timespace-diagram-gpx-plot.png",
+            "https://lh3.googleusercontent.com/drive-viewer/AKGpihYosiYRQji_FJmZD1O82ATwQR_TtpjH72aagT3WqxdGC-ilYy_oPW6sRklswAZ5rlk-51FOpYWZbIMQODAU8SdnYBRUBUBZEDQ=s1600-rw-v1",
           title: "Time Space Diagram Visulizer",
           description: "Plot a GPX file in a timespace diagram plot",
           link: "/gpx",
@@ -82,7 +82,7 @@ export default {
         },
         {
           image:
-            "../src/assets/covershots/trafficsignalkit.com - intersection simulator.png",
+            "https://lh3.googleusercontent.com/drive-viewer/AKGpihYd_ioQLNiOKM4vCTjiUq0qn8YrMsP4rxREVoehTB89GdILJtAdq_hWT5ecoHxMFAYP0Vz37ggFziNxutWkrmtVILMowy5FNQY=s2560",
           title: "Max Out and Gap Out Traffic Simulator",
           description: "Simulate Basic Intersection Functionality",
           link: "/traffic-simulator",

@@ -74,7 +74,7 @@ export default {
         },
         {
           image:
-            "../src/assets/covershots/trafficsignalkit.com - split history phase termination table.png",
+            "https://lh3.googleusercontent.com/drive-viewer/AKGpihZkQwOL8h8B9rdxvv6lpeHxB2nhcy9Ly7aogakbNGUSy82dVivZ_mNIU8aRgcw61H6LFZhhMFjUdjTwrnOYTmHCSByNBS-gYFE=s2560",
           title: "High Resolution Split History",
           description: "Calculate Phase Durations from High Resolution Data",
           link: "/split-history",

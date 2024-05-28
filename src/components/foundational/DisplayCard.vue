@@ -50,7 +50,8 @@ export default {
   },
   methods: {
     goToLink() {
-      window.location.href = this.link;
+      this.$router.push(this.link);
+      //window.location.href = this.link;
     },
   },
 };
@@ -76,8 +77,9 @@ export default {
   text-decoration: none;
   color: inherit;
   height: 60px; /* Set a fixed height for the description */
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
   display: -webkit-box;
   text-decoration: none;
   color: inherit;

@@ -127,7 +127,7 @@ export default {
             } 
             else if (dateTimeRegex.test(ts)){
               console.log(ts+" M/D/YYYY HH:MM:SS.ms DETECTED");
-              luxonInputDate = DateTime.fromFormat(ts, "d/M/yyyy HH:mm:ss.S").toISO();//DateTime.fromFormat(ts.toString(),"HH:mm.s").toLocaleString(DateTime.TIME_SIMPLE); //try catch?
+              luxonInputDate = DateTime.fromFormat(ts, "M/d/yyyy HH:mm:ss.S").toISO();//DateTime.fromFormat(ts.toString(),"HH:mm.s").toLocaleString(DateTime.TIME_SIMPLE); //try catch?
               
               convertedTimeFormats.new = true;  
               convertedTimeFormats.calculatable = true;

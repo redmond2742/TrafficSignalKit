@@ -90,6 +90,7 @@ export default {
             let iso_ts;
             let inputDate;
             let luxonInputDate;
+        
             console.log("TIMEZONE:"+tz);
             var rezoned = DateTime.local().setZone("America/Los_Angeles");
             const timeWithMilliseconds = DateTime.toLocaleString({
@@ -174,6 +175,8 @@ export default {
                 convertedTimeFormats.MillisecFromEpoch =  DateTime.fromISO(luxonInputDate).toMillis(); //inputDate.getTime() / 100;
                 convertedTimeFormats.iso = luxonInputDate
                 console.log("TEST: "+convertedTimeFormats.humanReadable +" : " +convertedTimeFormats.iso);
+
+                
                 
             }
       
@@ -188,7 +191,13 @@ export default {
 
             return convertedTimeFormats;
           },
-          
+          secondsBetweenISOEvents(ts1, ts2){
+            const totalSeconds = DateTime.fromISO(ts2)
+            .diff(DateTime.fromISO(ts1))
+            .as("seconds");
+
+            return totalSeconds
+          },
           formatDate(inputDateTime) {
             let date;
             const reDateTime = /^\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2}:\d{2}\.\d$/;

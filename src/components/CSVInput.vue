@@ -103,6 +103,7 @@
 <script>
 import InputBox from "./foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
+import { DateTime } from "luxon";
 
 export default {
   mixins: [convertTime],
@@ -298,6 +299,7 @@ export default {
       let dateTimeOriginal;
       let dateTimeString;
       let dtString;
+      let tsArray = [];
 
       const rows = this.inputData.split("\n");
       const processedData = rows.map((row) => {
@@ -326,6 +328,7 @@ export default {
 
         if (dateTimeOriginal.new) {
           dtString = dateTimeOriginal.humanReadable;
+          tsArray.push(dateTimeOriginal.iso);
         } else {
           dtString = dateTimeOriginal.OGtimestamp;
         }

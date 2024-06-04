@@ -58,7 +58,33 @@ export default {
               return date;
             }
           },
-      
+          createDateTimeFromTime(timeString) {
+
+            const [timePart, centisecondsPart] = timeString.split('.');
+            const [minutes, seconds] = timePart.split(':').map(Number);
+          
+            // Convert hours and minutes to seconds
+            //const hoursInSeconds = hours * 3600;
+            //const minutesInSeconds = minutes * 60;
+          
+            // Convert centiseconds to seconds
+            const centiSeconds = Number(centisecondsPart) * 100;
+            console.log("CentiSECONDS: "+ centiSeconds);
+
+            // Get the current date
+            const currentDate = DateTime.local(2000,1,1).toFormat("yyyy-MM-dd");
+        
+            // Combine the current date with the provided time
+            const dateTimeString = `${currentDate} ${timeString}`;
+        
+            // Create DateTime object from the combined string
+            //const dateTime = DateTime.fromFormat(dateTimeString, "yyyy-MM-dd HH:mm.S");
+
+            const dateTime  = DateTime.fromObject({ year: 2000, month: 1, day: 1, hour: 1, minute: minutes, second: seconds, millisecond: centiSeconds});
+        
+            return dateTime.toISO();
+        },
+        // https://moment.github.io/luxon/demo/global.html
           convertTimestamp(ts,tz) {
             console.log("ts: " + ts);
             let iso_ts;
@@ -66,7 +92,17 @@ export default {
             let luxonInputDate;
             console.log("TIMEZONE:"+tz);
             var rezoned = DateTime.local().setZone("America/Los_Angeles");
-            let descriptiveDateTimeFormat = {...DateTime.DATETIME_FULL_WITH_SECONDS, weekday: 'short', month:'short' };
+            const timeWithMilliseconds = DateTime.toLocaleString({
+              weekday: 'short',
+              month: 'short',
+              hour: 'numeric',
+              minute: '2-digit',
+              second: '2-digit',
+              millisecond: 'numeric',
+              hour12: true,
+              year: 'numeric'
+            });
+            let descriptiveDateTimeFormat = {...DateTime.DATETIME_FULL_WITH_SECONDS, weekday: 'short', month:'short',millisecond: 'numeric' };
             const convertedTimeFormats = {};
             const epochRegex = /^\d{2}\d{2}\d{2}\d{3}\d{1,3}$/;//   /^\d+(\.\d+)?$/;
             const timestampOnlyRegex = /^(0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]\.\d$/;
@@ -76,45 +112,36 @@ export default {
             if (epochRegex.test(ts)) {
               inputDate = this.createTimestampDate(ts);
               console.log("CHECK: "+ts)
-              luxonInputDate = DateTime.fromSeconds(Number(ts)/10);
+              luxonInputDate = DateTime.fromMillis(Number(ts)*100).toISO();
 
               console.log("luxon date"+luxonInputDate.toString(DateTime.DATETIME_FULL))
               convertedTimeFormats.new = true;
               convertedTimeFormats.calculatable = true;
               console.log("EPOCH MS TIME DETECTED")
-            } else if (secondEpochTimestampRegex.test(ts)){
-                inputDate = new Date(ts *100)
-                luxonInputDate = DateTime.fromSeconds(ts)
-                console.log("EPOCH SECONDS TIME DETECTED")
-                convertedTimeFormats.new = true; //don't show the date that is set to 1/1/1970
-                convertedTimeFormats.calculatable = true;
-            }
-            else if (timestampOnlyRegex.test(ts)) {
-              console.log("TIME ONLY FORMAT DETECTED");
-              inputDate = this.createTimestampDate(ts, true);
-              luxonInputDate = DateTime.fromISO(ts);
-              convertedTimeFormats.new = true; //false will not show the 1/1/1970 day
+            } else if (timestampOnlyRegex.test(ts)){
+              console.log(ts+" Timestamp Only DETECTED");
+              luxonInputDate = this.createDateTimeFromTime(ts);//DateTime.fromFormat(ts.toString(),"HH:mm.s").toLocaleString(DateTime.TIME_SIMPLE); //try catch?
+              
+              convertedTimeFormats.new = true;  
               convertedTimeFormats.calculatable = true;
-              console.log(inputDate)
-            } else if (dateTimeRegex.test(ts)){
-              console.log("DATE TIME FORMAT DETECTED");
-              iso_ts = this.dtToISO(ts);
-              console.log("iso_ts: " + iso_ts);
-              inputDate = new Date(iso_ts);
-              luxonInputDate = DateTime.fromISO(ts);
-              convertedTimeFormats.new = true;
+            } 
+            else if (dateTimeRegex.test(ts)){
+              console.log(ts+" M/D/YYYY HH:MM:SS.ms DETECTED");
+              luxonInputDate = DateTime.fromFormat(ts, "d/M/yyyy HH:mm:ss.S").toISO();//DateTime.fromFormat(ts.toString(),"HH:mm.s").toLocaleString(DateTime.TIME_SIMPLE); //try catch?
+              
+              convertedTimeFormats.new = true;  
               convertedTimeFormats.calculatable = true;
-              console.log(inputDate)
-            }  else {
+            } 
+          else {
               console.log(ts+" NO FORMAT DETECTED");
-              luxonInputDate = DateTime.fromISO(ts); //try catch?
+              luxonInputDate = DateTime.fromISO(ts).toLocaleString(DateTime.TIME_SIMPLE); //try catch?
               convertedTimeFormats.new = false;  
               convertedTimeFormats.calculatable = false;
             }
             
             // Convert the date to a human-readable format
          
-            console.log("input date in ConvertTimestamp: " + inputDate);
+            //console.log("input date in ConvertTimestamp: " + inputDate);
             //console.log("input date in Luxor ConvertTimestamp: " + luxonInputDate.toLocaleString(DateTime.DATETIME_FULL));
             const options = {
               weekday: "short",
@@ -124,16 +151,29 @@ export default {
               hour: "numeric",
               minute: "numeric",
               second: "numeric",
-              fractionalSecondDigits: 2,
+              fractionalSecondDigits: 3,
             };
 
             const locale = navigator.language;
+
+            
             if(convertedTimeFormats.new){
-                //this.humanDate = inputDate.toLocaleDateString(undefined, options);
-                this.humanDate = luxonInputDate.toLocaleString(descriptiveDateTimeFormat)
-                convertedTimeFormats.humanReadable = String(this.humanDate);
+                //this.humanDate = inputDate.toLocaleDateString(DateTime.DATETIME_FULL);
+           
+
+                const customFormat = "ccc, MMM d yyyy h:mm:ss.S a";
+
+                // Format the DateTime object
+                convertedTimeFormats.humanReadable = DateTime.fromISO(luxonInputDate).toFormat(customFormat);
+
+
+
+                //convertedTimeFormats.humanReadable = String(this.humanDate);
                 convertedTimeFormats.dateObj = luxonInputDate; //inputDate;
-                convertedTimeFormats.secFromEpoch =  inputDate.getTime() / 100;
+                console.log("Luxon: "+luxonInputDate + typeof(luxonInputDate))
+                convertedTimeFormats.MillisecFromEpoch =  DateTime.fromISO(luxonInputDate).toMillis(); //inputDate.getTime() / 100;
+                convertedTimeFormats.iso = luxonInputDate
+                console.log("TEST: "+convertedTimeFormats.humanReadable +" : " +convertedTimeFormats.iso);
                 
             }
       

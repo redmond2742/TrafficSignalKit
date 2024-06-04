@@ -308,10 +308,10 @@ export default {
           this.timezoneOffset
         );
 
-        dateTimeString = this.convertTimestamp(
+        /*dateTimeString = this.convertTimestamp(
           dateTimeOriginal.secFromEpoch,
           this.timezoneOffset
-        );
+        ); */
 
         let tempEnumeration;
         this.enumerations[Number(values[1])]
@@ -324,10 +324,10 @@ export default {
           console.log("The value is not in the array.");
         }
 
-        if (dateTimeString.new) {
-          dtString = dateTimeString.humanReadable;
+        if (dateTimeOriginal.new) {
+          dtString = dateTimeOriginal.humanReadable;
         } else {
-          dtString = dateTimeString.OGtimestamp;
+          dtString = dateTimeOriginal.OGtimestamp;
         }
         console.log("dtString: " + dtString);
         const explainInfo = {

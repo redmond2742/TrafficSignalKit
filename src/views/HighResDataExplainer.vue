@@ -76,13 +76,31 @@
             </p>
             <br />
             <pre>
-<b>Timestamp </b>                                      <b>Enumeration</b>          	<b>Channel/Phase</b>
-Tuesday, February 15, 2023 at 4:39:27.005 AM	Phase On	                    6
-Tuesday, February 15, 2023 at 4:39:27.005 AM	Phase Begin Green	            6
-Tuesday, February 15, 2023 at 4:39:27.005 AM	Phase End Red Clearance	        5
-Tuesday, February 15, 2023 at 4:39:27.007 AM	Phase Call Dropped	            6
-
-            </pre>
+5/6/2024 17:33:38.5, 50, 2
+5/6/2024 17:33:38.5, 200, 61
+5/6/2024 17:33:38.5, 175, 8
+5/6/2024 17:33:38.7, 44, 2
+5/6/2024 17:33:38.7, 82, 15
+5/6/2024 17:33:39.0, 201, 61
+5/6/2024 17:33:39.0, 175, 8
+5/6/2024 17:33:39.4, 81, 15
+5/6/2024 17:33:42.0, 13, 2
+5/6/2024 17:33:42.0, 16, 2
+</pre
+            >
+            Or in another format:
+            <pre>
+16:56.7,21,6
+16:56.8,44,2
+16:56.8,44,6
+16:56.8,150,6
+16:56.8,150,2
+16:56.8,150,5
+16:56.8,46,3
+16:56.8,46,4
+16:56.8,46,7
+</pre
+            >
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>

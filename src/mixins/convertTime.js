@@ -85,13 +85,12 @@ export default {
             return dateTime.toISO();
         },
         // https://moment.github.io/luxon/demo/global.html
-          convertTimestamp(ts,tz) {
+          convertTimestamp(ts,tz=NaN) {
             console.log("ts: " + ts);
             let iso_ts;
             let inputDate;
             let luxonInputDate;
-        
-            console.log("TIMEZONE:"+tz);
+
             var rezoned = DateTime.local().setZone("America/Los_Angeles");
             const timeWithMilliseconds = DateTime.toLocaleString({
               weekday: 'short',
@@ -133,6 +132,14 @@ export default {
               convertedTimeFormats.new = true;  
               convertedTimeFormats.calculatable = true;
             } 
+            else if (DateTime.fromISO(ts).isValid){
+               console.log(ts+" ISO Format DETECTED");
+              luxonInputDate = ts;
+              
+              convertedTimeFormats.new = true;  
+              convertedTimeFormats.calculatable = true;
+
+            }
           else {
               console.log(ts+" NO FORMAT DETECTED");
               luxonInputDate = DateTime.fromISO(ts).toLocaleString(DateTime.TIME_SIMPLE); //try catch?
@@ -166,12 +173,9 @@ export default {
 
                 // Format the DateTime object
                 convertedTimeFormats.humanReadable = DateTime.fromISO(luxonInputDate).toFormat(customFormat);
-
-
-
                 //convertedTimeFormats.humanReadable = String(this.humanDate);
                 convertedTimeFormats.dateObj = luxonInputDate; //inputDate;
-                console.log("Luxon: "+luxonInputDate + typeof(luxonInputDate))
+                console.log("Luxon: "+luxonInputDate + " Type: "+typeof(luxonInputDate))
                 convertedTimeFormats.MillisecFromEpoch =  DateTime.fromISO(luxonInputDate).toMillis(); //inputDate.getTime() / 100;
                 convertedTimeFormats.iso = luxonInputDate
                 console.log("TEST: "+convertedTimeFormats.humanReadable +" : " +convertedTimeFormats.iso);
@@ -185,9 +189,7 @@ export default {
             //convertedTimeFormats.ISOtimestamp = this.dtToISO(ts); //to fix if needed
           
             
-            console.log(
-              "humanDate" + this.humanDate + "timezone: " + tz +" / "+convertedTimeFormats.secFromEpoch
-            );
+         
 
             return convertedTimeFormats;
           },

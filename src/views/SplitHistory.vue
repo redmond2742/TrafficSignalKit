@@ -49,7 +49,10 @@
         >
           <v-expansion-panel-text>
             This tool attempts to calculate the duration of each phase from the
-            high resolution data and provide a reason for the phase ending.<br />
+            high resolution data and provide a reason for the phase ending. It
+            calcuates the Start of Green to the End of Red. Note the All Red
+            Clearance interval would be included in this duration.
+            <br />
             <b>Features Available in this tool:</b>
             <ul>
               <li>See a table of each phase and how long it ran for</li>
@@ -94,26 +97,33 @@
       </v-expansion-panels>
     </div>
     <br />
-    <ProcessSplitHistory></ProcessSplitHistory>
+    <ProcessSplitHistory
+      @phaseDurations="displayPhaseDuration"
+    ></ProcessSplitHistory>
+    <TableDisplaySplit :tableData="emittedData"></TableDisplaySplit>
   </div>
 </template>
 
 <script>
 import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
-import SplitHistory from "../components/ProcessSplitHistory.vue";
+import TableDisplaySplit from "../components/foundational/TableDisplaySplit.vue";
 
 export default {
   components: {
-    SplitHistory,
     ProcessSplitHistory,
+    TableDisplaySplit,
   },
   data() {
     return {
       processedData: null,
       panel: [],
+      emittedData: [],
     };
   },
   methods: {
+    displayPhaseDuration(data) {
+      this.emittedData = data;
+    },
     handleProcessedData(data) {
       this.processedData = data;
     },

@@ -92,7 +92,7 @@ export default {
     q2Items: [
       { title: "April: Split History", path: "/split-history" },
       { title: "May: Intersection Simulator", path: "/traffic-simulator" },
-      { title: "June: TBD", path: "" },
+      { title: "June: TBD", path: "/phase-plotter" },
     ],
 
     dialog: false,

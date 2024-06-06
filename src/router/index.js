@@ -9,6 +9,8 @@ import SplitHistory from '../views/SplitHistory'
 import HighResPhasePlotter from '../views/HighResPhasePlotter'
 import TrafficSim from '../views/TrafficSim'
 
+
+
 const routes = [
     {
         path: '/',

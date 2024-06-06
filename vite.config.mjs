@@ -6,6 +6,7 @@ import ViteFonts from 'unplugin-fonts/vite'
 import vitePluginFaviconsInject from 'vite-plugin-favicons-inject'
 import { ViteFaviconsPlugin } from 'vite-plugin-favicon';
 
+
 // Utilities
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'

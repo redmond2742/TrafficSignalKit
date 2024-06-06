@@ -11,7 +11,6 @@
   <div>
     <v-btn @click="calculatePhaseDurations" color="primary">Process</v-btn>
   </div>
-  <TableDisplaySplit :tableData="rowData"></TableDisplaySplit>
 </template>
 
 <script>
@@ -118,8 +117,10 @@ export default {
     },
     calcPhaseSplit(phaseObj, ph) {
       let curPhaseObj = phaseObj[ph];
-      let splitTime =
-        (curPhaseObj.redTimeStart - curPhaseObj.greenTimeStart) / 10;
+      let splitTime = this.secondsBetweenISOEvents(
+        curPhaseObj.greenTimeStart,
+        curPhaseObj.redTimeEnd
+      );
       return splitTime;
     },
     calcPhaseDurations(phaseJSON, ph) {
@@ -342,6 +343,7 @@ export default {
       return this.hdDataObj;
     },
     buildCycleItem(dataObj) {
+      console.log(dataObj);
       dataObj.forEach((obj) => {
         if (obj.parameterType === "Phase") {
           let phaseNum = obj.parameterCode;
@@ -354,20 +356,16 @@ export default {
               phaseNum + " is " + this.phasesInCycle.includes(phaseNum)
             );
             if (obj.eventCode === 7) {
-              this.phaseArray[phaseNum].greenTimeEnd =
-                obj.timestamp.secFromEpoch;
+              this.phaseArray[phaseNum].greenTimeEnd = obj.timestamp.iso;
               console.log();
             } else if (obj.eventCode === 8) {
-              this.phaseArray[phaseNum].yellowTimeStart =
-                obj.timestamp.secFromEpoch;
+              this.phaseArray[phaseNum].yellowTimeStart = obj.timestamp.iso;
             } else if (obj.eventCode === 9) {
-              this.phaseArray[phaseNum].yellowTimeEnd =
-                obj.timestamp.secFromEpoch;
+              this.phaseArray[phaseNum].yellowTimeEnd = obj.timestamp.iso;
             } else if (obj.eventCode === 10) {
-              this.phaseArray[phaseNum].redTimeStart =
-                obj.timestamp.secFromEpoch;
+              this.phaseArray[phaseNum].redTimeStart = obj.timestamp.iso;
             } else if (obj.eventCode === 11) {
-              this.phaseArray[phaseNum].redTimeEnd = obj.timestamp.secFromEpoch;
+              this.phaseArray[phaseNum].redTimeEnd = obj.timestamp.iso;
             } else if (obj.eventCode === 6) {
               this.phaseArray[phaseNum].phaseTerminationReason = "Force Off";
             } else if (obj.eventCode === 5) {
@@ -380,16 +378,14 @@ export default {
 
             if (this.calcPhaseComplete(phaseNum) === 100) {
               console.log("Phase " + phaseNum + " is complete!!!");
-              let dateTimeObj;
-
-              dateTimeObj = this.convertTimestamp(
-                this.phaseArray[phaseNum].greenTimeStart,
-                this.timezone
-              );
-              console.log(dateTimeObj.humanReadable);
+              console.log("The Phase Array" + this.phaseArray);
+              const customFormat = "ccc, MMM d yyyy h:mm:ss.S a";
 
               const phaseSplit = {
-                timestampStart: dateTimeObj.humanReadable,
+                timestampStart: DateTime.fromISO(
+                  this.phaseArray[phaseNum].greenTimeStart
+                ).toFormat(customFormat),
+                timestampStartISO: this.phaseArray[phaseNum].greenTimeStart,
                 phase: phaseNum,
                 duration: this.calcPhaseSplit(this.phaseArray, phaseNum),
                 termReason: this.phaseArray[phaseNum].phaseTerminationReason,
@@ -397,8 +393,8 @@ export default {
 
               this.rowData.push(phaseSplit);
 
-              //run emit method
-              this.emitPhaseDurations(phaseSplit);
+              //emit phase durations to parent to display in table
+              this.emitPhaseDurations(this.rowData);
 
               //clear phase data
               this.phaseArray[phaseNum] = "";
@@ -423,9 +419,8 @@ export default {
             if (obj.eventCode === 1) {
               this.phaseArray[phaseNum] = [];
               this.phaseArray[phaseNum].phase = phaseNum;
-              this.phaseArray[phaseNum].greenTimeStart =
-                obj.timestamp.secFromEpoch;
-              console.log("does this run for the first ph2");
+              this.phaseArray[phaseNum].greenTimeStart = obj.timestamp.iso;
+              console.log("Adding " + phaseNum + " to Phases in Cycle");
               this.phasesInCycle.push(phaseNum); //append phase to cycle array since it has a start time
             }
           }
@@ -433,7 +428,7 @@ export default {
       });
     },
     emitPhaseDurations(phData) {
-      this.$emit("phaseDurationObj", phData);
+      this.$emit("phaseDurations", phData);
     },
     calculatePhaseDurations() {
       this.loadCsv2JsonObj(); //load all the enumerations into JSON obj.

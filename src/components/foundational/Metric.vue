@@ -1,5 +1,5 @@
 <template>
-  <div class="metric">
+  <div v-if="dataIsPresent" class="metric">
     <div class="label">{{ data.label }}</div>
     <div class="value-box">
       <span class="value">{{ data.value }}</span
@@ -15,6 +15,11 @@ export default {
     data: {
       type: Object,
       required: true,
+    },
+  },
+  computed: {
+    dataIsPresent() {
+      return this.data !== null || this.data.length > 0;
     },
   },
 };

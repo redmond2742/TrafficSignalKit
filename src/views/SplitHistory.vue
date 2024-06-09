@@ -100,6 +100,8 @@
     <ProcessSplitHistory
       @phaseDurations="displayPhaseDuration"
     ></ProcessSplitHistory>
+    <TerminationMetrics :phaseData="emittedData"></TerminationMetrics>
+
     <TableDisplaySplit :tableData="emittedData"></TableDisplaySplit>
   </div>
 </template>
@@ -107,11 +109,13 @@
 <script>
 import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
 import TableDisplaySplit from "../components/foundational/TableDisplaySplit.vue";
+import TerminationMetrics from "../components/foundational/TerminationMetrics.vue";
 
 export default {
   components: {
     ProcessSplitHistory,
     TableDisplaySplit,
+    TerminationMetrics,
   },
   data() {
     return {
@@ -123,6 +127,7 @@ export default {
   methods: {
     displayPhaseDuration(data) {
       this.emittedData = data;
+      console.log("TERM -main page: ", this.emittedData);
     },
     handleProcessedData(data) {
       this.processedData = data;
@@ -136,4 +141,15 @@ export default {
   },
 };
 </script>
-<style scoped></style>
+<style scoped>
+.metrics-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Adjust spacing between metrics if needed */
+.metrics-container > * {
+  margin-right: 20px; /* Adjust margin as needed */
+}
+</style>

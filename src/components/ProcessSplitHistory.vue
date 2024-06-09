@@ -32,9 +32,23 @@ export default {
       rowData: [],
       hdDataObj: [],
       countCycles: 1,
+      cycleCount: 1,
+      currentCycleLength: 0,
       phasesInCycle: [],
+      activePhasesInCycle: [],
       phaseArray: [],
       phaseElementsCount: 8, //update based on available JS items logged for each phase
+      terminationResults: {
+        phase1: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+        phase2: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+        phase3: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+        phase4: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+        phase5: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+        phase6: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+        phase7: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+        phase8: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+      },
+      maxOutPercents: [],
 
       buildingB1: false,
       buildingB2: false,
@@ -123,57 +137,72 @@ export default {
       );
       return splitTime;
     },
-    calcPhaseDurations(phaseJSON, ph) {
-      let phaseDurationArray = [];
-      let oneCycleArray = [];
-      for (let i = 0; i < ph.length; i++) {
-        let curPhaseObj = phaseJSON[ph[i]];
-        //console.log(curPhaseObj);
-        phaseDurationArray[i] = [];
-        phaseDurationArray[i].phase = ph[i];
-        phaseDurationArray[i].gTime =
-          (curPhaseObj.greenTimeEnd - curPhaseObj.greenTimeStart) / 10;
-        phaseDurationArray[i].yTime =
-          (curPhaseObj.yellowTimeEnd - curPhaseObj.yellowTimeStart) / 10;
-        phaseDurationArray[i].rTime =
-          (curPhaseObj.redTimeEnd - curPhaseObj.redTimeStart) / 10;
-        phaseDurationArray[i].termReason = curPhaseObj.phaseTerminationReason;
-        phaseDurationArray[i].start = curPhaseObj.greenTimeStart;
-      }
-      console.log("GREENTIME: " + phaseDurationArray[i].gTime);
-      oneCycleArray.push(phaseDurationArray);
-
-      console.log(phaseDurationArray[i].gTime);
-
-      return oneCycleArray;
+    calcGreenTime(phaseObj, ph) {
+      let curPhaseObj = phaseObj[ph];
+      let greenTime = this.secondsBetweenISOEvents(
+        curPhaseObj.greenTimeStart,
+        curPhaseObj.greenTimeEnd
+      );
+      return greenTime;
     },
-    calcSplitDuration(phArr) {
-      let cycleDuration = [];
-      let splitTime = [];
-      let curPhase = phArr[0];
-      for (let i = 0; i < curPhase.length; i++) {
-        splitTime[i] = [];
-        splitTime[i] =
-          curPhase[i].gTime + curPhase[i].yTime + curPhase[i].rTime;
-        console.log("ST:" + splitTime[i]);
-      }
-      return splitTime;
-      //console.log(splitTime[i]);
+    calcYellowTime(phaseObj, ph) {
+      let curPhaseObj = phaseObj[ph];
+      let yellowTime = this.secondsBetweenISOEvents(
+        curPhaseObj.yellowTimeStart,
+        curPhaseObj.yellowTimeEnd
+      );
+      return yellowTime;
     },
+    calcAllRedTime(phaseObj, ph) {
+      let curPhaseObj = phaseObj[ph];
+      let allRedTime = this.secondsBetweenISOEvents(
+        curPhaseObj.redTimeStart,
+        curPhaseObj.redTimeEnd
+      );
+      return allRedTime;
+    },
+    convertToCamelCase(str) {
+      return str
+        .split(" ")
+        .map((word, index) => {
+          if (index === 0) {
+            return word.toLowerCase();
+          } else {
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+          }
+        })
+        .join("");
+    },
+    countTotalTerminationsByPhase(phaseNumber) {
+      let phaseName = "phase" + phaseNumber;
+      let totalTerminationCount =
+        this.terminationResults[phaseName].gapOut +
+        this.terminationResults[phaseName].maxOut +
+        this.terminationResults[phaseName].forceOff +
+        this.terminationResults[phaseName].skipped;
+
+      return totalTerminationCount;
+    },
+    calcAllPhaseTerminationPercents(termPhrase) {
+      let terminationArray = [];
+      let termName = this.convertToCamelCase(termPhrase);
+      for (let i = 1; i <= 8; i++) {
+        let phaseName = "phase" + i;
+        terminationArray.push(
+          Math.floor(
+            (this.terminationResults[phaseName][termName] /
+              this.countTotalTerminationsByPhase(i)) *
+              100
+          )
+        );
+      }
+      return terminationArray;
+    },
+
     isCycleComplete(ph) {
       let activePhase = ph;
 
       //console.log("PHASE in CycleFn: " + this.calcPhaseComplete(ph));
-
-      console.log(
-        "PHASES IN CYCLE:" +
-          this.phasesInCycle +
-          " & " +
-          ph +
-          " is " +
-          this.calcPhaseComplete(ph) +
-          "% complete."
-      );
 
       if (ph === 2) {
         console.log(this.phaseArray[ph]);
@@ -320,7 +349,18 @@ export default {
         return this.completedB1 && this.completedB2;
       }
     },
-
+    incrementTerminationResults(phaseNumber, reason) {
+      // Check if the phase exists in the object
+      let phaseName = "phase" + phaseNumber;
+      console.log("PHASE NAME:" + phaseName);
+      if (this.terminationResults.hasOwnProperty(phaseName)) {
+        // Increment the corresponding reason
+        console.log("TERM:" + this.terminationResults);
+        this.terminationResults[phaseName][reason]++;
+      } else {
+        console.error(`Phase ${phaseName} does not exist. Only 1-8 available`);
+      }
+    },
     loadCsv2JsonObj() {
       // Parse CSV data into an array of objects
       const lines = this.inputData.split("\n");
@@ -343,6 +383,7 @@ export default {
       return this.hdDataObj;
     },
     buildCycleItem(dataObj) {
+      const customFormat = "ccc, MMM d yyyy h:mm:ss.S a";
       console.log(dataObj);
       dataObj.forEach((obj) => {
         if (obj.parameterType === "Phase") {
@@ -364,7 +405,11 @@ export default {
               this.phaseArray[phaseNum].yellowTimeEnd = obj.timestamp.iso;
             } else if (obj.eventCode === 10) {
               this.phaseArray[phaseNum].redTimeStart = obj.timestamp.iso;
-            } else if (obj.eventCode === 11) {
+            } else if (
+              obj.eventCode === 11 &&
+              obj.timestamp.iso > this.phaseArray[phaseNum].greenTimeStart
+            ) {
+              //logic for after green start time +0.1 sec
               this.phaseArray[phaseNum].redTimeEnd = obj.timestamp.iso;
             } else if (obj.eventCode === 6) {
               this.phaseArray[phaseNum].phaseTerminationReason = "Force Off";
@@ -377,9 +422,57 @@ export default {
             }
 
             if (this.calcPhaseComplete(phaseNum) === 100) {
-              console.log("Phase " + phaseNum + " is complete!!!");
-              console.log("The Phase Array" + this.phaseArray);
-              const customFormat = "ccc, MMM d yyyy h:mm:ss.S a";
+              let phaseSplitDuration = this.calcPhaseSplit(
+                this.phaseArray,
+                phaseNum
+              );
+
+              if (this.activePhasesInCycle.includes(phaseNum)) {
+                this.cycleCount++;
+                this.currentCycleLength = 0;
+                this.activePhasesInCycle = [];
+                this.activePhasesInCycle.push(phaseNum);
+                this.currentCycleLength += phaseSplitDuration;
+              } else {
+                this.activePhasesInCycle.push(phaseNum);
+                this.currentCycleLength += phaseSplitDuration;
+              }
+
+              this.incrementTerminationResults(
+                phaseNum,
+                this.convertToCamelCase(
+                  this.phaseArray[phaseNum].phaseTerminationReason
+                )
+              );
+
+              console.log(
+                "TERM RESULTS:" + this.terminationResults.phase3.gapOut
+              );
+              console.log(
+                "TOTAL TERM:" +
+                  phaseNum +
+                  " : " +
+                  (this.terminationResults.phase3.gapOut /
+                    this.countTotalTerminationsByPhase(3)) *
+                    100
+              );
+
+              this.maxOutPercents =
+                this.calcAllPhaseTerminationPercents("Max Out");
+
+              this.gapOutPercents =
+                this.calcAllPhaseTerminationPercents("Gap Out");
+              this.forceOffPercents =
+                this.calcAllPhaseTerminationPercents("Force Off");
+              this.skippedPercents =
+                this.calcAllPhaseTerminationPercents("Skipped");
+
+              console.log(
+                "TERM-summary: " +
+                  this.gapOutPercents +
+                  " - " +
+                  this.forceOffPercents
+              );
 
               const phaseSplit = {
                 timestampStart: DateTime.fromISO(
@@ -387,8 +480,17 @@ export default {
                 ).toFormat(customFormat),
                 timestampStartISO: this.phaseArray[phaseNum].greenTimeStart,
                 phase: phaseNum,
-                duration: this.calcPhaseSplit(this.phaseArray, phaseNum),
+                duration: phaseSplitDuration,
+                greenTime: this.calcGreenTime(this.phaseArray, phaseNum),
+                yellowTime: this.calcYellowTime(this.phaseArray, phaseNum),
+                allRedTime: this.calcAllRedTime(this.phaseArray, phaseNum),
                 termReason: this.phaseArray[phaseNum].phaseTerminationReason,
+                cycleCount: this.cycleCount,
+                cycleLength: this.currentCycleLength,
+                maxOutPercents: this.maxOutPercents,
+                gapOutPercents: this.gapOutPercents,
+                forceOffPercents: this.forceOffPercents,
+                skippedPercents: this.skippedPercents,
               };
 
               this.rowData.push(phaseSplit);

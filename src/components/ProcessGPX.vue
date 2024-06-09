@@ -74,7 +74,7 @@ import InputBox from "./foundational/InputBox.vue";
 import gpxParser from "gpxparser";
 import { Chart } from "chart.js/auto"; // https://www.chartjs.org/
 import zoomPlugin from "chartjs-plugin-zoom"; // https://www.chartjs.org/chartjs-plugin-zoom/latest/guide/animations.html
-import Metric from "./Metric.vue";
+import Metric from "./foundational/Metric.vue";
 
 Chart.register(zoomPlugin);
 

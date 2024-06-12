@@ -535,8 +535,6 @@ export default {
     calculatePhaseDurations() {
       this.loadCsv2JsonObj(); //load all the enumerations into JSON obj.
       this.buildCycleItem(this.hdDataObj);
-
-      console.log("Total Cycle Count: " + this.countCycles);
     },
   },
 };

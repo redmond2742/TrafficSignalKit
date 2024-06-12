@@ -8,6 +8,62 @@
             placeholder="Filter by start timestamp, cycle length, phase or duration values"
             v-model="filter"
           />
+
+          <table>
+            <thead>
+              <tr>
+                <th>Termination Reason</th>
+                <th v-for="phase in 8" :key="phase">Phase {{ phase }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Gap Out</td>
+                <td>{{ processedMetrics.gapOutPercent1 }}%</td>
+                <td>{{ processedMetrics.gapOutPercent2 }}%</td>
+                <td>{{ processedMetrics.gapOutPercent3 }}%</td>
+                <td>{{ processedMetrics.gapOutPercent4 }}%</td>
+                <td>{{ processedMetrics.gapOutPercent5 }}%</td>
+                <td>{{ processedMetrics.gapOutPercent6 }}%</td>
+                <td>{{ processedMetrics.gapOutPercent7 }}%</td>
+                <td>{{ processedMetrics.gapOutPercent8 }}%</td>
+              </tr>
+              <tr>
+                <td>Max Out</td>
+                <td>{{ processedMetrics.maxOutPercent1 }}%</td>
+                <td>{{ processedMetrics.maxOutPercent2 }}%</td>
+                <td>{{ processedMetrics.maxOutPercent3 }}%</td>
+                <td>{{ processedMetrics.maxOutPercent4 }}%</td>
+                <td>{{ processedMetrics.maxOutPercent5 }}%</td>
+                <td>{{ processedMetrics.maxOutPercent6 }}%</td>
+                <td>{{ processedMetrics.maxOutPercent7 }}%</td>
+                <td>{{ processedMetrics.maxOutPercent8 }}%</td>
+              </tr>
+              <tr>
+                <td>Force Off</td>
+                <td>{{ processedMetrics.forceOffPercent1 }}%</td>
+                <td>{{ processedMetrics.forceOffPercent2 }}%</td>
+                <td>{{ processedMetrics.forceOffPercent3 }}%</td>
+                <td>{{ processedMetrics.forceOffPercent4 }}%</td>
+                <td>{{ processedMetrics.forceOffPercent5 }}%</td>
+                <td>{{ processedMetrics.forceOffPercent6 }}%</td>
+                <td>{{ processedMetrics.forceOffPercent7 }}%</td>
+                <td>{{ processedMetrics.forceOffPercent8 }}%</td>
+              </tr>
+              <tr>
+                <td>Skipped</td>
+                <td>{{ processedMetrics.skippedPercent1 }}%</td>
+                <td>{{ processedMetrics.skippedPercent2 }}%</td>
+                <td>{{ processedMetrics.skippedPercent3 }}%</td>
+                <td>{{ processedMetrics.skippedPercent4 }}%</td>
+                <td>{{ processedMetrics.skippedPercent5 }}%</td>
+                <td>{{ processedMetrics.skippedPercent6 }}%</td>
+                <td>{{ processedMetrics.skippedPercent7 }}%</td>
+                <td>{{ processedMetrics.skippedPercent8 }}%</td>
+              </tr>
+            </tbody>
+          </table>
+          <br /><br />
           <table v-if="dataIsPresent">
             <thead>
               <tr>
@@ -33,7 +89,9 @@
                     )
                   "
                 ></td>
-                <td v-html="highlightMatches(String(row.phase))"></td>
+                <td
+                  v-html="highlightMatches(`Phase ${String(row.phase)}`)"
+                ></td>
                 <td
                   v-html="
                     highlightMatches(
@@ -104,6 +162,53 @@ export default {
           terminationReason.includes(searchTerm)
         );
       });
+    },
+    processedMetrics() {
+      let maxLength = this.tableData.length - 1;
+      console.log(
+        "COMPUTE loading processed Metrics",
+        maxLength,
+        this.tableData[maxLength].gapOutPercents
+      );
+
+      let phaseData = this.tableData[maxLength];
+
+      console.log("COMPuTE:", phaseData.gapOutPercents[0]);
+
+      return {
+        gapOutPercent1: phaseData.gapOutPercents[0],
+        gapOutPercent2: phaseData.gapOutPercents[1],
+        gapOutPercent3: phaseData.gapOutPercents[2],
+        gapOutPercent4: phaseData.gapOutPercents[3],
+        gapOutPercent5: phaseData.gapOutPercents[4],
+        gapOutPercent6: phaseData.gapOutPercents[5],
+        gapOutPercent7: phaseData.gapOutPercents[6],
+        gapOutPercent8: phaseData.gapOutPercents[7],
+        maxOutPercent1: phaseData.maxOutPercents[0],
+        maxOutPercent2: phaseData.maxOutPercents[1],
+        maxOutPercent3: phaseData.maxOutPercents[2],
+        maxOutPercent4: phaseData.maxOutPercents[3],
+        maxOutPercent5: phaseData.maxOutPercents[4],
+        maxOutPercent6: phaseData.maxOutPercents[5],
+        maxOutPercent7: phaseData.maxOutPercents[6],
+        maxOutPercent8: phaseData.maxOutPercents[7],
+        forceOffPercent1: phaseData.forceOffPercents[0],
+        forceOffPercent2: phaseData.forceOffPercents[1],
+        forceOffPercent3: phaseData.forceOffPercents[2],
+        forceOffPercent4: phaseData.forceOffPercents[3],
+        forceOffPercent5: phaseData.forceOffPercents[4],
+        forceOffPercent6: phaseData.forceOffPercents[5],
+        forceOffPercent7: phaseData.forceOffPercents[6],
+        forceOffPercent8: phaseData.forceOffPercents[7],
+        skippedPercent1: phaseData.skippedPercents[0],
+        skippedPercent2: phaseData.skippedPercents[1],
+        skippedPercent3: phaseData.skippedPercents[2],
+        skippedPercent4: phaseData.skippedPercents[3],
+        skippedPercent5: phaseData.skippedPercents[4],
+        skippedPercent6: phaseData.skippedPercents[5],
+        skippedPercent7: phaseData.skippedPercents[6],
+        skippedPercent8: phaseData.skippedPercents[7],
+      };
     },
   },
   methods: {

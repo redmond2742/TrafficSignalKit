@@ -100,9 +100,9 @@
     <ProcessSplitHistory
       @phaseDurations="displayPhaseDuration"
     ></ProcessSplitHistory>
-    <TerminationMetrics :phaseData="emittedData"></TerminationMetrics>
 
     <TableDisplaySplit :tableData="emittedData"></TableDisplaySplit>
+    <TerminationMetrics :phaseData="emittedPhaseData"></TerminationMetrics>
   </div>
 </template>
 
@@ -122,11 +122,13 @@ export default {
       processedData: null,
       panel: [],
       emittedData: [],
+      emittedPhaseData: [],
     };
   },
   methods: {
     displayPhaseDuration(data) {
       this.emittedData = data;
+      this.emittedPhaseData = data;
       console.log("TERM -main page: ", this.emittedData);
     },
     handleProcessedData(data) {
@@ -141,15 +143,4 @@ export default {
   },
 };
 </script>
-<style scoped>
-.metrics-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Adjust spacing between metrics if needed */
-.metrics-container > * {
-  margin-right: 20px; /* Adjust margin as needed */
-}
-</style>
+<style scoped></style>

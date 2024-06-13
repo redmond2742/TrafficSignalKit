@@ -104,108 +104,32 @@
       @phaseDurations="storePhaseDuration"
     ></ProcessSplitHistory>
 
-    <scatter-chart
-      :chart-data="chartData"
-      :options="chartOptions"
-    ></scatter-chart>
+    <PlotScatterPhases :plotData="emittedData"></PlotScatterPhases>
   </div>
 </template>
 
 <script>
-import { Scatter } from "vue-chartjs";
-import {
-  Chart as ChartJS,
-  Title,
-  Tooltip,
-  Legend,
-  PointElement,
-  LinearScale,
-} from "chart.js";
-
-ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale);
 import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
+import PlotScatterPhases from "../components/foundational/PlotScatterPhases.vue";
 
 export default {
   components: {
     ProcessSplitHistory,
-    Scatter,
+    PlotScatterPhases,
   },
   data() {
     return {
       processedData: null,
       panel: [],
-      phaseData: [],
-      chartData: {
-        datasets: [
-          {
-            label: "Scatter Dataset",
-            data: [],
-          },
-        ],
-      },
-      chartOptions: {
-        scales: {
-          x: {
-            type: "linear",
-            position: "bottom",
-          },
-          y: {
-            type: "linear",
-            position: "left",
-          },
-        },
-      },
+      emittedData: [],
     };
   },
   methods: {
     storePhaseDuration(data) {
-      this.phaseData = data;
-      console.log(data);
-      this.generateScatterPlot();
+      this.emittedData = data;
     },
     handleProcessedData(data) {
       this.processedData = data;
-    },
-    processData(dataObject) {
-      // Assuming dataObject is an array of objects with Phase, duration, and start time
-      // Example: [{ phase: 'A', duration: 10, startTime: '2024-06-03T16:56:08' }, ...]
-      console.log(dataObject);
-      return dataObject.map((entry) => {
-        const startTime = entry.timestampStartISO;
-        const durationInSeconds = entry.duration;
-
-        console.log(startTime + " : st and dur: " + durationInSeconds);
-
-        // Convert startTime to seconds since epoch for x-axis
-        const x = startTime.toSeconds();
-
-        console.log("Seconds: " + x);
-
-        return { x, y: durationInSeconds };
-      });
-    },
-    generateScatterPlot() {
-      let dataObject;
-      try {
-        dataObject = JSON.parse(this.phaseData); //TODO: fix this JSON phase Data.
-      } catch (error) {
-        alert("Invalid JSON data");
-        return;
-      }
-
-      // Process the JSON data to create scatter plot data
-      const scatterData = this.processData(dataObject);
-      console.log("Scatter Data:" + scatterData);
-
-      // Update the chart data
-      this.chartData = {
-        datasets: [
-          {
-            label: "Scatter Dataset",
-            data: scatterData,
-          },
-        ],
-      };
     },
 
     all() {
@@ -213,10 +137,6 @@ export default {
     },
     none() {
       this.panel = [];
-    },
-    loadPhaseDurationObj(data) {
-      this.phaseDurationObj = data;
-      console.log(this.phaseDurationObj);
     },
   },
 };

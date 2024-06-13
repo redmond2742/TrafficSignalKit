@@ -114,7 +114,6 @@ export default {
       }).length;
 
       const totalElements = arr.length;
-      //console.log("filled in: " + filledValues + "/" + totalElements);
 
       return (filledValues / totalElements) * 100;
     },
@@ -202,12 +201,6 @@ export default {
     isCycleComplete(ph) {
       let activePhase = ph;
 
-      //console.log("PHASE in CycleFn: " + this.calcPhaseComplete(ph));
-
-      if (ph === 2) {
-        console.log(this.phaseArray[ph]);
-      }
-
       let incompletePhases = this.phasesInCycle;
       this.unusedPhases = this.allB1Phases.concat(this.B2Phases);
 
@@ -242,15 +235,11 @@ export default {
       */
 
       if (this.calcPhaseComplete(activePhase) > 0) {
-        console.log(activePhase + " phase is greater than zero % complete");
-
         this.unusedPhases = this.unusedPhases.filter(
           (item) => item !== activePhase
         );
 
         if (this.allB1Phases.includes(activePhase)) {
-          console.log("building Barrier 1");
-          console.log(this.activeB1Phases);
           if (!this.activeB1Phases.includes(activePhase)) {
             this.activeB1Phases.push(activePhase);
           }
@@ -259,8 +248,6 @@ export default {
             this.incompleteB1Phases.push(activePhase);
           }
         } else if (this.allB2Phases.includes(activePhase)) {
-          console.log("building Barrier 2");
-          console.log(this.activeB2Phases);
           if (!this.activeB2Phases.includes(activePhase)) {
             this.activeB2Phases.push(activePhase);
           }
@@ -288,9 +275,6 @@ export default {
             this.completedB1Phases.sort();
             this.activeB1Phases.sort();
 
-            console.log(this.completedB1Phases);
-            console.log(this.activeB1Phases);
-
             if (
               this.completedB1Phases.length === this.activeB1Phases.length &&
               this.completedB1Phases.every(
@@ -299,8 +283,6 @@ export default {
             ) {
               this.buildingB1 = false;
               this.completedB1 = true;
-              console.log("B1 Complete");
-              // eventually reset some variables
             }
           }
           // Ring 2
@@ -317,10 +299,6 @@ export default {
             }
             this.completedB2Phases.sort();
             this.activeB2Phases.sort();
-
-            console.log("CB2" + this.completedB2Phases);
-            console.log("AB2" + this.activeB2Phases);
-
             if (
               this.completedB2Phases.length === this.activeB2Phases.length &&
               this.completedB2Phases.every(
@@ -329,20 +307,18 @@ export default {
             ) {
               this.buildingB2 = false;
               this.completedB2 = true;
-              console.log("B2 Complete");
 
               // eventually reset some variables
             }
           }
         } else if (this.completedB1 && this.completedB2) {
-          console.log("CYCLE COMPLETE - INCREMENT AND CLEAR VARIABLES");
           this.incompleteB1Phases = this.incompleteB2Phases = [];
           this.completedB1Phases = this.completedB2Phases = [];
           this.unusedPhases = [];
           this.activeB1Phases = this.activeB2Phases = [];
           this.completedB1 = this.completedB2 = false;
           this.countCycles++;
-          console.log(this.countCycles);
+
           return true;
         }
       } else {
@@ -352,10 +328,10 @@ export default {
     incrementTerminationResults(phaseNumber, reason) {
       // Check if the phase exists in the object
       let phaseName = "phase" + phaseNumber;
-      console.log("PHASE NAME:" + phaseName);
+
       if (this.terminationResults.hasOwnProperty(phaseName)) {
         // Increment the corresponding reason
-        console.log("TERM:" + this.terminationResults);
+
         this.terminationResults[phaseName][reason]++;
       } else {
         console.error(`Phase ${phaseName} does not exist. Only 1-8 available`);
@@ -384,7 +360,7 @@ export default {
     },
     buildCycleItem(dataObj) {
       const customFormat = "ccc, MMM d yyyy h:mm:ss.S a";
-      console.log(dataObj);
+
       dataObj.forEach((obj) => {
         if (obj.parameterType === "Phase") {
           let phaseNum = obj.parameterCode;
@@ -393,12 +369,8 @@ export default {
             this.phasesInCycle.includes(phaseNum) &&
             this.phaseArray[phaseNum].greenTimeStart
           ) {
-            console.log(
-              phaseNum + " is " + this.phasesInCycle.includes(phaseNum)
-            );
             if (obj.eventCode === 7) {
               this.phaseArray[phaseNum].greenTimeEnd = obj.timestamp.iso;
-              console.log();
             } else if (obj.eventCode === 8) {
               this.phaseArray[phaseNum].yellowTimeStart = obj.timestamp.iso;
             } else if (obj.eventCode === 9) {
@@ -445,18 +417,6 @@ export default {
                 )
               );
 
-              console.log(
-                "TERM RESULTS:" + this.terminationResults.phase3.gapOut
-              );
-              console.log(
-                "TOTAL TERM:" +
-                  phaseNum +
-                  " : " +
-                  (this.terminationResults.phase3.gapOut /
-                    this.countTotalTerminationsByPhase(3)) *
-                    100
-              );
-
               this.maxOutPercents =
                 this.calcAllPhaseTerminationPercents("Max Out");
 
@@ -466,13 +426,6 @@ export default {
                 this.calcAllPhaseTerminationPercents("Force Off");
               this.skippedPercents =
                 this.calcAllPhaseTerminationPercents("Skipped");
-
-              console.log(
-                "TERM-summary: " +
-                  this.gapOutPercents +
-                  " - " +
-                  this.forceOffPercents
-              );
 
               const phaseSplit = {
                 timestampStart: DateTime.fromISO(
@@ -503,16 +456,13 @@ export default {
             }
 
             if (this.isCycleComplete(phaseNum)) {
-              console.log("STARTING NEW CYCLE");
               // take in phaseArray item and perform g,y,r duration calculations.
               let phaseDur = this.calcPhaseDurations(
                 this.phaseArray,
                 this.phasesInCycle
               );
-              //console.log(phaseDur);
 
               let cycleFromPhases = this.calcSplitDuration(phaseDur);
-              console.log(cycleFromPhases);
 
               this.phasesInCycle = [];
               this.phaseArray = [];
@@ -522,7 +472,7 @@ export default {
               this.phaseArray[phaseNum] = [];
               this.phaseArray[phaseNum].phase = phaseNum;
               this.phaseArray[phaseNum].greenTimeStart = obj.timestamp.iso;
-              console.log("Adding " + phaseNum + " to Phases in Cycle");
+
               this.phasesInCycle.push(phaseNum); //append phase to cycle array since it has a start time
             }
           }

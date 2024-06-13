@@ -14,7 +14,7 @@ export default {
             const [second, millisecond] = secondAndMillisecond.split(".");
       
             // Create a new Date object using the components
-            console.log(year);
+         
             const buildDate = new Date(
               year,
               month - 1,
@@ -24,10 +24,7 @@ export default {
               second,
               millisecond * 100
             );
-            console.log("DAY:" + day);
-            console.log(buildDate.toISOString());
-            console.log("offset: ");
-            console.log(buildDate.toTimeString());
+      
       
             // Return the ISO timestamp representation of the Date object
             return buildDate.toISOString();
@@ -69,7 +66,7 @@ export default {
           
             // Convert centiseconds to seconds
             const centiSeconds = Number(centisecondsPart) * 100;
-            console.log("CentiSECONDS: "+ centiSeconds);
+         
 
             // Get the current date
             const currentDate = DateTime.local(2000,1,1).toFormat("yyyy-MM-dd");
@@ -86,7 +83,7 @@ export default {
         },
         // https://moment.github.io/luxon/demo/global.html
           convertTimestamp(ts,tz=NaN) {
-            console.log("ts: " + ts);
+   
             let iso_ts;
             let inputDate;
             let luxonInputDate;
@@ -111,10 +108,10 @@ export default {
             // Check if the input is in epoch timestamp or locale string or just time
             if (epochRegex.test(ts)) {
               inputDate = this.createTimestampDate(ts);
-              console.log("CHECK: "+ts)
+              //console.log("CHECK: "+ts)
               luxonInputDate = DateTime.fromMillis(Number(ts)*100).toISO();
 
-              console.log("luxon date"+luxonInputDate.toString(DateTime.DATETIME_FULL))
+              //console.log("luxon date"+luxonInputDate.toString(DateTime.DATETIME_FULL))
               convertedTimeFormats.new = true;
               convertedTimeFormats.calculatable = true;
               console.log("EPOCH MS TIME DETECTED")
@@ -126,14 +123,14 @@ export default {
               convertedTimeFormats.calculatable = true;
             } 
             else if (dateTimeRegex.test(ts)){
-              console.log(ts+" M/D/YYYY HH:MM:SS.ms DETECTED");
+              //console.log(ts+" M/D/YYYY HH:MM:SS.ms DETECTED");
               luxonInputDate = DateTime.fromFormat(ts, "M/d/yyyy HH:mm:ss.S").toISO();//DateTime.fromFormat(ts.toString(),"HH:mm.s").toLocaleString(DateTime.TIME_SIMPLE); //try catch?
               
               convertedTimeFormats.new = true;  
               convertedTimeFormats.calculatable = true;
             } 
             else if (DateTime.fromISO(ts).isValid){
-               console.log(ts+" ISO Format DETECTED");
+               //console.log(ts+" ISO Format DETECTED");
               luxonInputDate = ts;
               
               convertedTimeFormats.new = true;  
@@ -141,7 +138,7 @@ export default {
 
             }
           else {
-              console.log(ts+" NO FORMAT DETECTED");
+              //console.log(ts+" NO FORMAT DETECTED");
               luxonInputDate = DateTime.fromISO(ts).toLocaleString(DateTime.TIME_SIMPLE); //try catch?
               convertedTimeFormats.new = false;  
               convertedTimeFormats.calculatable = false;
@@ -175,10 +172,10 @@ export default {
                 convertedTimeFormats.humanReadable = DateTime.fromISO(luxonInputDate).toFormat(customFormat);
                 //convertedTimeFormats.humanReadable = String(this.humanDate);
                 convertedTimeFormats.dateObj = luxonInputDate; //inputDate;
-                console.log("Luxon: "+luxonInputDate + " Type: "+typeof(luxonInputDate))
+                //console.log("Luxon: "+luxonInputDate + " Type: "+typeof(luxonInputDate))
                 convertedTimeFormats.MillisecFromEpoch =  DateTime.fromISO(luxonInputDate).toMillis(); //inputDate.getTime() / 100;
                 convertedTimeFormats.iso = luxonInputDate
-                console.log("TEST: "+convertedTimeFormats.humanReadable +" : " +convertedTimeFormats.iso);
+                //console.log("TEST: "+convertedTimeFormats.humanReadable +" : " +convertedTimeFormats.iso);
 
                 
                 

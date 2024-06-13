@@ -1,5 +1,5 @@
 <template>
-  <textarea type="text" rows="20" v-model="inputData" @input="emitInput" />
+  <textarea type="text" rows="20" v-model="inputData" />
 </template>
 
 <script>
@@ -13,6 +13,9 @@ export default {
     emitInput() {
       this.$emit("update:inputData", this.inputData);
     },
+  },
+  onChange() {
+    this.emitInput();
   },
 };
 </script>

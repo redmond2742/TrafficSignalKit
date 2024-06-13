@@ -44,15 +44,10 @@
           value="detailed-explain"
         >
           <v-expansion-panel-text>
-            Consider adding "metrics" for day of week, date and start time of
-            gpx file and "signal control delay if near a signal"
-            <br /><br />
-            colored points for gpx track
-            <br /><br />
             Graph X and Y axis labels and signal labels, and alternative design
             color options preferences
             <br /><br />
-            randomly assign colors to each of the signals that are added
+            Randomly assign colors to each of the signals that are added
           </v-expansion-panel-text>
         </v-expansion-panel>
 

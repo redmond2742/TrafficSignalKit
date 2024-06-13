@@ -1,14 +1,8 @@
 <template>
-  <v-card-text>
+  <v-card-text v-if="showTables">
     <v-window v-model="tab">
       <v-window-item value="table-view">
         <div>
-          <input
-            type="text"
-            placeholder="Filter by start timestamp, cycle length, phase or duration values"
-            v-model="filter"
-          />
-
           <table>
             <thead>
               <tr>
@@ -64,7 +58,13 @@
             </tbody>
           </table>
           <br /><br />
-          <table v-if="dataIsPresent">
+          <input
+            type="text"
+            placeholder="Filter by start timestamp, cycle length, phase or duration values"
+            v-model="filter"
+          />
+          <br />
+          <table>
             <thead>
               <tr>
                 <th>Start Timestamp</th>
@@ -122,27 +122,28 @@ export default {
     tableData: {
       type: Array,
       required: true,
+      value: [],
     },
   },
   mounted() {
     // Log the Data to inspect its structure
     //console.log("Phase Data:", this.tableData);
+    this.isDataPresent();
+    console.log(this.isDataPresent());
   },
   data() {
     return {
       tab: null,
       filter: "",
+      showTables: false,
     };
   },
   computed: {
-    dataIsPresent() {
-      return this.tableData !== null || this.tableData.length > 0;
-    },
     filteredRows() {
       return this.tableData.filter((row) => {
         const timestamp = row.timestampStart.toLowerCase();
         const cycleCount = row.cycleCount.toString();
-        const enumeration = row.phase.toString().toLowerCase();
+        const enumeration = "phase " + row.phase.toString().toLowerCase();
         const duration =
           row.duration.toString() +
           "(" +
@@ -164,51 +165,48 @@ export default {
       });
     },
     processedMetrics() {
-      let maxLength = this.tableData.length - 1;
-      console.log(
-        "COMPUTE loading processed Metrics",
-        maxLength,
-        this.tableData[maxLength].gapOutPercents
-      );
+      if (this.isDataPresent) {
+        let maxLength = this.tableData.length - 1;
 
-      let phaseData = this.tableData[maxLength];
+        let phaseData = this.tableData[maxLength];
 
-      console.log("COMPuTE:", phaseData.gapOutPercents[0]);
-
-      return {
-        gapOutPercent1: phaseData.gapOutPercents[0],
-        gapOutPercent2: phaseData.gapOutPercents[1],
-        gapOutPercent3: phaseData.gapOutPercents[2],
-        gapOutPercent4: phaseData.gapOutPercents[3],
-        gapOutPercent5: phaseData.gapOutPercents[4],
-        gapOutPercent6: phaseData.gapOutPercents[5],
-        gapOutPercent7: phaseData.gapOutPercents[6],
-        gapOutPercent8: phaseData.gapOutPercents[7],
-        maxOutPercent1: phaseData.maxOutPercents[0],
-        maxOutPercent2: phaseData.maxOutPercents[1],
-        maxOutPercent3: phaseData.maxOutPercents[2],
-        maxOutPercent4: phaseData.maxOutPercents[3],
-        maxOutPercent5: phaseData.maxOutPercents[4],
-        maxOutPercent6: phaseData.maxOutPercents[5],
-        maxOutPercent7: phaseData.maxOutPercents[6],
-        maxOutPercent8: phaseData.maxOutPercents[7],
-        forceOffPercent1: phaseData.forceOffPercents[0],
-        forceOffPercent2: phaseData.forceOffPercents[1],
-        forceOffPercent3: phaseData.forceOffPercents[2],
-        forceOffPercent4: phaseData.forceOffPercents[3],
-        forceOffPercent5: phaseData.forceOffPercents[4],
-        forceOffPercent6: phaseData.forceOffPercents[5],
-        forceOffPercent7: phaseData.forceOffPercents[6],
-        forceOffPercent8: phaseData.forceOffPercents[7],
-        skippedPercent1: phaseData.skippedPercents[0],
-        skippedPercent2: phaseData.skippedPercents[1],
-        skippedPercent3: phaseData.skippedPercents[2],
-        skippedPercent4: phaseData.skippedPercents[3],
-        skippedPercent5: phaseData.skippedPercents[4],
-        skippedPercent6: phaseData.skippedPercents[5],
-        skippedPercent7: phaseData.skippedPercents[6],
-        skippedPercent8: phaseData.skippedPercents[7],
-      };
+        return {
+          gapOutPercent1: phaseData.gapOutPercents[0],
+          gapOutPercent2: phaseData.gapOutPercents[1],
+          gapOutPercent3: phaseData.gapOutPercents[2],
+          gapOutPercent4: phaseData.gapOutPercents[3],
+          gapOutPercent5: phaseData.gapOutPercents[4],
+          gapOutPercent6: phaseData.gapOutPercents[5],
+          gapOutPercent7: phaseData.gapOutPercents[6],
+          gapOutPercent8: phaseData.gapOutPercents[7],
+          maxOutPercent1: phaseData.maxOutPercents[0],
+          maxOutPercent2: phaseData.maxOutPercents[1],
+          maxOutPercent3: phaseData.maxOutPercents[2],
+          maxOutPercent4: phaseData.maxOutPercents[3],
+          maxOutPercent5: phaseData.maxOutPercents[4],
+          maxOutPercent6: phaseData.maxOutPercents[5],
+          maxOutPercent7: phaseData.maxOutPercents[6],
+          maxOutPercent8: phaseData.maxOutPercents[7],
+          forceOffPercent1: phaseData.forceOffPercents[0],
+          forceOffPercent2: phaseData.forceOffPercents[1],
+          forceOffPercent3: phaseData.forceOffPercents[2],
+          forceOffPercent4: phaseData.forceOffPercents[3],
+          forceOffPercent5: phaseData.forceOffPercents[4],
+          forceOffPercent6: phaseData.forceOffPercents[5],
+          forceOffPercent7: phaseData.forceOffPercents[6],
+          forceOffPercent8: phaseData.forceOffPercents[7],
+          skippedPercent1: phaseData.skippedPercents[0],
+          skippedPercent2: phaseData.skippedPercents[1],
+          skippedPercent3: phaseData.skippedPercents[2],
+          skippedPercent4: phaseData.skippedPercents[3],
+          skippedPercent5: phaseData.skippedPercents[4],
+          skippedPercent6: phaseData.skippedPercents[5],
+          skippedPercent7: phaseData.skippedPercents[6],
+          skippedPercent8: phaseData.skippedPercents[7],
+        };
+      } else {
+        return "";
+      }
     },
   },
   methods: {
@@ -224,12 +222,16 @@ export default {
           (matchedText) => `<strong>${matchedText}</strong>`
         );
       } else {
-        console.log("number, not text");
+        console.log("Filter Text is number, not text");
       }
     },
     truncateToOneDecimal(number) {
       // Truncate the number to one decimal place
       return String(Math.floor(number * 10) / 10);
+    },
+    isDataPresent() {
+      this.showTables = this.tableData !== null || this.tableData.length > 0;
+      return this.showTables;
     },
   },
 };

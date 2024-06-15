@@ -127,6 +127,7 @@ export default {
   methods: {
     storePhaseDuration(data) {
       this.emittedData = data;
+      //console.log(this.emittedData);
     },
     handleProcessedData(data) {
       this.processedData = data;

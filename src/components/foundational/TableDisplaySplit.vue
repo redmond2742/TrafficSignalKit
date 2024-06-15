@@ -129,13 +129,12 @@ export default {
     // Log the Data to inspect its structure
     //console.log("Phase Data:", this.tableData);
     this.isDataPresent();
-    console.log(this.isDataPresent());
   },
   data() {
     return {
       tab: null,
       filter: "",
-      showTables: false,
+      showTables: true,
     };
   },
   computed: {
@@ -230,7 +229,9 @@ export default {
       return String(Math.floor(number * 10) / 10);
     },
     isDataPresent() {
-      this.showTables = this.tableData !== null || this.tableData.length > 0;
+      if (this.tableData != null && this.tableData.length > 0) {
+        this.tableData = true;
+      }
       return this.showTables;
     },
   },

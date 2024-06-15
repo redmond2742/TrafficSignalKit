@@ -1,10 +1,13 @@
 <template>
-  <Scatter :data="chartData" :options="chartOptions"></Scatter>
+  <button @click="resetZoom">Reset Zoom</button>
+  <Scatter :data="storePhaseDuration" :options="chartOptions"></Scatter>
 </template>
 
 <script>
+import { DateTime } from "luxon";
 //https://vue-chartjs.org/
 import { Scatter } from "vue-chartjs";
+import zoom from "chartjs-plugin-zoom";
 import {
   Chart as ChartJS,
   Title,
@@ -14,7 +17,7 @@ import {
   LinearScale,
 } from "chart.js";
 
-ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale);
+ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale, zoom);
 
 export default {
   components: { Scatter },
@@ -22,7 +25,6 @@ export default {
     plotData: {
       type: Array,
       required: true,
-      value: [],
     },
   },
   beforemount() {
@@ -31,12 +33,15 @@ export default {
   mounted() {
     // Log the Data to inspect its structure
     //console.log("Phase Data:", this.tableData);
-    console.log(this.isDataPresent());
+
+    console.log("Inherited Data ", this.plotData);
   },
   data() {
     return {
       tab: null,
-      showPlot: false,
+      showPlot: true,
+      xValues: [],
+      xyValues: [],
       chartData: {
         datasets: [
           {
@@ -70,6 +75,23 @@ export default {
         ],
       },
       chartOptions: {
+        plugins: {
+          zoom: {
+            zoom: {
+              wheel: {
+                enabled: true,
+              },
+              pinch: {
+                enabled: true,
+              },
+              mode: "xy",
+            },
+            pan: {
+              enabled: true,
+              mode: "xy",
+            },
+          },
+        },
         scales: {
           x: {
             type: "linear",
@@ -85,13 +107,72 @@ export default {
   },
   computed: {
     storePhaseDuration() {
-      console.log(this.plotData);
-      this.processData(this.plotData);
+      let chartData = {
+        datasets: [
+          {
+            label: "Phase 1",
+            fill: false,
+            borderColor: "#f87979",
+            backgroundColor: "#f87979",
+            data: [
+              {
+                x: -2,
+                y: 4,
+              },
+              {
+                x: -1,
+                y: 1,
+              },
+              {
+                x: 0,
+                y: 0,
+              },
+              {
+                x: 1,
+                y: 1,
+              },
+              {
+                x: 2,
+                y: 4,
+              },
+            ],
+          },
+        ],
+      };
+      if (this.plotData != null && this.plotData.length > 0) {
+        console.log("COMPUTE: ", this.plotData);
+        this.plotData.forEach((item) => {
+          // Convert timestampStartISO to epoch time
+          const timestamp =
+            DateTime.fromISO(item.timestampStartISO).toMillis() / 1000;
+          // Add to xValues
+          this.xValues.push(timestamp);
+          // Add to yValues with phase and color
+          this.xyValues.push({ x: timestamp, y: item.phase });
+        });
+        chartData.datasets[0].data = this.xyValues;
+        return chartData;
+        //return NaN;
+      } else {
+        return chartData;
+      }
+
+      //return phaseData;
+      //this.processData(this.plotData);
+
+      /*
+      Build X data: ADD timestamp start to array from this.plotData.timestampStartISO
+      Build Y data: Add Phase Number and color
+      */
+      //return this.convertTimestampToEpoch(phaseData);
 
       //this.generateScatterPlot();
     },
   },
   methods: {
+    resetZoom() {
+      this.chart.resetZoom();
+    },
     processData(dataObject) {
       // Assuming dataObject is an array of objects with Phase, duration, and start time
       // Example: [{ phase: 'A', duration: 10, startTime: '2024-06-03T16:56:08' }, ...]
@@ -126,8 +207,15 @@ export default {
       return String(Math.floor(number * 10) / 10);
     },
     isDataPresent() {
-      this.showPlot = this.plotData !== null || this.plotData.length > 0;
+      if (this.plotData !== null || this.plotData.length > 0) {
+        this.showPlot = true;
+      }
       return this.showPlot;
+    },
+    convertTimestampToEpoch(tsISO) {
+      const dateTimeISO = DateTime.fromISO(tsISO);
+      const timeSinceEpoch = dateTimeISO.toMillis() / 1000;
+      return timeSinceEpoch;
     },
   },
 };

@@ -20,6 +20,7 @@ import {
 ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale, zoom);
 
 export default {
+  //https://www.chartjs.org/docs/latest/charts/scatter.html
   components: { Scatter },
   props: {
     plotData: {
@@ -42,38 +43,7 @@ export default {
       showPlot: true,
       xValues: [],
       xyValues: [],
-      chartData: {
-        datasets: [
-          {
-            label: "Phase 1",
-            fill: false,
-            borderColor: "#f87979",
-            backgroundColor: "#f87979",
-            data: [
-              {
-                x: -2,
-                y: 4,
-              },
-              {
-                x: -1,
-                y: 1,
-              },
-              {
-                x: 0,
-                y: 0,
-              },
-              {
-                x: 1,
-                y: 1,
-              },
-              {
-                x: 2,
-                y: 4,
-              },
-            ],
-          },
-        ],
-      },
+
       chartOptions: {
         plugins: {
           zoom: {
@@ -110,30 +80,18 @@ export default {
       let chartData = {
         datasets: [
           {
-            label: "Phase 1",
+            label: "Start of Green",
             fill: false,
-            borderColor: "#f87979",
-            backgroundColor: "#f87979",
+            borderColor: "#00A36C",
+            backgroundColor: "#00A36C",
             data: [
               {
-                x: -2,
-                y: 4,
-              },
-              {
-                x: -1,
-                y: 1,
-              },
-              {
                 x: 0,
-                y: 0,
+                y: 2,
               },
               {
                 x: 1,
-                y: 1,
-              },
-              {
-                x: 2,
-                y: 4,
+                y: 6,
               },
             ],
           },
@@ -178,30 +136,7 @@ export default {
       // Example: [{ phase: 'A', duration: 10, startTime: '2024-06-03T16:56:08' }, ...]
       console.log(dataObject);
     },
-    generateScatterPlot() {
-      let dataObject;
-      console.log(this.plotData);
-      try {
-        //dataObject = JSON.parse(this.phaseData); //TODO: fix this JSON phase Data.
-      } catch (error) {
-        alert("Invalid JSON data");
-        return;
-      }
 
-      // Process the JSON data to create scatter plot data
-      const scatterData = this.processData(dataObject);
-      console.log("Scatter Data:" + scatterData);
-
-      // Update the chart data
-      this.chartData = {
-        datasets: [
-          {
-            label: "Scatter Dataset",
-            data: scatterData,
-          },
-        ],
-      };
-    },
     truncateToOneDecimal(number) {
       // Truncate the number to one decimal place
       return String(Math.floor(number * 10) / 10);

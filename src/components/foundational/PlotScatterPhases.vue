@@ -1,6 +1,12 @@
 <template>
-  <button @click="resetZoom">Reset Zoom</button>
-  <Scatter :data="storePhaseDuration" :options="chartOptions"></Scatter>
+  <br />
+  <v-btn @click="resetZoom">Reset Zoom</v-btn>
+  <br />
+  <Scatter
+    :data="storePhaseDuration"
+    :options="chartOptions"
+    ref="scatterChart"
+  ></Scatter>
 </template>
 
 <script>
@@ -42,9 +48,14 @@ export default {
       tab: null,
       showPlot: true,
       xValues: [],
-      xyValues: [],
+      xyGreenValues: [],
+      xyGreenForceOffValues: [],
+      xyGreenMaxOutValues: [],
+      xyYellowValues: [],
+      xyRedValues: [],
 
       chartOptions: {
+        responsive: true,
         plugins: {
           zoom: {
             zoom: {
@@ -66,10 +77,27 @@ export default {
           x: {
             type: "linear",
             position: "bottom",
+            unit: "second",
+            stepSize: 0.1, // Show points at 1/10 second intervals
+            displayFormats: {
+              second: "ss.SSS", // Display format for seconds with milliseconds
+            },
+            ticks: {
+              source: "data",
+              autoSkip: false, // Ensure no ticks are skipped
+            },
           },
           y: {
+            beginAtZero: true,
             type: "linear",
             position: "left",
+            max: 10, // Set the maximum y value to num. of phases
+            ticks: {
+              stepSize: 1,
+              callback: function (value) {
+                return Number.isInteger(value) ? value : null;
+              },
+            },
           },
         },
       },
@@ -80,7 +108,39 @@ export default {
       let chartData = {
         datasets: [
           {
-            label: "Start of Green",
+            label: "Force Off",
+            fill: false,
+            borderColor: "#000000",
+            backgroundColor: "#000000",
+            data: [
+              {
+                x: 3,
+                y: 7,
+              },
+              {
+                x: 9,
+                y: 3,
+              },
+            ],
+          },
+          {
+            label: "Max Out",
+            fill: false,
+            borderColor: "#000000",
+            backgroundColor: "#00A36C",
+            data: [
+              {
+                x: 2,
+                y: 7,
+              },
+              {
+                x: 6,
+                y: 3,
+              },
+            ],
+          },
+          {
+            label: "Green",
             fill: false,
             borderColor: "#00A36C",
             backgroundColor: "#00A36C",
@@ -95,21 +155,88 @@ export default {
               },
             ],
           },
+
+          {
+            label: "Yellow",
+            fill: false,
+            borderColor: "#000000",
+            backgroundColor: "#FAFA33",
+            data: [
+              {
+                x: 2,
+                y: 5,
+              },
+              {
+                x: 8,
+                y: 3,
+              },
+            ],
+          },
+          {
+            label: "Red",
+            fill: false,
+            borderColor: "#FF0000",
+            backgroundColor: "#FF0000",
+            data: [
+              {
+                x: 3,
+                y: 6,
+              },
+              {
+                x: 4,
+                y: 1,
+              },
+            ],
+          },
         ],
       };
-      if (this.plotData != null && this.plotData.length > 0) {
+      if (this.plotData.length > 0 && this.plotData != null) {
         console.log("COMPUTE: ", this.plotData);
         this.plotData.forEach((item) => {
           // Convert timestampStartISO to epoch time
-          const timestamp =
-            DateTime.fromISO(item.timestampStartISO).toMillis() / 1000;
-          // Add to xValues
-          this.xValues.push(timestamp);
+          const startTime = DateTime.fromISO(
+            item.timestampStartISO
+          ).toSeconds();
+
+          const interval = 1; // 1/10 if you want all high res data
+          const timeMultiplier = 1;
+          for (
+            let t = startTime;
+            t <= startTime + item.duration;
+            t += interval
+          ) {
+            if (t <= startTime + item.greenTime) {
+              if (t == startTime + item.greenTime) {
+                if (item.termReason == "Force Off") {
+                  this.xyGreenForceOffValues.push({ x: t, y: item.phase });
+                }
+                if (item.termReason == "Max Out") {
+                  this.xyGreenMaxOutValues.push({ x: t, y: item.phase });
+                }
+              } else {
+                this.xyGreenValues.push({ x: t, y: item.phase });
+              }
+            } else if (
+              t >= startTime + item.greenTime &&
+              t < startTime + item.yellowTime + item.greenTime
+            ) {
+              this.xyYellowValues.push({ x: t, y: item.phase });
+            } else if (t >= startTime + item.yellowTime) {
+              this.xyRedValues.push({ x: t, y: item.phase });
+            }
+          }
+
           // Add to yValues with phase and color
-          this.xyValues.push({ x: timestamp, y: item.phase });
         });
-        chartData.datasets[0].data = this.xyValues;
+        console.log(this.xyYellowValues);
+        chartData.datasets[0].data = this.xyGreenForceOffValues;
+        chartData.datasets[1].data = this.xyGreenMaxOutValues;
+        chartData.datasets[2].data = this.xyGreenValues;
+        chartData.datasets[3].data = this.xyYellowValues;
+        chartData.datasets[4].data = this.xyRedValues;
+
         return chartData;
+
         //return NaN;
       } else {
         return chartData;
@@ -129,7 +256,8 @@ export default {
   },
   methods: {
     resetZoom() {
-      this.chart.resetZoom();
+      this.$refs.scatterChart.chart.resetZoom();
+      this.fillInEndTime(this.plotData);
     },
     processData(dataObject) {
       // Assuming dataObject is an array of objects with Phase, duration, and start time
@@ -151,6 +279,19 @@ export default {
       const dateTimeISO = DateTime.fromISO(tsISO);
       const timeSinceEpoch = dateTimeISO.toMillis() / 1000;
       return timeSinceEpoch;
+    },
+    generatePlotPoints(startTime, duration, phase) {
+      const startTimeFromEpoch = this.convertTimestampToEpoch(startTime);
+      const points = [];
+      const interval = 1; // 1/10th of a second in milliseconds
+      const timeMultiplier = 1;
+      const endTime = startTimeFromEpoch + duration * timeMultiplier; // Convert duration to milliseconds
+      console.log(startTimeFromEpoch, endTime, duration);
+      for (let time = startTimeFromEpoch; time <= endTime; time += interval) {
+        points.push({ x: time, y: phase }); // y can be any value; here it's set to 0
+      }
+      console.log("Points", points);
+      return points;
     },
   },
 };

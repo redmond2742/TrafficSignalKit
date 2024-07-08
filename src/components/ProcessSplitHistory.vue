@@ -78,6 +78,7 @@ export default {
     selectedTimezone(tzData) {
       this.timezone = tzData;
     },
+
     getEventDescriptor(codeValue) {
       let value = "";
       enumerationObj.find((item) => {
@@ -419,7 +420,6 @@ export default {
 
               this.maxOutPercents =
                 this.calcAllPhaseTerminationPercents("Max Out");
-
               this.gapOutPercents =
                 this.calcAllPhaseTerminationPercents("Gap Out");
               this.forceOffPercents =
@@ -485,21 +485,7 @@ export default {
     calculatePhaseDurations() {
       this.loadCsv2JsonObj(); //load all the enumerations into JSON obj.
       this.buildCycleItem(this.hdDataObj);
-      this.rowData = this.fillInEndTime(this.rowData);
-    },
-    fillInEndTime(obj) {
-      for (let i = 0; i <= obj.length; i++) {
-        let currentPh = obj[i].phase;
-        for (let j = i + 1; j <= obj.length; j++) {
-          console.log(obj, i, j, obj[i], obj[j]);
-          if (currentPh == obj[j].phase) {
-            let updatedEndTime = { endRedTime: obj[j].timestampStartISO };
-            obj[i].push(updatedEndTime);
-            break; //only break the first for loop
-          }
-        }
-      }
-      return obj;
+      //this.rowData = this.fillInEndTime(this.rowData);
     },
   },
 };

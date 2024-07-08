@@ -63,7 +63,7 @@ export default {
         },
         {
           image:
-            "https://lh3.googleusercontent.com/drive-viewer/AKGpihYosiYRQji_FJmZD1O82ATwQR_TtpjH72aagT3WqxdGC-ilYy_oPW6sRklswAZ5rlk-51FOpYWZbIMQODAU8SdnYBRUBUBZEDQ=s1600-rw-v1",
+            "https://drive.usercontent.google.com/download?id=13G5RVOifZvvIUlXvsqAnZMoRweauhd0X",
           title: "Time Space Diagram Visulizer",
           description: "Plot a GPX file in a timespace diagram plot",
           link: "/gpx",
@@ -84,6 +84,13 @@ export default {
           description: "Simulate Basic Intersection Functionality",
           link: "/traffic-simulator",
           topics: ["Simulation", "Basic Timing"],
+        },
+        {
+          image: "",
+          title: "Phase Plotter",
+          description: "Display Phase State over Time",
+          link: "/phase-plotter",
+          topics: ["Controller Data", "Enumerations"],
         },
       ],
     };

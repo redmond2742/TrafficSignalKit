@@ -1,9 +1,7 @@
 <template>
   &nbsp;
   <div>
-    <h1 class="h1-center-text">
-      In Development: High Resolution Phase Plotter
-    </h1>
+    <h1 class="h1-center-text">High Resolution Phase Plotter</h1>
     <!--
   
           <label for="csvInput">Enter your High Resolution Controller Enumerations as CSV data</label> <br>

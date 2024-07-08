@@ -22,10 +22,12 @@ import {
   PointElement,
   LinearScale,
 } from "chart.js";
+import convertTime from "../../mixins/convertTime";
 
 ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale, zoom);
 
 export default {
+  mixins: [convertTime],
   //https://www.chartjs.org/docs/latest/charts/scatter.html
   components: { Scatter },
   props: {
@@ -192,17 +194,31 @@ export default {
       };
       if (this.plotData.length > 0 && this.plotData != null) {
         console.log("COMPUTE: ", this.plotData);
-        this.plotData.forEach((item) => {
+        this.plotData.reduce((previous, item, index, arr) => {
           // Convert timestampStartISO to epoch time
           const startTime = DateTime.fromISO(
             item.timestampStartISO
           ).toSeconds();
 
+          let nextStartTime = 0;
+
+          for (let i = 1; index + i < this.plotData.length; i++) {
+            if (arr[index + i].phase == item.phase) {
+              nextStartTime = DateTime.fromISO(
+                arr[index + i].timestampStartISO
+              ).toSeconds();
+              break;
+            }
+          }
+
           const interval = 1; // 1/10 if you want all high res data
           const timeMultiplier = 1;
+
+          const redDuration = nextStartTime - startTime;
+
           for (
             let t = startTime;
-            t <= startTime + item.duration;
+            t <= startTime + item.duration + redDuration;
             t += interval
           ) {
             if (t <= startTime + item.greenTime) {
@@ -221,7 +237,7 @@ export default {
               t < startTime + item.yellowTime + item.greenTime
             ) {
               this.xyYellowValues.push({ x: t, y: item.phase });
-            } else if (t >= startTime + item.yellowTime) {
+            } else if (t >= startTime + item.yellowTime && t < nextStartTime) {
               this.xyRedValues.push({ x: t, y: item.phase });
             }
           }
@@ -257,7 +273,7 @@ export default {
   methods: {
     resetZoom() {
       this.$refs.scatterChart.chart.resetZoom();
-      this.fillInEndTime(this.plotData);
+      //this.fillInEndTime(this.plotData);
     },
     processData(dataObject) {
       // Assuming dataObject is an array of objects with Phase, duration, and start time

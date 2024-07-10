@@ -161,7 +161,7 @@ export default {
           {
             label: "Yellow",
             fill: false,
-            borderColor: "#000000",
+            borderColor: "#FAFA33",
             backgroundColor: "#FAFA33",
             data: [
               {

@@ -8,6 +8,7 @@ import GPXPlotter from '../views/GPXPlotter'
 import SplitHistory from '../views/SplitHistory'
 import HighResPhasePlotter from '../views/HighResPhasePlotter'
 import TrafficSim from '../views/TrafficSim'
+import GPXPhasePlotter from '../views/GPXPhasePlotter'
 
 
 
@@ -58,10 +59,16 @@ const routes = [
         component: HighResPhasePlotter,
     },
     {
+        path: '/gpx-phase-plotter',
+        name: 'gpxPhasePlotter',
+        component: GPXPhasePlotter,
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: "not-found",
         component: About,
-    }
+    },
+    
 ]
 
 const router = createRouter({

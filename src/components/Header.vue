@@ -43,6 +43,23 @@
         </v-list>
       </v-menu>
     </div>
+    <div class="text-center">
+      <v-menu>
+        <template v-slot:activator="{ props }">
+          <v-btn v-bind="props"> 2024' Q3 Tools</v-btn>
+        </template>
+
+        <v-list>
+          <v-list-item v-for="(item, index) in q3Items" :key="index">
+            <v-list-item-title
+              ><router-link :to="item.path"
+                >{{ item.title }}
+              </router-link></v-list-item-title
+            >
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
 
     <!--
     <router-link v-for="route in routes" :key="route.path" :to="route.path">
@@ -94,6 +111,7 @@ export default {
       { title: "May: Intersection Simulator", path: "/traffic-simulator" },
       { title: "June: Phase Plotter", path: "/phase-plotter" },
     ],
+    q3Items: [{ title: "July: TBD", path: "/gpx-phase-plotter" }],
 
     dialog: false,
   }),

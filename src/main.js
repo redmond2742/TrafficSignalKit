@@ -13,7 +13,6 @@ import router from './router'
 
 
 
-
 // Composables
 import { createApp } from 'vue'
 import { createVuetify } from 'vuetify'

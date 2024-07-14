@@ -14,21 +14,21 @@ export default {
             var chartOptions = {
               title: {
                 display: true,
-                text: "Scatter Plot with Line Connecting Dots",
+                text: "Time Space Plot",
               },
               scales: {
-                xAxes: [
+                x: 
                   {
                     type: "linear",
                     position: "bottom",
                   },
-                ],
-                yAxes: [
+          
+                y: 
                   {
                     type: "linear",
                     position: "left",
                   },
-                ],
+              
               },
               plugins: {
                 zoom: {
@@ -61,6 +61,17 @@ export default {
           },
           resetZoom() {
             window.myPlot.resetZoom();
+          },
+          createScatterXY(x_data, y_data) {
+            return {
+              x: x_data,
+              y: y_data,
+            };
+          },
+          createScatterData(d) {
+            return {
+              datasets: d,
+            };
           },
     }
 }

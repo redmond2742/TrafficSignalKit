@@ -3,7 +3,7 @@
     <v-row>
       <v-col cols="12">
         <v-btn @click="addCard" color="primary"
-          >Add Signal Data (TOTAL:{{ signalCardCount }})</v-btn
+          >Add Traffic Signals or Bus Stops (TOTAL:{{ signalCardCount }})</v-btn
         >
       </v-col>
     </v-row>
@@ -18,22 +18,26 @@
     <v-col>
       <h3>GPX Text Input</h3>
       <div class="grow-wrap">
-        <InputBox v-model="gpx.inputData" :defaultText="textboxDefaultText" />
+        <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
       </div>
     </v-col>
     <v-row>
       <v-col cols="12">
-        <v-btn @click="processGPX" color="primary">Plot</v-btn>
+        <v-btn @click="btnProcessGPX" color="primary">Plot</v-btn>
+        <v-btn color="info" @click="resetZoom">Reset Zoom</v-btn>
       </v-col>
     </v-row>
+    <canvas ref="scatterPlotCanvas"></canvas>
   </v-container>
 </template>
 
 <script>
 import SignalInputCard from "@/components/foundational/SignalInputCard.vue";
 import InputBox from "@/components/foundational/InputBox.vue";
+import processTimeSpace from "../mixins/processTimeSpace";
 
 export default {
+  mixins: [processTimeSpace],
   components: {
     SignalInputCard,
     InputBox,
@@ -46,6 +50,7 @@ export default {
       gpx: "",
       textboxDefaultText: "Paste in GPX as text in XML format",
       signalCardCount: 0,
+      inputData: "",
     };
   },
   methods: {
@@ -64,7 +69,9 @@ export default {
 
       console.log("emitted data :", sigID, this.childSignalData);
     },
-    processGPX() {},
+    btnProcessGPX() {
+      this.ProcessGPX(this.inputData);
+    },
   },
 };
 </script>

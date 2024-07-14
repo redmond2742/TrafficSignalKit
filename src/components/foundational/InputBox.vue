@@ -1,5 +1,5 @@
 <template>
-  <textarea id="textarea" type="text" rows="20" v-model="inputData" />
+  <textarea type="text" rows="20" v-model="inputData" @focus="clearText" />
 </template>
 
 <script>
@@ -13,11 +13,18 @@ export default {
   data() {
     return {
       inputData: this.defaultText,
+      hasFocused: false,
     };
   },
   methods: {
     emitInput() {
       this.$emit("update:inputData", this.inputData);
+    },
+    clearText() {
+      if (!this.hasFocused) {
+        this.inputData = "";
+        this.hasFocused = true;
+      }
     },
   },
   onChange() {

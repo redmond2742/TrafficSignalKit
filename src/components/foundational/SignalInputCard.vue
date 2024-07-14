@@ -7,10 +7,20 @@
             <v-col>
               <div class="form-group">
                 <v-text-field
-                  label="Intersection Name"
+                  label="Descriptive Name"
                   v-model="signalForm.name"
                   variant="outlined"
                 ></v-text-field>
+              </div>
+            </v-col>
+            <v-col sm="3">
+              <div class="form-group-select">
+                <v-select
+                  label="Static Object"
+                  :items="['Traffic Signal', 'Bus Stop', 'Other']"
+                  variant="outlined"
+                  v-model="typeStaticObject"
+                ></v-select>
               </div>
             </v-col>
           </v-row>
@@ -106,6 +116,7 @@ export default {
   data() {
     return {
       signalForm: { ...this.cardData },
+      typeStaticObject: "Traffic Signal",
       buttonPressed: false,
       buttonColor: "primary",
       hdDataObj: [],
@@ -147,6 +158,7 @@ export default {
     },
     handleClick() {
       this.updateLatLon(this.signalForm.latlon);
+      this.signalForm.typeStaticObject = this.typeStaticObject;
       this.signalForm.phaseValue = this.phaseToNumber(this.signalForm.phase);
       this.signalForm.tspValue = this.tspToNumber(this.signalForm.tsp);
       if (this.signalForm.inputData) {

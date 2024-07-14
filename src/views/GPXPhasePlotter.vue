@@ -64,50 +64,27 @@
         </v-expansion-panel>
       </v-expansion-panels>
     </div>
-    <br />
-    <v-container>
-      <v-row>
-        <v-col cols="12">
-          <v-btn @click="addCard" color="primary">Add Signal Input Card</v-btn>
-        </v-col>
-      </v-row>
-      <v-row>
-        <v-col v-for="(card, index) in cards" :key="index" cols="12" sm="12">
-          <signal-input-card :card-id="index"></signal-input-card>
-        </v-col>
-      </v-row>
-    </v-container>
+    <ProcessGPXPhasePlotter></ProcessGPXPhasePlotter>
   </div>
   <br />
 </template>
 <script>
-import SignalInputCard from "@/components/foundational/SignalInputCard.vue";
 import ProcessGPX from "../components/ProcessGPX.vue";
+import ProcessGPXPhasePlotter from "../components/ProcessGPXPhasePlotter.vue";
 
 export default {
   name: "GpxPlotter",
   components: {
     ProcessGPX,
-    SignalInputCard,
+    ProcessGPXPhasePlotter,
   },
   data() {
     return {
       panel: [],
       xmlString: "",
-      cards: [],
     };
   },
-  methods: {
-    all() {
-      this.panel = ["foo", "bar", "baz"];
-    },
-    none() {
-      this.panel = [];
-    },
-    addCard() {
-      this.cards.push({});
-    },
-  },
+  methods: {},
 };
 </script>
 <style scoped></style>

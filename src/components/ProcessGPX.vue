@@ -8,7 +8,10 @@
         >
           <v-expansion-panel-text>
             <div class="grow-wrap">
-              <InputBox v-model="signalLocations" />
+              <InputBox
+                v-model="signalLocations"
+                :defaultText="signalInfoTextboxDefaultText"
+              />
             </div>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -17,7 +20,7 @@
   </v-container>
 
   <div class="grow-wrap">
-    <InputBox v-model="inputData" />
+    <InputBox v-model="inputData" :defaultText="gpxTextboxDefaultText" />
   </div>
   <br />
   <div class="button-container">
@@ -72,17 +75,18 @@
 <script>
 import InputBox from "./foundational/InputBox.vue";
 import gpxParser from "gpxparser";
-import { Chart } from "chart.js/auto"; // https://www.chartjs.org/
-import zoomPlugin from "chartjs-plugin-zoom"; // https://www.chartjs.org/chartjs-plugin-zoom/latest/guide/animations.html
+import chartsAndPlots from "../mixins/chartsAndPlots";
 import Metric from "./foundational/Metric.vue";
 
-Chart.register(zoomPlugin);
-
 export default {
+  mixins: [chartsAndPlots],
   components: { InputBox, Metric },
   props: {},
   data() {
     return {
+      gpxTextboxDefaultText: "Paste in GPX file in XML format",
+      signalInfoTextboxDefaultText:
+        "For each signal location, Paste in CSV of: Name, Latitude, Longitude",
       gpxPanel: ["signal locations"],
       switchValue: false,
       tracks: [],
@@ -208,7 +212,7 @@ export default {
             // create the scatter data for plotting
             this.allScatterPlotData = this.createScatterData(this.chartDataSet);
 
-            this.renderChart();
+            this.renderChart(this.allScatterPlotData);
             // If signal locations are provided, then plot those and the GPX file
           } else {
             let signalObj = [];
@@ -295,7 +299,7 @@ export default {
             const totalDistance = gpx.tracks[0].distance.cumul;
             this.outputData = totalDistance;
 
-            this.renderChart();
+            this.renderChart(this.allScatterPlotData);
           }
         } catch (error) {
           console.error(error);
@@ -550,58 +554,6 @@ export default {
       return {
         datasets: d,
       };
-    },
-    renderChart() {
-      const ctx = this.$refs.scatterPlotCanvas.getContext("2d");
-      var chartOptions = {
-        title: {
-          display: true,
-          text: "Scatter Plot with Line Connecting Dots",
-        },
-        scales: {
-          xAxes: [
-            {
-              type: "linear",
-              position: "bottom",
-            },
-          ],
-          yAxes: [
-            {
-              type: "linear",
-              position: "left",
-            },
-          ],
-        },
-        plugins: {
-          zoom: {
-            zoom: {
-              wheel: {
-                enabled: true,
-              },
-              pinch: {
-                enabled: true,
-              },
-              drag: {
-                enabled: true,
-              },
-              mode: "xy",
-            },
-          },
-        },
-      };
-      //console.log(this.signalPlotData[0]);
-      var tempScatterData = {
-        datasets: this.chartDataSet,
-      };
-
-      window.myPlot = new Chart(ctx, {
-        type: "scatter",
-        data: this.allScatterPlotData, //tempScatterData,
-        options: chartOptions,
-      });
-    },
-    resetZoom() {
-      window.myPlot.resetZoom();
     },
   },
 };

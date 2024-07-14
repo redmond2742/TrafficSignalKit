@@ -3,7 +3,7 @@
     <div class="title-justify">
       <v-app-bar-title>
         <router-link to="/about"
-          ><b>Traffic Signal Kit</b> <span class="beta">beta</span></router-link
+          ><b>Traffic Signal Kit</b> <span class="beta">BETA</span></router-link
         ></v-app-bar-title
       >
     </div>

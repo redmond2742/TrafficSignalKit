@@ -58,7 +58,10 @@
         </v-col>
         <v-col
           ><div class="grow-wrap">
-            <InputBox v-model="signalForm.inputBox" />
+            <InputBox
+              v-model="signalForm.inputData"
+              :defaultText="textboxDefaultText"
+            />
           </div>
         </v-col>
         <v-col>
@@ -82,7 +85,11 @@
 
 <script>
 import InputBox from "./InputBox.vue";
+
+import processPhaseSplits from "../../mixins/processPhaseSplits";
+
 export default {
+  mixins: [processPhaseSplits],
   components: {
     InputBox,
   },
@@ -101,22 +108,54 @@ export default {
       signalForm: { ...this.cardData },
       buttonPressed: false,
       buttonColor: "primary",
+      hdDataObj: [],
+      textboxDefaultText:
+        "Paste in High-Resolution Traffic Signal Data as Text in CSV format",
     };
   },
   methods: {
     handleSubmit() {
       // Handle form submission
-      console.log(this.form);
-      alert("Form submitted!");
-      //TODO: Emit the CardData Object
+      //console.log(this.form);
     },
     loadSignalData() {
-      alert("Emitting Signal Data to Parent");
-      this.$emit("signal-data", this.cardId, this.signalForm);
+      this.$emit("signal-data", this.cardId + 1, this.signalForm);
       this.buttonPressed = true;
       this.buttonColor = "success";
+      //console.log(this.signalForm);
+    },
+    updateLatLon(formInputLatLon) {
+      if (formInputLatLon) {
+        const [latitude, longitude] = formInputLatLon
+          .split(",")
+          .map((coord) => coord.trim());
+        this.signalForm.latitude = Number(latitude) || "";
+        this.signalForm.longitude = Number(longitude) || "";
+      }
+    },
+    phaseToNumber(formInputPhase) {
+      if (formInputPhase) {
+        const match = formInputPhase.match(/\d+/);
+        return match ? Number(match[0]) : null;
+      }
+    },
+    tspToNumber(formInputTSP) {
+      if (formInputTSP) {
+        const match = formInputTSP.match(/\d+/);
+        return match ? Number(match[0]) : null;
+      }
     },
     handleClick() {
+      this.updateLatLon(this.signalForm.latlon);
+      this.signalForm.phaseValue = this.phaseToNumber(this.signalForm.phase);
+      this.signalForm.tspValue = this.tspToNumber(this.signalForm.tsp);
+      if (this.signalForm.inputData) {
+        this.signalForm.hdData = this.loadCsv2JsonObj(
+          this.signalForm.inputData
+        ); //load all the enumerations into JSON obj.
+        this.signalForm.phaseData = this.buildCycleItem(this.signalForm.hdData);
+      }
+
       this.loadSignalData();
     },
   },

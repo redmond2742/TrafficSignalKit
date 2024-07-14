@@ -1,12 +1,18 @@
 <template>
-  <textarea type="text" rows="20" v-model="inputData" />
+  <textarea id="textarea" type="text" rows="20" v-model="inputData" />
 </template>
 
 <script>
 export default {
+  props: {
+    defaultText: {
+      type: String,
+      default: "Paste in text for processing",
+    },
+  },
   data() {
     return {
-      inputData: "",
+      inputData: this.defaultText,
     };
   },
   methods: {

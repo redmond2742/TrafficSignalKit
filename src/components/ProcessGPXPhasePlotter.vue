@@ -46,7 +46,7 @@ export default {
     return {
       xmlString: "",
       cards: [],
-      childSignalData: "",
+      childSignalData: [],
       gpx: "",
       textboxDefaultText: "Paste in GPX as text in XML format",
       signalCardCount: 0,
@@ -64,13 +64,33 @@ export default {
       this.cards.push({});
       this.signalCardCount++;
     },
-    handleSignalData(sigID, sigDataObj) {
-      this.childSignalData = sigDataObj;
+    handleSignalData(sigID, staticObjectDataObj) {
+      //this.childSignalData.push(staticObjectDataObj);
+
+      this.childSignalData[sigID] = staticObjectDataObj;
 
       console.log("emitted data :", sigID, this.childSignalData);
     },
     btnProcessGPX() {
-      this.ProcessGPX(this.inputData);
+      this.ProcessGPX(this.inputData, this.childSignalData);
+    },
+    parseStaticObjInfo(staticObjDataArray) {
+      const objects = [];
+      staticObjDataArray.forEach((item) => {
+        const object = {
+          name: item.name,
+          type: item.typeStaticObject,
+          latitude: item.latitude,
+          longitude: item.longitude,
+          latlon: [item.latitude, item.longitude],
+          distances: [[], []],
+          cDistance: [],
+          phase: item.phaseValue,
+          tspPreempt: item.tspValue,
+        };
+        objects.push(object);
+      });
+      return objects;
     },
   },
 };

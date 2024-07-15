@@ -43,7 +43,6 @@ export default {
               scatterData: [],
               colorsData: [],
               inputData: "",
-              signalLocations: "",
               switchValue: false,
               chartDataSet: [],
               allScatterPlotData: null,
@@ -84,7 +83,7 @@ export default {
             return {
               label: signalName,
               data: signalData,
-              backgroundColor: "rgba(200, 200, 200, 0.2)",
+              backgroundColor: "rgba(255, 255, 255, 0)",
               borderColor: "rgba(150, 150, 150, 1)",
               borderWidth: 1,
               showLine: true,
@@ -92,17 +91,35 @@ export default {
             };
           },
           createGPXTrack(gpxName, gpxData, speedArray = []) {
-            return {
-              label: gpxName,
-              data: gpxData,
-              backgroundColor: "rgba(0, 0, 0, .7)",
-              borderColor: "rgba(0, 0, 0, 1)",
-              borderWidth: 1,
-              showLine: true,
-              fill: false,
-              pointBackgroundColor: speedArray,
-              pointBorderColor: speedArray,
-            };
+            // https://github.com/chartjs/Chart.js/issues/2670
+            if (speedArray.length === 0){
+                return {
+                    label: gpxName,
+                    data: gpxData,
+                    backgroundColor: 'rgba(30, 139, 195, 1)',  // line color
+                    borderColor: 'rgba(30, 139, 195, 1)', // line color outline
+                    pointBackgroundColor: 'rgba(30, 139, 195, 0.5)',  //dot fill color
+                    pointBorderColor: 'rgba(30, 139, 195, 1)', //dot outline color
+                    borderWidth: 1,
+                    showLine: true,
+                    fill: false,
+
+                }
+            }
+            else {
+                return {
+                    label: gpxName,
+                    data: gpxData,
+                    backgroundColor: 'black', //"rgba(3, 138, 255, 0.5)",
+                    borderColor: 'black', //"rgba(3, 138, 255, 0.5)",
+                    pointBackgroundColor: speedArray,
+                    pointBorderColor: speedArray,
+                    borderWidth: 1,
+                    showLine: true,
+                    fill: false,
+                }
+            }
+       
           },
           findCumulativeDistanceFromSignalObj(arrayIndex, signalObj) {
             let minDistance = Number.MAX_VALUE;
@@ -217,7 +234,19 @@ export default {
             ).toFixed(1);
             this.avgSpeed.unit = "MPH";
           },
-          ProcessGPX(inputGPXData) {
+          selectStaticObjectData(staticObj){
+            const isTrafficSignalPresent = staticObj.some(obj => Object.values(obj).includes('Traffic Signal'));
+            
+            console.log(staticObj, staticObj.typeStaticObject, isTrafficSignalPresent)
+       
+            if(isTrafficSignalPresent){
+                return this.parseStaticObjInfo(staticObj)
+            } else {
+                return this.parseCSVToSignalObj(staticObj)
+            } 
+         
+          },
+          ProcessGPX(inputGPXData, staticObjData) {
             //let gpxParser = require("gpxparser");
             let [i, j, k] = [0, 0, 0];
       
@@ -236,16 +265,14 @@ export default {
             if (false) {
               console.log(error);
             } else {
-              //console.log(this.parseCSV(this.signalLocations));
               gpx.parse(inputGPXData);
-              //console.log(this.signalLocations);
       
               try {
                 let gpxPoints = gpx.tracks[0].points;
                 startGPXTime = gpxPoints[0].time.getTime() / 1000; //milliseconds to seconds
       
                 // If no signal information is provided, then plot GPX points only.
-                if (this.signalLocations === "") {
+                if (staticObjData === "") {
                   console.log("No Signal Locations Entered");
       
                   this.loadGPXPoints(gpxPoints);
@@ -268,13 +295,13 @@ export default {
                   }
       
                   // create the scatter data for plotting
-                  this.allScatterPlotData = this.createScatterData(this.chartDataSet);
+                  this.allScatterPlotData = this.createScatterDataset(this.chartDataSet);
       
                   this.renderChart(this.allScatterPlotData);
                   // If signal locations are provided, then plot those and the GPX file
                 } else {
                   let signalObj = [];
-                  signalObj = this.parseCSVToSignalObj(this.signalLocations);
+                  signalObj = this.selectStaticObjectData(staticObjData);
                   for (i = 0; i <= signalObj.length - 1; i++) {
                     for (j = 0; j < gpx.tracks[0].points.length - 1; j++) {
                       currentLoc = [gpxPoints[j].lat, gpxPoints[j].lon];
@@ -329,7 +356,7 @@ export default {
                     );
                     this.push_element(
                       this.chartDataSet,
-                      this.createSignal(signalObj[m].name, this.signalPlotData)
+                      this.createStaticObject(signalObj[m].name, this.signalPlotData)
                     );
                     this.signalPlotData = [];
                   }
@@ -352,7 +379,7 @@ export default {
                   }
       
                   // create the scatter data for plotting
-                  this.allScatterPlotData = this.createScatterData(this.chartDataSet);
+                  this.allScatterPlotData = this.createScatterDataset(this.chartDataSet);
       
                   const totalDistance = gpx.tracks[0].distance.cumul;
                   this.outputData = totalDistance;

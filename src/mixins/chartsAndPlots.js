@@ -1,6 +1,8 @@
+import { Colors } from 'chart.js';
 import { Chart } from "chart.js/auto"; // https://www.chartjs.org/
 import zoomPlugin from "chartjs-plugin-zoom"; // https://www.chartjs.org/chartjs-plugin-zoom/latest/guide/animations.html
 Chart.register(zoomPlugin);
+Chart.register(Colors);
 
 export default {
   data() {
@@ -31,6 +33,15 @@ export default {
               
               },
               plugins: {
+                beforeDraw: function (chart, easing) {
+                  var ctx = this.$refs.scatterPlotCanvas.getContext("2d");//chart.chart.ctx;
+                  ctx.save();
+                  ctx.globalCompositeOperation = 'destination-over';
+                  ctx.fillStyle = "#ffffff";
+                  ctx.fillRect(0, 0, chart.width, chart.height);
+                  ctx.restore();
+                },
+                
                 zoom: {
                   zoom: {
                     wheel: {
@@ -68,7 +79,7 @@ export default {
               y: y_data,
             };
           },
-          createScatterData(d) {
+          createScatterDataset(d) {
             return {
               datasets: d,
             };

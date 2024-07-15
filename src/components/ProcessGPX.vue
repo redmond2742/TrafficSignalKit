@@ -89,12 +89,13 @@ export default {
         "For each signal location, Paste in CSV of: Name, Latitude, Longitude",
       gpxPanel: ["signal locations"],
       inputData: "",
+      signalLocations: "",
     };
   },
   mounted() {},
   methods: {
     btnProcessGPX() {
-      this.ProcessGPX(this.inputData);
+      this.ProcessGPX(this.inputData, this.signalLocations);
     },
     createSignal(signalName, signalData) {
       return {

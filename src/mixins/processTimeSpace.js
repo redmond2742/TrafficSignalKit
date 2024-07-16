@@ -78,13 +78,25 @@ export default {
               return distance * 0.621371 * 5280; //converted to feet
             }
           },
-          createStaticObject(signalName, signalData) { 
+          createStaticObject(Name, Data) { 
             //useful for bus stops or signals without phasing
+            return {
+              label: Name,
+              data: Data,
+              backgroundColor: "rgba(255, 255, 255, 0)",
+              borderColor: "rgba(150, 150, 150, 1)",
+              borderWidth: 1,
+              showLine: true,
+              fill: false,
+            };
+          },
+          createTrafficSignalObject(signalName, signalData) { 
+            //useful for signals without phasing
             return {
               label: signalName,
               data: signalData,
-              backgroundColor: "rgba(255, 255, 255, 0)",
-              borderColor: "rgba(150, 150, 150, 1)",
+              backgroundColor: "rgba(165, 55, 253)", //"rgba(255, 255, 255, 0)",
+              borderColor: "rgba(165, 55, 253)",
               borderWidth: 1,
               showLine: true,
               fill: false,
@@ -108,6 +120,7 @@ export default {
             }
             else {
                 return {
+                    //for when speeds are shown as colors
                     label: gpxName,
                     data: gpxData,
                     backgroundColor: 'black', //"rgba(3, 138, 255, 0.5)",
@@ -234,12 +247,24 @@ export default {
             ).toFixed(1);
             this.avgSpeed.unit = "MPH";
           },
+          isStaticObject(staticObj, type){
+
+        
+            try{
+                let staticObjectTypeBool= false;
+                staticObjectTypeBool = staticObj.some(obj => Object.values(obj).includes(type));
+                return staticObjectTypeBool;
+
+            }
+            catch{
+                return false;
+            }
+          },
           selectStaticObjectData(staticObj){
-            const isTrafficSignalPresent = staticObj.some(obj => Object.values(obj).includes('Traffic Signal'));
-            
-            console.log(staticObj, staticObj.typeStaticObject, isTrafficSignalPresent)
+            const isTrafficSignal = this.isStaticObject(staticObj, 'Traffic Signal' );
+            console.log(staticObj, staticObj.typeStaticObject, isTrafficSignal)
        
-            if(isTrafficSignalPresent){
+            if(isTrafficSignal){
                 return this.parseStaticObjInfo(staticObj)
             } else {
                 return this.parseCSVToSignalObj(staticObj)
@@ -354,10 +379,18 @@ export default {
                       this.signalPlotData,
                       this.createScatterXY(signalEndTime, signalResult.cumulativeDist)
                     );
-                    this.push_element(
-                      this.chartDataSet,
-                      this.createStaticObject(signalObj[m].name, this.signalPlotData)
-                    );
+                    if(this.isStaticObject(staticObjData, 'Traffic Signal')){
+                        this.push_element(
+                            this.chartDataSet,
+                            this.createTrafficSignalObject(signalObj[m].name, this.signalPlotData)
+                          );
+                    }else{
+                        this.push_element(
+                            this.chartDataSet,
+                            this.createStaticObject(signalObj[m].name, this.signalPlotData)
+                          );
+                    }
+                   
                     this.signalPlotData = [];
                   }
       

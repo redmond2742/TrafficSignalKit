@@ -7,8 +7,8 @@
       Each month in 2024, I am building free traffic signal related tools for
       traffic engineers. These tools bare bones proof of concepts that allow me
       to move quickly and test what is worthy of additional resources. I am
-      building in public and using ChatGPT to learn Vue.JS. Feedback (with the
-      heart button) guides future features.
+      building in public and leveraging ChatGPT to write code and help me learn
+      Vue.JS. Feedback (with the heart button) guides future features.
     </p>
 
     <v-container>

@@ -46,7 +46,7 @@ export default {
       posts: [
         {
           image:
-            "https://lh3.googleusercontent.com/drive-viewer/AKGpihZG2a-Ei2eQLarbqwc-xNl0aXR0bgYKrzMJfpGJHmtc0n0eOcJ9TWzNUioTtrne5UfrWl_CzUSx-D2PS9CAo1rDGpSgwXNLXk8=s1600-rw-v1",
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-split-calculator.png",
           title: "Split Calculator",
           description: "Verify splits and cycle lengths during adjustments",
           link: "/split-calculator",
@@ -54,7 +54,7 @@ export default {
         },
         {
           image:
-            "https://lh3.googleusercontent.com/drive-viewer/AKGpihZuo8TKJsq699flefyMZbsWWJE8QgA1kAmOS8WtOQxLtpIGH9-qC_LiqF2pS8HT684BDnmLhS8tTPRsYsfl_EWHYovO8OmKZA0=s2560",
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
           title: "High Resolution Data Explainer",
           description:
             "Explore traffic signal controller enumerations and high resolution data logs",
@@ -63,7 +63,7 @@ export default {
         },
         {
           image:
-            "https://drive.usercontent.google.com/download?id=13G5RVOifZvvIUlXvsqAnZMoRweauhd0X",
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-timespace-diagram-gpx-plot.png",
           title: "Time Space Diagram Visulizer",
           description: "Plot a GPX file in a timespace diagram plot",
           link: "/gpx",
@@ -71,7 +71,7 @@ export default {
         },
         {
           image:
-            "https://lh3.googleusercontent.com/drive-viewer/AKGpihZkQwOL8h8B9rdxvv6lpeHxB2nhcy9Ly7aogakbNGUSy82dVivZ_mNIU8aRgcw61H6LFZhhMFjUdjTwrnOYTmHCSByNBS-gYFE=s2560",
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+split+history+phase+termination+table.png",
           title: "High Resolution Split History",
           description: "Calculate Phase Durations from High Resolution Data",
           link: "/split-history",
@@ -79,16 +79,17 @@ export default {
         },
         {
           image:
-            "https://lh3.googleusercontent.com/drive-viewer/AKGpihYd_ioQLNiOKM4vCTjiUq0qn8YrMsP4rxREVoehTB89GdILJtAdq_hWT5ecoHxMFAYP0Vz37ggFziNxutWkrmtVILMowy5FNQY=s2560",
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+intersection+simulator.png",
           title: "Max Out and Gap Out Traffic Simulator",
           description: "Simulate Basic Intersection Functionality",
           link: "/traffic-simulator",
           topics: ["Simulation", "Basic Timing"],
         },
         {
-          image: "",
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/Trafficsignalkit.com+-+Signal+Phase+Plotter+-+Red-Green-Yellow.png",
           title: "Phase Plotter",
-          description: "Display Phase State over Time",
+          description: "Plot Phase State over Time",
           link: "/phase-plotter",
           topics: ["Controller Data", "Enumerations"],
         },

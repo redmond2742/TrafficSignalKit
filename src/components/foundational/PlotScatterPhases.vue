@@ -242,7 +242,7 @@ export default {
             }
           }
 
-          // Add to yValues with phase and color
+          // Add to xyValues with phase and color
         });
         console.log(this.xyYellowValues);
         chartData.datasets[0].data = this.xyGreenForceOffValues;
@@ -280,7 +280,6 @@ export default {
       // Example: [{ phase: 'A', duration: 10, startTime: '2024-06-03T16:56:08' }, ...]
       console.log(dataObject);
     },
-
     truncateToOneDecimal(number) {
       // Truncate the number to one decimal place
       return String(Math.floor(number * 10) / 10);

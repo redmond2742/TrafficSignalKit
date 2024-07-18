@@ -77,17 +77,37 @@ export default {
     parseStaticObjInfo(staticObjDataArray) {
       const objects = [];
       staticObjDataArray.forEach((item) => {
-        const object = {
-          name: item.name,
-          type: item.typeStaticObject,
-          latitude: item.latitude,
-          longitude: item.longitude,
-          latlon: [item.latitude, item.longitude],
-          distances: [[], []],
-          cDistance: [],
-          phase: item.phaseValue,
-          tspPreempt: item.tspValue,
-        };
+        console.log(item);
+        let object = {};
+        if (item.hdData) {
+          object = {
+            name: item.name,
+            type: item.typeStaticObject,
+            latitude: item.latitude,
+            longitude: item.longitude,
+            latlon: [item.latitude, item.longitude],
+            distances: [[], []],
+            cDistance: [],
+            phase: item.phaseValue,
+            tspPreempt: item.tspValue,
+            phaseData: item.phaseData,
+            startTimeISO: item.phaseData[0].timestampStartISO,
+          };
+        } else {
+          object = {
+            name: item.name,
+            type: item.typeStaticObject,
+            latitude: item.latitude,
+            longitude: item.longitude,
+            latlon: [item.latitude, item.longitude],
+            distances: [[], []],
+            cDistance: [],
+            phase: item.phaseValue,
+            tspPreempt: item.tspValue,
+            phaseData: item.phaseData,
+          };
+        }
+
         objects.push(object);
       });
       return objects;

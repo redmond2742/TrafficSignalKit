@@ -1,5 +1,6 @@
 import gpxParser from "gpxparser";
 import chartsAndPlots from "./chartsAndPlots";
+import { DateTime } from "luxon";
 
 export default {
     mixins: [chartsAndPlots],
@@ -47,7 +48,11 @@ export default {
               chartDataSet: [],
               allScatterPlotData: null,
               signalPlotData: [],
+              signalGreenPlotData: [],
+              signalYellowPlotData: [],
+              signalRedPlotData: [],
               outputData: "",
+  
 
 
 
@@ -90,6 +95,18 @@ export default {
               fill: false,
             };
           },
+          createBusStopObject(Name, Data) { 
+            //useful for bus stops or signals without phasing
+            return {
+              label: Name,
+              data: Data,
+              backgroundColor: "rgba(130, 94, 92)",
+              borderColor: "rgba(130, 94, 92)",
+              borderWidth: 1,
+              showLine: true,
+              fill: false,
+            };
+          },
           createTrafficSignalObject(signalName, signalData) { 
             //useful for signals without phasing
             return {
@@ -99,6 +116,51 @@ export default {
               borderColor: "rgba(165, 55, 253)",
               borderWidth: 1,
               showLine: true,
+              fill: false,
+            };
+          },
+          createOtherObject(signalName, signalData) { 
+            //useful for signals without phasing
+            return {
+              label: signalName,
+              data: signalData,
+              backgroundColor: "rgba(255, 165, 0)", //"rgba(255, 255, 255, 0)",
+              borderColor: "rgba(255, 165, 0)",
+              borderWidth: 1,
+              showLine: true,
+              fill: false,
+            };
+          },
+          createGreenLight(signalName, signalData) { 
+            return {
+              label: signalName,
+              data: signalData,
+              backgroundColor: "#00A36C",
+              borderColor: "#00A36C",
+              borderWidth: 1,
+              showLine: false,
+              fill: false,
+            };
+          },
+          createYellowLight(signalName, signalData) { 
+            return {
+              label: signalName,
+              data: signalData,
+              backgroundColor: "#FAFA33",
+              borderColor: "#FAFA33",
+              borderWidth: 1,
+              showLine: false,
+              fill: false,
+            };
+          },
+          createRedLight(signalName, signalData) { 
+            return {
+              label: signalName,
+              data: signalData,
+              backgroundColor: "#FF0000",
+              borderColor: "#FF0000",
+              borderWidth: 1,
+              showLine: false,
               fill: false,
             };
           },
@@ -247,29 +309,50 @@ export default {
             ).toFixed(1);
             this.avgSpeed.unit = "MPH";
           },
-          isStaticObject(staticObj, type){
-
-        
+          isStaticObject(staticObj){
+            console.log(staticObj);
+         
             try{
-                let staticObjectTypeBool= false;
-                staticObjectTypeBool = staticObj.some(obj => Object.values(obj).includes(type));
+                if (staticObj[0].typeStaticObject){
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            catch {
+                return false;
+            }
+
+            /*
+            let typesToCheck = []
+            typesToCheck.push(type)
+       
+            try{
+                let staticObjectTypeBool = false;
+                staticObjectTypeBool = staticObj.some(obj => {
+                    const values = Object.values(obj);
+                    console.log("values",values)
+                    return  typesToCheck.some(type => values.includes(type)) //values.includes('Traffic Signal') || values.includes('Bus Stop');
+                });
                 return staticObjectTypeBool;
 
             }
             catch{
                 return false;
             }
+            */
           },
           selectStaticObjectData(staticObj){
-            const isTrafficSignal = this.isStaticObject(staticObj, 'Traffic Signal' );
-            console.log(staticObj, staticObj.typeStaticObject, isTrafficSignal)
-       
-            if(isTrafficSignal){
-                return this.parseStaticObjInfo(staticObj)
-            } else {
+            const hasDetailedSOData = (this.isStaticObject(staticObj ) || this.isStaticObject(staticObj) || this.isStaticObject(staticObj));
+            
+            console.log(staticObj, staticObj[1].typeStaticObject, typeof staticObj, hasDetailedSOData, "ts:", this.isStaticObject(staticObj), "bs:", this.isStaticObject(staticObj))
+            
+            if(typeof staticObj === 'string') {
                 return this.parseCSVToSignalObj(staticObj)
             } 
-         
+            else if ((staticObj.type === undefined) ){//|| staticObj[1].typeStaticObject !== undefined){
+                return this.parseStaticObjInfo(staticObj)
+             }
           },
           ProcessGPX(inputGPXData, staticObjData) {
             //let gpxParser = require("gpxparser");
@@ -336,7 +419,7 @@ export default {
                         currentLoc,
                         false
                       );
-                      console.log("i: " + i + "    J: " + j);
+                      //console.log("i: " + i + "    J: " + j);
                       // Calclate all the distances from each gps point (j) to the center of the intersection i
                       signalObj[i].distances.push([
                         [
@@ -356,7 +439,92 @@ export default {
                   this.loadGPXPoints(gpxPoints);
       
                   // Plot start and end time for a signal location
+                  //TODO: Update this for signal phase state.
+                  // If high resolution data is provided, need to figure out the following:, else leave existing code
+                  // Need to calculate start time based on GPX, subtract accordingly form GPX time
+                  // need to determine phase state from high resolution data for selected phase.
+                  
+
+                  
                   for (let m = 0; m <= signalObj.length - 1; m++) {
+                    if (signalObj[m].phaseData !== undefined){
+                        console.log("High Res data provided", signalObj[0])
+                        console.log("gpxTime",startGPXTime, gpxPoints[0].time.getTime() /1000, DateTime.fromISO(signalObj[0].phaseData[0].timestampStart).toSeconds() )
+                        
+                        let startCount;
+                        let signalStartDelta = 0;
+                        const interval = 1; // 1/10 if you want all high res data
+                        
+                        let signalResult = this.findCumulativeDistanceFromSignalObj(
+                            m,
+                            signalObj
+                          );
+
+                        signalStartDelta = startGPXTime - DateTime.fromISO(signalObj[0].startTimeISO).toSeconds()
+                        
+                        console.log("Signal Start Delta", signalStartDelta)
+
+
+                        // Not Needed, but helpful for when lot's of high res data. 
+                        //finds the starting point to start showing the signal state on the plot
+                        for (let i = 0; i< signalObj[0].phaseData.length; i++){
+                            if (signalObj[0].phase !== undefined && signalObj[0].phaseData[[i]].phase === signalObj[0].phase){
+                                let signalPhaseStartTime = DateTime.fromISO(signalObj[0].phaseData[i].timestampStartISO).toSeconds();
+                                signalStartDelta = startGPXTime - signalPhaseStartTime;
+                                if(signalStartDelta <= 0){ 
+                                    console.log("We care about these signal states", signalStartDelta, signalObj[0].phaseData[i].timestampStartISO, DateTime.fromISO(signalObj[0].phaseData[i].timestampStartISO).toSeconds());
+                                    startCount = i;
+                                    break;
+                            }
+                            }
+                        }
+                      
+                        for (j = 0; j < signalObj[0].phaseData.length; j++){
+                            let phaseData = signalObj[0].phaseData[j];
+                            const startTime = DateTime.fromISO(phaseData.timestampStartISO).toSeconds()- startGPXTime;
+                            
+                            for(let t= startTime; t < startTime + phaseData.duration; t += interval ){
+                                if ( t <= startTime + phaseData.greenTime){
+                                   this.push_element(this.signalGreenPlotData, this.createScatterXY(
+                                        t,
+                                        signalResult.cumulativeDist
+                                    ));
+                                } else if ( t>= startTime + phaseData.greenTime && t < startTime+phaseData.yellowTime + phaseData.greenTime){
+                                    this.push_element(this.signalYellowPlotData, this.createScatterXY(
+                                        t,
+                                        signalResult.cumulativeDist
+                                    ))
+                                } else if( t>= startTime + phaseData.yellowTime && t <= startTime+ phaseData.duration){
+                                    this.push_element(this.signalRedPlotData, this.createScatterXY(
+                                        t,
+                                        signalResult.cumulativeDist
+                                    ))
+                                }
+    
+                            }
+    
+
+                        }
+                       
+                        
+                        this.push_element(
+                            this.chartDataSet,
+                            this.createGreenLight(signalObj[m].name, this.signalGreenPlotData)
+                            );
+                        this.push_element(
+                            this.chartDataSet,
+                            this.createYellowLight(signalObj[m].name, this.signalYellowPlotData)
+                            );
+                        this.push_element(
+                            this.chartDataSet,
+                            this.createRedLight(signalObj[m].name, this.signalRedPlotData)
+                            );
+
+                        this.signalGreenPlotData = [];
+
+
+                    
+                    }else{
                     signalStartTime =
                       gpxPoints[0].time.getTime() / 1000 - startGPXTime;
                     signalEndTime =
@@ -368,6 +536,8 @@ export default {
                       m,
                       signalObj
                     );
+
+                    //static object start point
                     this.push_element(
                       this.signalPlotData,
                       this.createScatterXY(
@@ -375,16 +545,32 @@ export default {
                         signalResult.cumulativeDist
                       )
                     );
+                    //static object end point
                     this.push_element(
                       this.signalPlotData,
                       this.createScatterXY(signalEndTime, signalResult.cumulativeDist)
                     );
-                    if(this.isStaticObject(staticObjData, 'Traffic Signal')){
+                    
+
+                    //Lines for static objects along gpx route
+                    if(signalObj[m].type === 'Traffic Signal'){
                         this.push_element(
                             this.chartDataSet,
                             this.createTrafficSignalObject(signalObj[m].name, this.signalPlotData)
                           );
-                    }else{
+                    }else if(signalObj[m].type === 'Bus Stop'){
+                        this.push_element(
+                            this.chartDataSet,
+                            this.createBusStopObject(signalObj[m].name, this.signalPlotData)
+                          );
+                    } else if (signalObj[m].type === 'Other'){
+                        this.push_element(
+                            this.chartDataSet,
+                            this.createOtherObject(signalObj[m].name, this.signalPlotData)
+                          );
+                    }
+                    else{
+                        //CVS basic static object info
                         this.push_element(
                             this.chartDataSet,
                             this.createStaticObject(signalObj[m].name, this.signalPlotData)
@@ -393,6 +579,7 @@ export default {
                    
                     this.signalPlotData = [];
                   }
+                }
       
                   // append gpx chart data set
                   if (this.switchValue) {

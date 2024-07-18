@@ -82,7 +82,7 @@
 
             <v-col>
               <div class="form-group-select">
-                <b>Signal Count # </b>
+                <b>#</b>
                 {{ cardId + 1 }}
               </div>
             </v-col>

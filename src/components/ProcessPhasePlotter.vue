@@ -22,7 +22,7 @@ export default {
   methods: {
     loadPhaseDurationObj(data) {
       this.phaseDurationObj = data;
-      console.log("Loading data" + this.phaseDurationObj);
+      console.log("Loading data", this.phaseDurationObj);
     },
   },
 };

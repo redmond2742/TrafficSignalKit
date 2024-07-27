@@ -437,19 +437,12 @@ export default {
                   console.log(signalObj);
       
                   this.loadGPXPoints(gpxPoints);
-      
-                  // Plot start and end time for a signal location
-                  //TODO: Update this for signal phase state.
-                  // If high resolution data is provided, need to figure out the following:, else leave existing code
-                  // Need to calculate start time based on GPX, subtract accordingly form GPX time
-                  // need to determine phase state from high resolution data for selected phase.
-                  
-
+    
                   
                   for (let m = 0; m <= signalObj.length - 1; m++) {
                     if (signalObj[m].phaseData !== undefined){
-                        console.log("High Res data provided", signalObj[0])
-                        console.log("gpxTime",startGPXTime, gpxPoints[0].time.getTime() /1000, DateTime.fromISO(signalObj[0].phaseData[0].timestampStart).toSeconds() )
+                        console.log("High Res data provided",  DateTime.fromISO(signalObj[m].phaseData[0].timestampStartISO).toSeconds() );
+                        console.log("gpxTime",startGPXTime, gpxPoints[0].time.getTime() /1000, DateTime.fromISO(signalObj[0].phaseData[0].timestampStartISO).toSeconds() );
                         
                         let startCount;
                         let signalStartDelta = 0;
@@ -460,52 +453,57 @@ export default {
                             signalObj
                           );
 
-                        signalStartDelta = startGPXTime - DateTime.fromISO(signalObj[0].startTimeISO).toSeconds()
+                        signalStartDelta = startGPXTime - DateTime.fromISO(signalObj[0].phaseData[0].timestampStartISO).toSeconds()
                         
                         console.log("Signal Start Delta", signalStartDelta)
 
-
-                        // Not Needed, but helpful for when lot's of high res data. 
-                        //finds the starting point to start showing the signal state on the plot
-                        for (let i = 0; i< signalObj[0].phaseData.length; i++){
-                            if (signalObj[0].phase !== undefined && signalObj[0].phaseData[[i]].phase === signalObj[0].phase){
-                                let signalPhaseStartTime = DateTime.fromISO(signalObj[0].phaseData[i].timestampStartISO).toSeconds();
-                                signalStartDelta = startGPXTime - signalPhaseStartTime;
-                                if(signalStartDelta <= 0){ 
-                                    console.log("We care about these signal states", signalStartDelta, signalObj[0].phaseData[i].timestampStartISO, DateTime.fromISO(signalObj[0].phaseData[i].timestampStartISO).toSeconds());
-                                    startCount = i;
-                                    break;
-                            }
-                            }
-                        }
-                      
-                        for (j = 0; j < signalObj[0].phaseData.length; j++){
+                  
+                        for (j = 0; j < signalObj[0].phaseData.length -1; j++){
                             let phaseData = signalObj[0].phaseData[j];
-                            const startTime = DateTime.fromISO(phaseData.timestampStartISO).toSeconds()- startGPXTime;
                             
-                            for(let t= startTime; t < startTime + phaseData.duration; t += interval ){
-                                if ( t <= startTime + phaseData.greenTime){
-                                   this.push_element(this.signalGreenPlotData, this.createScatterXY(
-                                        t,
-                                        signalResult.cumulativeDist
-                                    ));
-                                } else if ( t>= startTime + phaseData.greenTime && t < startTime+phaseData.yellowTime + phaseData.greenTime){
-                                    this.push_element(this.signalYellowPlotData, this.createScatterXY(
-                                        t,
-                                        signalResult.cumulativeDist
-                                    ))
-                                } else if( t>= startTime + phaseData.yellowTime && t <= startTime+ phaseData.duration){
-                                    this.push_element(this.signalRedPlotData, this.createScatterXY(
-                                        t,
-                                        signalResult.cumulativeDist
-                                    ))
-                                }
-    
-                            }
-    
+                            //Only use phase value of interest, as selected in menu.
+                            console.log("PH:",phaseData.phase,  signalObj[0].phase, signalObj[0].phase === phaseData.phase )
+                            if(signalObj[0].phase === phaseData.phase){
+                                for(k=j+1; k <signalObj[0].phaseData.length - 1; k ++){
+                                    let nextPhaseData = signalObj[0].phaseData[k];
+                                    if(signalObj[0].phase === nextPhaseData.phase){
+                                        // NOTE: 10800 is for east coast adjustment to GPX timestamp for local clock. Remove.
+                                        let startTime = (DateTime.fromISO(phaseData.timestampStartISO).toSeconds() - startGPXTime+10800);
+                                        let nextStartTime = (DateTime.fromISO(nextPhaseData.timestampStartISO).toSeconds() - startGPXTime+10800);
+                                        let lastItem = signalObj[0].phaseData.length -1;
+                                        console.log(j,": st & next st:",startTime, nextStartTime, DateTime.fromISO(signalObj[0].phaseData[lastItem].timestampStartISO).toSeconds());
+                                        
+                                        for(let t= startTime; t < nextStartTime; t += interval ){
+        
+                                            console.log("G,Y:",phaseData.greenTime,phaseData.yellowTime)
+                                            
+                                            if (t > startTime  && t < startTime + phaseData.greenTime){
+                                                this.push_element(this.signalGreenPlotData, this.createScatterXY(
+                                                    t,
+                                                    signalResult.cumulativeDist
+                                                ));
+                                            } else if ( t>= startTime + phaseData.greenTime && t < startTime+phaseData.yellowTime + phaseData.greenTime){
+                                                this.push_element(this.signalYellowPlotData, this.createScatterXY(
+                                                    t,
+                                                    signalResult.cumulativeDist
+                                                ))
+                                            } else {//if( t>= startTime + phaseData.greenTime + phaseData.yellowTime && t < nextStartTime){
+                                                this.push_element(this.signalRedPlotData, this.createScatterXY(
+                                                    t,
+                                                    signalResult.cumulativeDist
+                                                ))
+                                            }
+                                            
+                
+                                        } break;
+                                        
+                                            
+                                    } 
 
+                                }
+                            }     
+                            
                         }
-                       
                         
                         this.push_element(
                             this.chartDataSet,
@@ -525,60 +523,60 @@ export default {
 
                     
                     }else{
-                    signalStartTime =
-                      gpxPoints[0].time.getTime() / 1000 - startGPXTime;
-                    signalEndTime =
-                      gpxPoints[gpx.tracks[0].points.length - 1].time.getTime() /
-                        1000 -
-                      startGPXTime;
-      
-                    let signalResult = this.findCumulativeDistanceFromSignalObj(
-                      m,
-                      signalObj
-                    );
+                        signalStartTime =
+                        gpxPoints[0].time.getTime() / 1000 - startGPXTime;
+                        signalEndTime =
+                        gpxPoints[gpx.tracks[0].points.length - 1].time.getTime() /
+                            1000 -
+                        startGPXTime;
+        
+                        let signalResult = this.findCumulativeDistanceFromSignalObj(
+                        m,
+                        signalObj
+                        );
 
-                    //static object start point
-                    this.push_element(
-                      this.signalPlotData,
-                      this.createScatterXY(
-                        signalStartTime,
-                        signalResult.cumulativeDist
-                      )
-                    );
-                    //static object end point
-                    this.push_element(
-                      this.signalPlotData,
-                      this.createScatterXY(signalEndTime, signalResult.cumulativeDist)
-                    );
+                        //static object start point
+                        this.push_element(
+                        this.signalPlotData,
+                        this.createScatterXY(
+                            signalStartTime,
+                            signalResult.cumulativeDist
+                        )
+                        );
+                        //static object end point
+                        this.push_element(
+                        this.signalPlotData,
+                        this.createScatterXY(signalEndTime, signalResult.cumulativeDist)
+                        );
+                        
+
+                        //Lines for static objects along gpx route
+                        if(signalObj[m].type === 'Traffic Signal'){
+                            this.push_element(
+                                this.chartDataSet,
+                                this.createTrafficSignalObject(signalObj[m].name, this.signalPlotData)
+                            );
+                        }else if(signalObj[m].type === 'Bus Stop'){
+                            this.push_element(
+                                this.chartDataSet,
+                                this.createBusStopObject(signalObj[m].name, this.signalPlotData)
+                            );
+                        } else if (signalObj[m].type === 'Other'){
+                            this.push_element(
+                                this.chartDataSet,
+                                this.createOtherObject(signalObj[m].name, this.signalPlotData)
+                            );
+                        }
+                        else{
+                            //CVS basic static object info
+                            this.push_element(
+                                this.chartDataSet,
+                                this.createStaticObject(signalObj[m].name, this.signalPlotData)
+                            );
+                        }
                     
-
-                    //Lines for static objects along gpx route
-                    if(signalObj[m].type === 'Traffic Signal'){
-                        this.push_element(
-                            this.chartDataSet,
-                            this.createTrafficSignalObject(signalObj[m].name, this.signalPlotData)
-                          );
-                    }else if(signalObj[m].type === 'Bus Stop'){
-                        this.push_element(
-                            this.chartDataSet,
-                            this.createBusStopObject(signalObj[m].name, this.signalPlotData)
-                          );
-                    } else if (signalObj[m].type === 'Other'){
-                        this.push_element(
-                            this.chartDataSet,
-                            this.createOtherObject(signalObj[m].name, this.signalPlotData)
-                          );
+                        this.signalPlotData = [];
                     }
-                    else{
-                        //CVS basic static object info
-                        this.push_element(
-                            this.chartDataSet,
-                            this.createStaticObject(signalObj[m].name, this.signalPlotData)
-                          );
-                    }
-                   
-                    this.signalPlotData = [];
-                  }
                 }
       
                   // append gpx chart data set

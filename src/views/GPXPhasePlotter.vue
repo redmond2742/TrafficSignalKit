@@ -41,25 +41,15 @@
           value="detailed-explain"
         >
           <v-expansion-panel-text>
-            * Input Box for each signal, with name, lat, lon, high res data,
-            phase of interest and TSP #, and input box for high res data for
-            that signal.
-            <br /><br />
-            * Phase plot of signal data for each signal data added.
-            <br /><br />
-            * Graph Time space Diagram of GPX data. If time is same for GPX and
-            high res data, this should be the same graph
+            * Modify time of GPX file by a certain time if needed * TSP events
+            shown on phase plot
           </v-expansion-panel-text>
         </v-expansion-panel>
 
         <v-expansion-panel title="Example: Using This Tool" value="example">
           <v-expansion-panel-text>
-            Main & Penniman, 37.91468731793959, -122.065680012584, <br />
-            CA/Civic, 37.9013511000743, -122.064401378189 <br />
-            CA/YVR, 37.90495039889445, -122.06575265782921 <br />
-            CA/Mt. D, 37.897397411618044, -122.06344916387569 <br />
-            CA/Olympic, 37.89600895917039, -122.06282426447109 <br />
-            CA/Bohtelo, 37.89457361001387, -122.061923996248 <br />
+            GPX Data & Signal High Resolution Data needed during the same time
+            period.
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>

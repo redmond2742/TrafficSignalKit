@@ -3,13 +3,13 @@
     &nbsp;
     <h1 class="h1-center-text">Traffic Signal Kit</h1>
 
-    <p>
+    <h3>
       Each month in 2024, I am building free traffic signal related tools for
       traffic engineers. These tools bare bones proof of concepts that allow me
       to move quickly and test what is worthy of additional resources. I am
       building in public and leveraging ChatGPT to write code and help me learn
       Vue.JS. Feedback (with the heart button) guides future features.
-    </p>
+    </h3>
 
     <v-container>
       <v-row no-gutters>
@@ -67,7 +67,7 @@ export default {
           title: "Time Space Diagram Visulizer",
           description: "Plot a GPX file in a timespace diagram plot",
           link: "/gpx",
-          topics: ["GPX", "Time space"],
+          topics: ["GPX", "Time-Space"],
         },
         {
           image:
@@ -92,6 +92,20 @@ export default {
           description: "Plot Phase State over Time",
           link: "/phase-plotter",
           topics: ["Controller Data", "Enumerations"],
+        },
+        {
+          image: "",
+          title: "GPX Time-Space & Phase Plotter",
+          description:
+            "Plot GPX as time space combined with Phase State over Time",
+          link: "/gpx-phase-plotter",
+          topics: [
+            "Controller Data",
+            "Enumerations",
+            "GPX",
+            "Time-Space",
+            "Coordination",
+          ],
         },
       ],
     };

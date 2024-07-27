@@ -111,7 +111,9 @@ export default {
       { title: "May: Intersection Simulator", path: "/traffic-simulator" },
       { title: "June: Phase Plotter", path: "/phase-plotter" },
     ],
-    q3Items: [{ title: "July: TBD", path: "/gpx-phase-plotter" }],
+    q3Items: [
+      { title: "July: GPX & Phase Plotter", path: "/gpx-phase-plotter" },
+    ],
 
     dialog: false,
   }),

@@ -369,6 +369,9 @@ export default {
             let signalStartTime = 0;
             let signalEndTime = 0;
             let startGPXTime = 0;
+
+            // NOTE: EST/10800 is for east coast adjustment to GPX timestamp for local clock. Remove when on Westcoast.
+            const EST = 10800;
       
             if (false) {
               console.log(error);
@@ -442,7 +445,7 @@ export default {
                   for (let m = 0; m <= signalObj.length - 1; m++) {
                     if (signalObj[m].phaseData !== undefined){
                         console.log("High Res data provided",  DateTime.fromISO(signalObj[m].phaseData[0].timestampStartISO).toSeconds() );
-                        console.log("gpxTime",startGPXTime, gpxPoints[0].time.getTime() /1000, DateTime.fromISO(signalObj[0].phaseData[0].timestampStartISO).toSeconds() );
+                        console.log("gpxTime",startGPXTime, gpxPoints[0].time.getTime() /1000, DateTime.fromISO(signalObj[m].phaseData[0].timestampStartISO).toSeconds() );
                         
                         let startCount;
                         let signalStartDelta = 0;
@@ -453,25 +456,25 @@ export default {
                             signalObj
                           );
 
-                        signalStartDelta = startGPXTime - DateTime.fromISO(signalObj[0].phaseData[0].timestampStartISO).toSeconds()
+                        signalStartDelta = startGPXTime - DateTime.fromISO(signalObj[m].phaseData[0].timestampStartISO).toSeconds()
                         
                         console.log("Signal Start Delta", signalStartDelta)
 
                   
-                        for (j = 0; j < signalObj[0].phaseData.length -1; j++){
-                            let phaseData = signalObj[0].phaseData[j];
+                        for (j = 0; j < signalObj[m].phaseData.length -1; j++){
+                            let phaseData = signalObj[m].phaseData[j];
                             
                             //Only use phase value of interest, as selected in menu.
-                            console.log("PH:",phaseData.phase,  signalObj[0].phase, signalObj[0].phase === phaseData.phase )
-                            if(signalObj[0].phase === phaseData.phase){
-                                for(k=j+1; k <signalObj[0].phaseData.length - 1; k ++){
-                                    let nextPhaseData = signalObj[0].phaseData[k];
-                                    if(signalObj[0].phase === nextPhaseData.phase){
-                                        // NOTE: 10800 is for east coast adjustment to GPX timestamp for local clock. Remove.
-                                        let startTime = (DateTime.fromISO(phaseData.timestampStartISO).toSeconds() - startGPXTime+10800);
-                                        let nextStartTime = (DateTime.fromISO(nextPhaseData.timestampStartISO).toSeconds() - startGPXTime+10800);
-                                        let lastItem = signalObj[0].phaseData.length -1;
-                                        console.log(j,": st & next st:",startTime, nextStartTime, DateTime.fromISO(signalObj[0].phaseData[lastItem].timestampStartISO).toSeconds());
+                            console.log("PH:",phaseData.phase,  signalObj[m].phase, signalObj[m].phase === phaseData.phase )
+                            if(signalObj[m].phase === phaseData.phase){
+                                for(k=j+1; k <signalObj[m].phaseData.length - 1; k ++){
+                                    let nextPhaseData = signalObj[m].phaseData[k];
+                                    if(signalObj[m].phase === nextPhaseData.phase){
+                                        
+                                        let startTime = (DateTime.fromISO(phaseData.timestampStartISO).toSeconds() - startGPXTime+EST);
+                                        let nextStartTime = (DateTime.fromISO(nextPhaseData.timestampStartISO).toSeconds() - startGPXTime+EST);
+                                        let lastItem = signalObj[m].phaseData.length -1;
+                                        console.log(j,": st & next st:",startTime, nextStartTime, DateTime.fromISO(signalObj[m].phaseData[lastItem].timestampStartISO).toSeconds());
                                         
                                         for(let t= startTime; t < nextStartTime; t += interval ){
         
@@ -519,6 +522,8 @@ export default {
                             );
 
                         this.signalGreenPlotData = [];
+                        this.signalYellowPlotData = [];
+                        this.signalRedPlotData = [];
 
 
                     

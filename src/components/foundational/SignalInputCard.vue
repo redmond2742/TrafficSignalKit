@@ -166,6 +166,12 @@ export default {
           this.signalForm.inputData
         ); //load all the enumerations into JSON obj.
         this.signalForm.phaseData = this.buildCycleItem(this.signalForm.hdData);
+        // it tsp channel is selected (& hd data available), calculate tsp events in hd data
+        if (this.signalForm.tspValue) {
+          this.signalForm.tspEvents = this.calcTSPevents(
+            this.signalForm.hdData
+          );
+        }
       }
 
       this.loadSignalData();

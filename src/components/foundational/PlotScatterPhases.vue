@@ -275,6 +275,11 @@ export default {
       this.$refs.scatterChart.chart.resetZoom();
       //this.fillInEndTime(this.plotData);
     },
+    zoomToGPX() {
+      //TODO: check gpx min and max for better graph
+      this.$refs.scatterChart.chart.resetZoom();
+      //this.fillInEndTime(this.plotData);
+    },
     processData(dataObject) {
       // Assuming dataObject is an array of objects with Phase, duration, and start time
       // Example: [{ phase: 'A', duration: 10, startTime: '2024-06-03T16:56:08' }, ...]

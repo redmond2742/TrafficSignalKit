@@ -25,6 +25,7 @@
       <v-col cols="12">
         <v-btn @click="btnProcessGPX" color="primary">Plot</v-btn>
         <v-btn color="info" @click="resetZoom">Reset Zoom</v-btn>
+        <v-btn color="info" @click="gpxZoom">Zoom to GPX</v-btn>
       </v-col>
     </v-row>
     <canvas ref="scatterPlotCanvas"></canvas>
@@ -48,9 +49,10 @@ export default {
       cards: [],
       childSignalData: [],
       gpx: "",
-      textboxDefaultText: "Paste in GPX as text in XML format",
+      textboxDefaultText: "Paste in GPX file as text in XML format",
       signalCardCount: 0,
       inputData: "",
+      gpxBoxXY: [],
     };
   },
   methods: {
@@ -72,7 +74,15 @@ export default {
       console.log("emitted data :", sigID, this.childSignalData);
     },
     btnProcessGPX() {
-      this.ProcessGPX(this.inputData, this.childSignalData);
+      this.gpxBoxXY = this.ProcessGPX(this.inputData, this.childSignalData);
+    },
+    gpxZoom() {
+      let xMin = this.gpxBoxXY[0];
+      let yMin = this.gpxBoxXY[1];
+      let xMax = this.gpxBoxXY[2];
+      let yMax = this.gpxBoxXY[3];
+
+      this.zoomToDimensions(xMin, xMax, yMin, yMax);
     },
     parseStaticObjInfo(staticObjDataArray) {
       const objects = [];
@@ -90,6 +100,7 @@ export default {
             cDistance: [],
             phase: item.phaseValue,
             tspPreempt: item.tspValue,
+            tspEvents: item.tspEvents,
             phaseData: item.phaseData,
             startTimeISO: item.phaseData[0].timestampStartISO,
           };

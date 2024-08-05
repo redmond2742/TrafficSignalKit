@@ -583,28 +583,28 @@
     {
         "eventCode": "112",
         "eventDescriptor": "TSP Check In",
-        "parameterType": "Other",
+        "parameterType": "TSP",
         "parameterCode": "",
         "description": "Set when request for priority is received."
     },
     {
         "eventCode": "113",
         "eventDescriptor": "TSP Adjustment to Early Green",
-        "parameterType": "Other",
+        "parameterType": "TSP",
         "parameterCode": "",
         "description": "Set when controller is adjusting active cycle to accommodate early service to TSP phases."
     },
     {
         "eventCode": "114",
         "eventDescriptor": "TSP Adjustment to Extend Green",
-        "parameterType": "Other",
+        "parameterType": "TSP",
         "parameterCode": "",
         "description": "Set when controller is adjusting active cycle to accommodate extended service to TSP phases."
     },
     {
         "eventCode": "115",
         "eventDescriptor": "TSP Check Out",
-        "parameterType": "Other",
+        "parameterType": "TSP",
         "parameterCode": "",
         "description": "Set when request for priority is retracted."
     },

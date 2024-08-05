@@ -6,7 +6,6 @@
 
 <script>
 import InputBox from "./foundational/InputBox.vue";
-import enumerationObj from "../data/enumerations.json";
 import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
 
 export default {

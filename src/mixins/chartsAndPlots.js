@@ -73,6 +73,10 @@ export default {
           resetZoom() {
             window.myPlot.resetZoom();
           },
+          zoomToDimensions(xMin, xMax, yMin, yMax) {
+            window.myPlot.zoomScale('x', { min: xMin, max: xMax });
+            window.myPlot.zoomScale('y', { min: yMin, max: yMax });
+          },
           createScatterXY(x_data, y_data) {
             return {
               x: x_data,

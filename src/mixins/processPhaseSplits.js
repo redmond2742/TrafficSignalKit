@@ -36,10 +36,7 @@ export default {
             completedB1Phases: [],
             completedB2Phases: [],
             timezone: "",
-
-
-
-
+            tspEventData: [],
 
         };
     },
@@ -302,22 +299,61 @@ export default {
               timestamp: this.convertTimestamp(timestamp, this.timezone),
               eventCode: eventCodeInt,
               eventDescriptor: this.getEventDescriptor(eventCodeInt),
-              parameterType: this.getParameterType(eventCodeInt), //Phase or Other
-              parameterCode: parseInt(parameter), // 1-8 or channel or phase numbers
+              parameterType: this.getParameterType(eventCodeInt), //Phase, TSP or Other
+              parameterCode: parseInt(parameter), // 1-8 or channel or phase numbers, TSP Channel
               description: this.getEventDescription(eventCodeInt),
             });
           });
-    
+          
           return hdData;
         },
+        calcTSPevents(dataObj){
+
+          dataObj.forEach((obj) => {
+            //Load TSP Events
+            if (obj.parameterType === "TSP"){
+              let tspChannel = obj.parameterCode;
+              console.log("TSP Event Data", this.tspEventData, this.tspEventData.length > 0);
+    
+              if (obj.eventCode === 113) {
+                console.log("TSP Early Green!!");
+                this.tspEventData.push({
+                  phaseEventTime: obj.timestamp,
+                  phaseEventChannel: tspChannel,
+                  phaseEventType: "Early Green",
+                });
+              } else if (obj.eventCode === 114) {
+                this.tspEventData.push({
+                  phaseEventTime: obj.timestamp,
+                  phaseEventChannel: tspChannel,
+                  phaseEventType: "Extend Green",
+                });
+              } else if (obj.eventCode === 112) {
+                this.tspEventData.push({
+                  checkInTime: obj.timestamp,
+                  checkInChannel: tspChannel,
+                })
+              } else if (obj.eventCode === 115) {
+                this.tspEventData.push({
+                  checkOutTime: obj.timestamp,
+                  checkOutChannel: tspChannel,
+                });
+              }
+            }
+
+          });
+          return this.tspEventData;
+      },
         buildCycleItem(dataObj) {
           
           const customFormat = "ccc, MMM d yyyy h:mm:ss.S a";
-
           let allPhaseData = [];
-    
+          
           dataObj.forEach((obj) => {
-            if (obj.parameterType === "Phase") {
+         
+            //Load Phase Events
+            if (obj.parameterType === "Phase" ) {
+
               let phaseNum = obj.parameterCode;
     
               if (
@@ -356,7 +392,6 @@ export default {
                     phaseNum
                   );
            
-    
                   if (this.activePhasesInCycle.includes(phaseNum)) {
                     this.cycleCount++;
                     this.currentCycleLength = 0;
@@ -401,15 +436,17 @@ export default {
                     gapOutPercents: this.gapOutPercents,
                     forceOffPercents: this.forceOffPercents,
                     skippedPercents: this.skippedPercents,
+
                   };
+
     
                   this.rowData.push(phaseSplit);
                   allPhaseData.push(phaseSplit);
-
-               
     
                   //emit phase durations to parent to display in table
-                  this.emitPhaseDurations(this.rowData);
+
+                  this.$emit("phaseDurations", this.rowData);
+                  
     
                   //clear phase data
                   this.phaseArray[phaseNum] = "";
@@ -435,15 +472,13 @@ export default {
     
                   this.phasesInCycle.push(phaseNum); //append phase to cycle array since it has a start time
                 }
-              }
+              } 
             }
             
           });
             return allPhaseData;
         },
-        emitPhaseDurations(phData) {
-          this.$emit("phaseDurations", phData);
-        },
+      
 
       },
     };

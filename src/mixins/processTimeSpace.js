@@ -49,9 +49,15 @@ export default {
               allScatterPlotData: null,
               signalPlotData: [],
               signalGreenPlotData: [],
+              signalEarlyGreenTSPEvent: [],
+              signalExtendGreenTSPEvent: [],
               signalYellowPlotData: [],
               signalRedPlotData: [],
               outputData: "",
+              gpxXmin: 0,
+              gpxXmax: 500,
+              gpxYmin: 0,
+              gpxYmax: 500,
   
 
 
@@ -63,6 +69,9 @@ export default {
             // push element e into array
             a.push(e);
           },
+        remove_element(a, e){
+          a.splice(e, 1)
+        },
         earthDistance(point1, point2, miles = true) {
             const R = 6371; // Radius of the Earth in kilometers
             const [lat1, lon1] = point1;
@@ -140,6 +149,37 @@ export default {
               borderWidth: 1,
               showLine: false,
               fill: false,
+            };
+          },
+          createEarlyGreenTSPEvent(signalName, signalData) { 
+            return {
+              label: signalName,
+              data: signalData,
+              backgroundColor: "#FF0000" ,
+              borderColor: "#00A36C",
+              borderWidth: 1,
+              showLine: false,
+              fill: false,
+              pointStyle: 'rect', //default: 'circle'
+              radius: 5, //default: 3
+              hoverRadius: 6,
+              hoverBorderWidth: 3,
+            };
+          },
+          createExtendGreenTSPEvent(signalName, signalData) { 
+            return {
+              label: signalName,
+              data: signalData,
+             
+              backgroundColor: "#00A36C" ,
+              borderColor: "FF0000",
+              borderWidth: 1,
+              showLine: false,
+              fill: false,
+              pointStyle: 'triangle', //default: 'circle'
+              radius: 5, //default: 3
+              hoverRadius: 6,
+              hoverBorderWidth: 2,
             };
           },
           createYellowLight(signalName, signalData) { 
@@ -356,7 +396,7 @@ export default {
           },
           ProcessGPX(inputGPXData, staticObjData) {
             //let gpxParser = require("gpxparser");
-            let [i, j, k] = [0, 0, 0];
+            let [i, j, k, m, n, p, q] = [0, 0, 0, 0, 0, 0];
       
             let gpx = new gpxParser();
             //let cumDist = 0;
@@ -369,9 +409,10 @@ export default {
             let signalStartTime = 0;
             let signalEndTime = 0;
             let startGPXTime = 0;
+            let gpxBoxXY = [];
 
             // NOTE: EST/10800 is for east coast adjustment to GPX timestamp for local clock. Remove when on Westcoast.
-            const EST = 10800;
+            const EST = 0 //10800 - east coast adjustment for local clock;
       
             if (false) {
               console.log(error);
@@ -381,10 +422,15 @@ export default {
               try {
                 let gpxPoints = gpx.tracks[0].points;
                 startGPXTime = gpxPoints[0].time.getTime() / 1000; //milliseconds to seconds
+
+                let xBuffer = (gpxPoints[gpx.tracks[0].points.length-1].time.getTime() / 1000 - startGPXTime) * 0.1; // create buffer at right side of plot
+                let yBuffer = gpx.tracks[0].distance.cumul * 0.5; // create buffer at top of plot
+                // x1,y1, x2,y2
+                gpxBoxXY = [0, 0, gpxPoints[gpx.tracks[0].points.length-1].time.getTime() / 1000 - startGPXTime + xBuffer, gpx.tracks[0].distance.cumul + yBuffer]
       
                 // If no signal information is provided, then plot GPX points only.
-                if (staticObjData === "") {
-                  console.log("No Signal Locations Entered");
+                if (Object.keys(staticObjData).length === 0) {
+                  console.log("No Signal Locations Entered", staticObjData);
       
                   this.loadGPXPoints(gpxPoints);
       
@@ -423,7 +469,7 @@ export default {
                         false
                       );
                       //console.log("i: " + i + "    J: " + j);
-                      // Calclate all the distances from each gps point (j) to the center of the intersection i
+                      // Calclate all the distances from each gps point (j) to the center of the intersection (i)
                       signalObj[i].distances.push([
                         [
                           this.earthDistance(
@@ -440,16 +486,19 @@ export default {
                   console.log(signalObj);
       
                   this.loadGPXPoints(gpxPoints);
-    
-                  
-                  for (let m = 0; m <= signalObj.length - 1; m++) {
+
+            
+
+                  for (m = 0; m <= signalObj.length - 1; m++) {
                     if (signalObj[m].phaseData !== undefined){
                         console.log("High Res data provided",  DateTime.fromISO(signalObj[m].phaseData[0].timestampStartISO).toSeconds() );
                         console.log("gpxTime",startGPXTime, gpxPoints[0].time.getTime() /1000, DateTime.fromISO(signalObj[m].phaseData[0].timestampStartISO).toSeconds() );
                         
                         let startCount;
                         let signalStartDelta = 0;
-                        const interval = 1; // 1/10 if you want all high res data
+                        const interval = 1; //in seconds. Use 1/10 if you want all high res data
+                        let earlyGreenEvents = [];
+                        let lateGreenEvents = [];
                         
                         let signalResult = this.findCumulativeDistanceFromSignalObj(
                             m,
@@ -460,14 +509,37 @@ export default {
                         
                         console.log("Signal Start Delta", signalStartDelta)
 
+                        //Calculate TSP Events for plotting
+                        if(signalObj[m].tspPreempt){
+                          for(n= 0; n < signalObj[0].tspEvents.length; n++){
+                            if(signalObj[m].tspEvents[n].phaseEventChannel === signalObj[m].tspPreempt){
+                              
+                              if(signalObj[m].tspEvents[n].phaseEventType && signalObj[m].tspEvents[n].phaseEventType === "Early Green"){
+                                earlyGreenEvents.push({
+                                  start: DateTime.fromISO(signalObj[m].tspEvents[n].phaseEventTime.iso).toSeconds() - startGPXTime,
+                              
+                                })
+                              } else if( signalObj[m].tspEvents[n].phaseEventType && signalObj[m].tspEvents[n].phaseEventType === "Extend Green"){
+                                lateGreenEvents.push({
+                                  start: DateTime.fromISO(signalObj[m].tspEvents[n].phaseEventTime.iso).toSeconds() - startGPXTime,
+                              
+                                })
+                              }
+                              console.log("Yes, the tsp channels are equal!",lateGreenEvents, signalObj[0].tspPreempt > 0, signalObj[0].tspPreempt, lateGreenEvents.length)
+                            }
+                          }
+
+                        }
+                        
                   
                         for (j = 0; j < signalObj[m].phaseData.length -1; j++){
                             let phaseData = signalObj[m].phaseData[j];
-                            
+
+
                             //Only use phase value of interest, as selected in menu.
                             console.log("PH:",phaseData.phase,  signalObj[m].phase, signalObj[m].phase === phaseData.phase )
                             if(signalObj[m].phase === phaseData.phase){
-                                for(k=j+1; k <signalObj[m].phaseData.length - 1; k ++){
+                                for(k = j+1; k < signalObj[m].phaseData.length - 1; k++){
                                     let nextPhaseData = signalObj[m].phaseData[k];
                                     if(signalObj[m].phase === nextPhaseData.phase){
                                         
@@ -476,16 +548,60 @@ export default {
                                         let lastItem = signalObj[m].phaseData.length -1;
                                         console.log(j,": st & next st:",startTime, nextStartTime, DateTime.fromISO(signalObj[m].phaseData[lastItem].timestampStartISO).toSeconds());
                                         
-                                        for(let t= startTime; t < nextStartTime; t += interval ){
+                                        for(let t = startTime; t < nextStartTime; t += interval ){
         
                                             console.log("G,Y:",phaseData.greenTime,phaseData.yellowTime)
+
+                                         
                                             
                                             if (t > startTime  && t < startTime + phaseData.greenTime){
                                                 this.push_element(this.signalGreenPlotData, this.createScatterXY(
                                                     t,
                                                     signalResult.cumulativeDist
                                                 ));
-                                            } else if ( t>= startTime + phaseData.greenTime && t < startTime+phaseData.yellowTime + phaseData.greenTime){
+                                            
+                                            } else if ( t>= startTime + phaseData.greenTime && t < startTime + phaseData.yellowTime + phaseData.greenTime){
+                                              this.push_element(this.signalYellowPlotData, this.createScatterXY(
+                                                  t,
+                                                  signalResult.cumulativeDist
+                                                ))
+                                            } else {//if( t>= startTime + phaseData.greenTime + phaseData.yellowTime && t < nextStartTime){
+                                              this.push_element(this.signalRedPlotData, this.createScatterXY(
+                                                  t,
+                                                  signalResult.cumulativeDist
+                                              ))
+                                            }
+                                            
+                                            //TSP Event - Early Green
+                                            if ( signalObj[m].tspPreempt > 0){
+                                              for (p = 0; p <= earlyGreenEvents.length-1; p++ ){
+
+                                                if((earlyGreenEvents[p].start > startTime)  && (earlyGreenEvents[p].start < nextStartTime) && t >= (earlyGreenEvents[p].start)){
+                                                  this.push_element(this.signalEarlyGreenTSPEvent, this.createScatterXY(
+                                                    t,
+                                                    signalResult.cumulativeDist
+                                                  ))
+                                                
+
+                                                } 
+                                              }
+                                              for (q = 0; q <= lateGreenEvents.length - 1; q++){
+                                                if((lateGreenEvents[q].start > startTime) && (lateGreenEvents[q].start < nextStartTime) && t>= lateGreenEvents[q].start){
+                                                  this.push_element(this.signalExtendGreenTSPEvent, this.createScatterXY(
+                                                    t,
+                                                    signalResult.cumulativeDist
+                                                ))
+                                                }
+
+                                              }
+                                              
+                                            
+                                             
+                                              
+                                             
+                                            
+                                              
+                                            } else if ( t>= startTime + phaseData.greenTime && t < startTime + phaseData.yellowTime + phaseData.greenTime){
                                                 this.push_element(this.signalYellowPlotData, this.createScatterXY(
                                                     t,
                                                     signalResult.cumulativeDist
@@ -507,11 +623,21 @@ export default {
                             }     
                             
                         }
+
+                        console.log("late tsp green", this.signalExtendGreenTSPEvent);
                         
                         this.push_element(
                             this.chartDataSet,
                             this.createGreenLight(signalObj[m].name, this.signalGreenPlotData)
                             );
+                        this.push_element(
+                            this.chartDataSet,
+                            this.createEarlyGreenTSPEvent(signalObj[m].name, this.signalEarlyGreenTSPEvent)
+                            );
+                        this.push_element(
+                          this.chartDataSet,
+                          this.createExtendGreenTSPEvent(signalObj[m].name, this.signalExtendGreenTSPEvent)
+                          );
                         this.push_element(
                             this.chartDataSet,
                             this.createYellowLight(signalObj[m].name, this.signalYellowPlotData)
@@ -522,8 +648,11 @@ export default {
                             );
 
                         this.signalGreenPlotData = [];
+                        this.signalEarlyGreenTSPEvent = [];
+                        this.signalExtendGreenTSPEvent = [];
                         this.signalYellowPlotData = [];
                         this.signalRedPlotData = [];
+                        
 
 
                     
@@ -554,7 +683,6 @@ export default {
                         this.createScatterXY(signalEndTime, signalResult.cumulativeDist)
                         );
                         
-
                         //Lines for static objects along gpx route
                         if(signalObj[m].type === 'Traffic Signal'){
                             this.push_element(
@@ -613,6 +741,7 @@ export default {
                 console.error(error);
               }
             }
+            return gpxBoxXY;
           },
           formatDuration(seconds) {
             let hours = Math.floor(seconds / 3600);

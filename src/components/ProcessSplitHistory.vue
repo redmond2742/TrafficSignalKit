@@ -6,7 +6,7 @@
     -->
   </div>
   <div class="grow-wrap">
-    <InputBox v-model="inputData" />
+    <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
   </div>
   <div>
     <v-btn @click="calculatePhaseDurations" color="primary">Process</v-btn>
@@ -14,8 +14,10 @@
 </template>
 
 <script>
-import InputBox from "./foundational/InputBox.vue";
+//mixins
 import processPhaseSplits from "../mixins/processPhaseSplits";
+// components
+import InputBox from "./foundational/InputBox.vue";
 import TableDisplaySplit from "./foundational/TableDisplaySplit.vue";
 
 export default {
@@ -27,39 +29,9 @@ export default {
   data() {
     return {
       inputData: "",
-      //rowData: [],
       hdDataObj: [],
-      //countCycles: 1,
-      //cycleCount: 1,
-      //currentCycleLength: 0,
-      //phasesInCycle: [],
-      //activePhasesInCycle: [],
-      //phaseArray: [],
-      //phaseElementsCount: 8, //update based on available JS items logged for each phase
-      /*terminationResults: {
-        phase1: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
-        phase2: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
-        phase3: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
-        phase4: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
-        phase5: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
-        phase6: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
-        phase7: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
-        phase8: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
-      },
-      */
-      //maxOutPercents: [],
-
-      //allB1Phases: [1, 2, 5, 6],
-      //allB2Phases: [3, 4, 7, 8],
-
-      //incompleteB1Phases: [],
-      //incompleteB2Phases: [],
-      //completedB1Phases: [],
-      //completedB2Phases: [],
-      //unusedPhases: [],
-      //activeB1Phases: [],
-      //activeB2Phases: [],
-      //timezone: "",
+      textboxDefaultText:
+        "Paste in High-Resolution Traffic Signal Data as Text in CSV format",
     };
   },
   created() {
@@ -70,7 +42,8 @@ export default {
   methods: {
     calculatePhaseDurations() {
       this.hdDataObj = this.loadCsv2JsonObj(this.inputData); //load all the enumerations into JSON obj.
-      this.buildCycleItem(this.hdDataObj);
+      let allHDData = this.buildCycleItem(this.hdDataObj);
+      console.log(allHDData);
       //this.rowData = this.fillInEndTime(this.rowData);
     },
   },

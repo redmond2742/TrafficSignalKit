@@ -511,7 +511,7 @@ export default {
 
                         //Calculate TSP Events for plotting
                         if(signalObj[m].tspPreempt){
-                          for(n= 0; n < signalObj[0].tspEvents.length; n++){
+                          for(n= 0; n < signalObj[m].tspEvents.length; n++){
                             if(signalObj[m].tspEvents[n].phaseEventChannel === signalObj[m].tspPreempt){
                               
                               if(signalObj[m].tspEvents[n].phaseEventType && signalObj[m].tspEvents[n].phaseEventType === "Early Green"){
@@ -572,10 +572,10 @@ export default {
                                               ))
                                             }
                                             
-                                            //TSP Event - Early Green
+                                            //TSP Events
                                             if ( signalObj[m].tspPreempt > 0){
                                               for (p = 0; p <= earlyGreenEvents.length-1; p++ ){
-
+                                                // Early Green
                                                 if((earlyGreenEvents[p].start > startTime)  && (earlyGreenEvents[p].start < nextStartTime) && t >= (earlyGreenEvents[p].start)){
                                                   this.push_element(this.signalEarlyGreenTSPEvent, this.createScatterXY(
                                                     t,
@@ -585,6 +585,7 @@ export default {
 
                                                 } 
                                               }
+                                              // Extend Green
                                               for (q = 0; q <= lateGreenEvents.length - 1; q++){
                                                 if((lateGreenEvents[q].start > startTime) && (lateGreenEvents[q].start < nextStartTime) && t>= lateGreenEvents[q].start){
                                                   this.push_element(this.signalExtendGreenTSPEvent, this.createScatterXY(

@@ -94,7 +94,8 @@ export default {
           topics: ["Controller Data", "Enumerations"],
         },
         {
-          image: "",
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-GPX+and+High+Resolution+Signal+Data+for+Transit+Signal+Priority+(TSP).png",
           title: "GPX Time-Space & Phase Plotter",
           description:
             "Plot GPX as time space combined with Phase State over Time",

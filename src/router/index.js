@@ -9,6 +9,7 @@ import SplitHistory from '../views/SplitHistory'
 import HighResPhasePlotter from '../views/HighResPhasePlotter'
 import TrafficSim from '../views/TrafficSim'
 import GPXPhasePlotter from '../views/GPXPhasePlotter'
+import GPXMapper from '../views/MapGPXPlotter'
 
 
 
@@ -64,10 +65,16 @@ const routes = [
         component: GPXPhasePlotter,
     },
     {
+        path: '/gpx-mapper',
+        name: 'gpxMapper',
+        component: GPXMapper,
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: "not-found",
         component: About,
     },
+     
     
 ]
 

@@ -1,7 +1,7 @@
 <template>
   <div>
     &nbsp;
-    <h1 class="h1-center-text">GPX & Phase Plotter</h1>
+    <h1 class="h1-center-text">GPX & Phase Plotter (with TSP Events)</h1>
 
     <div class="left-justify-text">
       <v-expansion-panels v-model="panel" multiple>
@@ -41,8 +41,7 @@
           value="detailed-explain"
         >
           <v-expansion-panel-text>
-            * Modify time of GPX file by a certain time if needed * TSP events
-            shown on phase plot
+            * Update Extend green on the plot
           </v-expansion-panel-text>
         </v-expansion-panel>
 

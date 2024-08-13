@@ -96,9 +96,9 @@ export default {
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-GPX+and+High+Resolution+Signal+Data+for+Transit+Signal+Priority+(TSP).png",
-          title: "GPX Time-Space & Phase Plotter",
+          title: "GPX Time-Space & Phase Plotter (with TSP Events)",
           description:
-            "Plot GPX as time space combined with Phase State over Time",
+            "Plot GPX as time space combined with Phase State over Time (with Transit Signal Priority (TSP) events)",
           link: "/gpx-phase-plotter",
           topics: [
             "Controller Data",

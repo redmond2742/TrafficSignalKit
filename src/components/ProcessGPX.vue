@@ -75,7 +75,6 @@
 <script>
 import InputBox from "./foundational/InputBox.vue";
 import Metric from "./foundational/Metric.vue";
-
 import processTimeSpace from "../mixins/processTimeSpace";
 
 export default {

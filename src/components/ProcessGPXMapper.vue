@@ -55,8 +55,11 @@ export default {
       console.log("emitted data :", sigID, this.childSignalData);
     },
     btnProcessGPX() {
-      //todo: determine how this function will plot the coordinates as polyline on the map
-      this.gpxBoxXY = this.ProcessGPX(this.inputData, this.childSignalData);
+      this.gpxBoxXY = this.ProcessGPX(
+        this.inputData,
+        this.childSignalData,
+        true //map points for mapping
+      );
     },
     gpxZoom() {
       let xMin = this.gpxBoxXY[0];

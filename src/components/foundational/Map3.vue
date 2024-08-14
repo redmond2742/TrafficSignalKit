@@ -1,11 +1,10 @@
 <template>
   <div style="height: 600px; width: 800px">
-    <l-map :useGlobalLeaflet="false" :zoom="zoom" :center="center">
+    <l-map ref="map" :zoom="zoom" :center="center">
       <l-tile-layer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         layer-type="base"
         name="OpenStreetMap"
-        attribution="&copy; OpenStreetMap contributors"
       ></l-tile-layer>
       <l-geo-json :geojson="geojson" :options="geoJsonStyles" />
     </l-map>
@@ -15,12 +14,14 @@
 <script>
 // DON'T load Leaflet components here!
 // Its CSS is needed though, if not imported elsewhere in your application.
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { LMap, LTileLayer, LGeoJson } from "@vue-leaflet/vue-leaflet";
 //import * as toGeoJSON from "togeojson";
 
 export default {
   components: {
+    L,
     LMap,
     LTileLayer,
     LGeoJson,
@@ -48,7 +49,7 @@ export default {
       },
     };
   },
-  async beforeMount() {
+  /*async beforeMount() {
     // HERE is where to load Leaflet components!
     const { circleMarker } = await import("leaflet/dist/leaflet-src.esm");
 
@@ -56,6 +57,6 @@ export default {
     this.geojsonOptions.pointToLayer = (feature, latLng) =>
       circleMarker(latLng, { radius: 8 });
     this.mapIsReady = true;
-  },
+  },*/
 };
 </script>

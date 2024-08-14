@@ -268,6 +268,11 @@ export default {
             }
             return color;
           },
+          loadMapPoints(gpxFile){
+            //TODO: fill in here
+            // what does the outut need to look like to map this?
+
+          },
           loadGPXPoints(gpxFile) {
             let totalCumlDistance = 0;
             let totalSeconds = 0;
@@ -394,7 +399,7 @@ export default {
                 return this.parseStaticObjInfo(staticObj)
              }
           },
-          ProcessGPX(inputGPXData, staticObjData) {
+          ProcessGPX(inputGPXData, staticObjData, mapPoints=false) {
             //let gpxParser = require("gpxparser");
             let [i, j, k, m, n, p, q] = [0, 0, 0, 0, 0, 0];
       
@@ -433,6 +438,9 @@ export default {
                   console.log("No Signal Locations Entered", staticObjData);
       
                   this.loadGPXPoints(gpxPoints);
+                  if (mapPoints){
+                    this.loadMapPoints(gpxPoints);
+                  }
       
                   // append gpx chart data set
                   if (this.switchValue) {

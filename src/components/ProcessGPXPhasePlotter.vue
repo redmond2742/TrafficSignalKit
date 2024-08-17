@@ -93,6 +93,8 @@ export default {
           object = {
             name: item.name,
             type: item.typeStaticObject,
+            color: item.color,
+            lineThickness: item.lineThickness,
             latitude: item.latitude,
             longitude: item.longitude,
             latlon: [item.latitude, item.longitude],
@@ -108,6 +110,8 @@ export default {
           object = {
             name: item.name,
             type: item.typeStaticObject,
+            color: item.color,
+            lineThickness: item.lineThickness,
             latitude: item.latitude,
             longitude: item.longitude,
             latlon: [item.latitude, item.longitude],

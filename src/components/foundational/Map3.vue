@@ -17,7 +17,11 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { LMap, LTileLayer, LGeoJson } from "@vue-leaflet/vue-leaflet";
-//import * as toGeoJSON from "togeojson";
+import * as toGeoJSON from "togeojson";
+
+//sat image
+//https://stackoverflow.com/questions/9394190/leaflet-map-api-with-google-satellite-layer
+//https://github.com/wandersoncs/leaflet-tilelayer-here?tab=readme-ov-file
 
 export default {
   components: {

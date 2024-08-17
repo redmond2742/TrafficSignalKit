@@ -23,6 +23,24 @@
                 ></v-select>
               </div>
             </v-col>
+            <v-col sm="1">
+              <div>
+                <h6>Line Color</h6>
+                <input type="color" v-model="selectedColor" />
+              </div>
+            </v-col>
+            <v-col sm="2">
+              <div>
+                <h6>Line Thickness</h6>
+                <v-text-field
+                  v-model.number="lineThickness"
+                  label="Enter a number"
+                  type="number"
+                  @input="emitNumber"
+                  outlined
+                ></v-text-field>
+              </div>
+            </v-col>
           </v-row>
           <v-row>
             <v-col sm="6">
@@ -117,6 +135,8 @@ export default {
     return {
       signalForm: { ...this.cardData },
       typeStaticObject: "Traffic Signal",
+      selectedColor: "#A020F0", // Default color
+      lineThickness: 2, // Default value
       buttonPressed: false,
       buttonColor: "primary",
       hdDataObj: [],
@@ -159,6 +179,8 @@ export default {
     handleClick() {
       this.updateLatLon(this.signalForm.latlon);
       this.signalForm.typeStaticObject = this.typeStaticObject;
+      this.signalForm.color = this.selectedColor;
+      this.signalForm.lineThickness = this.lineThickness;
       this.signalForm.phaseValue = this.phaseToNumber(this.signalForm.phase);
       this.signalForm.tspValue = this.tspToNumber(this.signalForm.tsp);
       if (this.signalForm.inputData) {
@@ -211,5 +233,13 @@ button {
 }
 button:hover {
   background-color: #0056b3;
+}
+/* Simple styling for the color input */
+input[type="color"] {
+  border: none;
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  cursor: pointer;
 }
 </style>

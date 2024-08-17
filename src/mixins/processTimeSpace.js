@@ -92,50 +92,50 @@ export default {
               return distance * 0.621371 * 5280; //converted to feet
             }
           },
-          createStaticObject(Name, Data) { 
+          createStaticObject(Name, Data, hexColor="rgba(150, 150, 150, 1)", lineThickness = 2) { 
             //useful for bus stops or signals without phasing
             return {
               label: Name,
               data: Data,
-              backgroundColor: "rgba(255, 255, 255, 0)",
-              borderColor: "rgba(150, 150, 150, 1)",
-              borderWidth: 1,
+              backgroundColor: hexColor,
+              borderColor: hexColor,
+              borderWidth: lineThickness,
               showLine: true,
               fill: false,
             };
           },
-          createBusStopObject(Name, Data) { 
+          createBusStopObject(Name, Data, hexColor="rgba(130, 94, 92)", lineThickness=2) { 
             //useful for bus stops or signals without phasing
             return {
               label: Name,
               data: Data,
-              backgroundColor: "rgba(130, 94, 92)",
-              borderColor: "rgba(130, 94, 92)",
-              borderWidth: 1,
+              backgroundColor: hexColor,//"rgba(130, 94, 92)",
+              borderColor: hexColor,
+              borderWidth: lineThickness,
               showLine: true,
               fill: false,
             };
           },
-          createTrafficSignalObject(signalName, signalData) { 
+          createTrafficSignalObject(signalName, signalData, hexColor="rgba(165, 55, 253)", lineThickness=2) { 
             //useful for signals without phasing
             return {
               label: signalName,
               data: signalData,
-              backgroundColor: "rgba(165, 55, 253)", //"rgba(255, 255, 255, 0)",
-              borderColor: "rgba(165, 55, 253)",
-              borderWidth: 1,
+              backgroundColor: hexColor,//"rgba(165, 55, 253)", //"rgba(255, 255, 255, 0)",
+              borderColor: hexColor ,
+              borderWidth: lineThickness,
               showLine: true,
               fill: false,
             };
           },
-          createOtherObject(signalName, signalData) { 
+          createOtherObject(signalName, signalData, hexColor="rgba(255, 165, 0)", lineThickness=2) { 
             //useful for signals without phasing
             return {
               label: signalName,
               data: signalData,
-              backgroundColor: "rgba(255, 165, 0)", //"rgba(255, 255, 255, 0)",
-              borderColor: "rgba(255, 165, 0)",
-              borderWidth: 1,
+              backgroundColor: hexColor,//"rgba(255, 165, 0)", //"rgba(255, 255, 255, 0)",
+              borderColor: hexColor,
+              borderWidth: lineThickness,
               showLine: true,
               fill: false,
             };
@@ -696,24 +696,24 @@ export default {
                         if(signalObj[m].type === 'Traffic Signal'){
                             this.push_element(
                                 this.chartDataSet,
-                                this.createTrafficSignalObject(signalObj[m].name, this.signalPlotData)
+                                this.createTrafficSignalObject(signalObj[m].name, this.signalPlotData, signalObj[m].color, signalObj[m].lineThickness)
                             );
                         }else if(signalObj[m].type === 'Bus Stop'){
                             this.push_element(
                                 this.chartDataSet,
-                                this.createBusStopObject(signalObj[m].name, this.signalPlotData)
+                                this.createBusStopObject(signalObj[m].name, this.signalPlotData, signalObj[m].color, signalObj[m].lineThickness)
                             );
                         } else if (signalObj[m].type === 'Other'){
                             this.push_element(
                                 this.chartDataSet,
-                                this.createOtherObject(signalObj[m].name, this.signalPlotData)
+                                this.createOtherObject(signalObj[m].name, this.signalPlotData, signalObj[m].color, signalObj[m].lineThickness)
                             );
                         }
                         else{
                             //CVS basic static object info
                             this.push_element(
                                 this.chartDataSet,
-                                this.createStaticObject(signalObj[m].name, this.signalPlotData)
+                                this.createStaticObject(signalObj[m].name, this.signalPlotData, signalObj[m].color, signalObj[m].lineThickness)
                             );
                         }
                     

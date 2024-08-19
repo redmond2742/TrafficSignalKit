@@ -1,19 +1,39 @@
 <template>
   <v-container>
-    <v-col>
+    <v-col cols="12">
       <h3>GPX Text Input</h3>
       <div class="grow-wrap">
         <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
+        <br />
+      </div>
+
+      <v-row>
+        <div class="center">
+          <v-btn @click="btnProcessGPX" color="primary">Plot</v-btn>
+          <!--
+            <v-btn color="info" @click="gpxZoom">Zoom to GPX</v-btn>
+          -->
+        </div>
+        <br />
+      </v-row>
+      <br />
+      <GPXMapper
+        :mapData="mapJSONData"
+        :inputLocation="selectedPoint"
+      ></GPXMapper>
+      <br />
+      <div>
+        <v-data-table-virtual
+          v-model="selectedPoint"
+          :items="dataTableItems"
+          :headers="headers"
+          height="400"
+          item-value="name"
+          return-object
+          show-select
+        ></v-data-table-virtual>
       </div>
     </v-col>
-    <v-row>
-      <v-col cols="12">
-        <v-btn @click="btnProcessGPX" color="primary">Plot</v-btn>
-        <v-btn color="info" @click="resetZoom">Reset Zoom</v-btn>
-        <v-btn color="info" @click="gpxZoom">Zoom to GPX</v-btn>
-      </v-col>
-    </v-row>
-    <GPXMapper></GPXMapper>
   </v-container>
 </template>
 
@@ -33,11 +53,20 @@ export default {
       xmlString: "",
       cards: [],
       childSignalData: [],
-      gpx: "",
+      mapJSONData: null,
       textboxDefaultText: "Paste in GPX file as text in XML format",
       signalCardCount: 0,
       inputData: "",
       gpxBoxXY: [],
+      selectedPoint: [],
+      dataTableItems: [],
+      headers: [
+        { title: "Timestamp", align: "start", key: "Timestamp" },
+        { title: "Latitude, Longitude", align: "end", key: "Coordinates" },
+        { title: "Speed (MPH)", align: "end", key: "speed" },
+        { title: "Bearing (deg)", align: "end", key: "bearing" },
+        { title: "Elevation (ft)", align: "end", key: "Elevation" },
+      ],
     };
   },
   methods: {
@@ -60,53 +89,51 @@ export default {
         this.childSignalData,
         true //map points for mapping
       );
+      this.mapJSONData = this.gpxMapData;
+      this.dataTableItems = this.convertGPXToArray(this.inputData); //this.convertGeoJsonToTableData(this.gpxMapData);
     },
-    gpxZoom() {
-      let xMin = this.gpxBoxXY[0];
-      let yMin = this.gpxBoxXY[1];
-      let xMax = this.gpxBoxXY[2];
-      let yMax = this.gpxBoxXY[3];
+    convertGPXToArray(gpxString) {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(gpxString, "application/xml");
+      const dataArray = [];
 
-      this.zoomToDimensions(xMin, xMax, yMin, yMax);
-    },
-    parseStaticObjInfo(staticObjDataArray) {
-      const objects = [];
-      staticObjDataArray.forEach((item) => {
-        console.log(item);
-        let object = {};
-        if (item.hdData) {
-          object = {
-            name: item.name,
-            type: item.typeStaticObject,
-            latitude: item.latitude,
-            longitude: item.longitude,
-            latlon: [item.latitude, item.longitude],
-            distances: [[], []],
-            cDistance: [],
-            phase: item.phaseValue,
-            tspPreempt: item.tspValue,
-            tspEvents: item.tspEvents,
-            phaseData: item.phaseData,
-            startTimeISO: item.phaseData[0].timestampStartISO,
-          };
-        } else {
-          object = {
-            name: item.name,
-            type: item.typeStaticObject,
-            latitude: item.latitude,
-            longitude: item.longitude,
-            latlon: [item.latitude, item.longitude],
-            distances: [[], []],
-            cDistance: [],
-            phase: item.phaseValue,
-            tspPreempt: item.tspValue,
-            phaseData: item.phaseData,
-          };
-        }
+      // Get all the <trkpt> elements in the GPX file
+      const trkpts = xmlDoc.getElementsByTagName("trkpt");
 
-        objects.push(object);
-      });
-      return objects;
+      // Loop through each <trkpt> element
+      for (let i = 0; i < trkpts.length; i++) {
+        const trkpt = trkpts[i];
+
+        // Extract the latitude and longitude
+        const lat = trkpt.getAttribute("lat");
+        const lon = trkpt.getAttribute("lon");
+        const coordinates = `${lat}, ${lon}`;
+
+        // Extract the elevation (optional, so check if it exists)
+        const ele = trkpt.getElementsByTagName("ele")[0]?.textContent || null;
+
+        // Extract the timestamp (optional, so check if it exists)
+        const time = trkpt.getElementsByTagName("time")[0]?.textContent || null;
+
+        // Extract the speed(optional, so check if it exists)
+        const speed =
+          trkpt.getElementsByTagName("speed")[0]?.textContent || null;
+
+        // Extract the course(optional, so check if it exists)
+        const bearing =
+          trkpt.getElementsByTagName("course")[0]?.textContent || null;
+
+        // Push the extracted data into the array
+        dataArray.push({
+          Timestamp: new Date(time).toLocaleString(),
+          Coordinates: coordinates,
+          speed: (speed * 2.23694).toFixed(2),
+          bearing: bearing,
+          Elevation: (ele * 3.28084).toFixed(2),
+        });
+      }
+
+      return dataArray;
     },
   },
 };
@@ -144,5 +171,12 @@ export default {
 
   /* Place on top of each other */
   grid-area: 1 / 1 / 2 / 2;
+}
+
+.center {
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  height: 100%; /* Optional: Adjust this if you need to vertically center within a certain height */
 }
 </style>

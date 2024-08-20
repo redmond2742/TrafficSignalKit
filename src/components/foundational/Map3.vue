@@ -54,7 +54,7 @@ export default {
   props: {
     mapData: {
       type: Object,
-      required: true,
+      required: false,
       value: null,
     },
     inputLocation: {
@@ -65,21 +65,28 @@ export default {
     latLng: {
       type: Object,
       required: false,
-      value: null,
+      value: [38.37747809671719, -117.81329468747997],
     },
   },
   computed: {
     mapMarkerToPt() {
-      console.log(this.inputLocation[0].Coordinates.split(","));
-      const latString = this.inputLocation[0].Coordinates.split(",")[0];
-      const lngString = this.inputLocation[0].Coordinates.split(",")[1];
-      const outLocation = [parseFloat(latString), parseFloat(lngString)];
-      this.markerLocation = this.inputLocation[0];
-      console.log(outLocation);
-      this.zoomUpdated(18);
-      this.centerUpdated(outLocation);
+      console.log(this.inputLocation);
+      if (Array.isArray(this.inputLocation) && this.inputLocation.length < 3) {
+        return this.inputLocation;
+      } else {
+        if (true) {
+          console.log(this.inputLocation[2].Coordinates.split(","));
+          const latString = this.inputLocation[2].Coordinates.split(",")[0];
+          const lngString = this.inputLocation[2].Coordinates.split(",")[1];
+          const outLocation = [parseFloat(latString), parseFloat(lngString)];
+          this.markerLocation = this.inputLocation[2];
+          console.log(outLocation);
+          this.zoomUpdated(18);
+          this.centerUpdated(outLocation);
 
-      return outLocation;
+          return outLocation;
+        }
+      }
     },
     updateGeoJSON() {
       console.log("Map data trying to plot:", this.mapData);

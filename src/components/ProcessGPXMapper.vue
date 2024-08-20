@@ -58,7 +58,7 @@ export default {
       signalCardCount: 0,
       inputData: "",
       gpxBoxXY: [],
-      selectedPoint: [],
+      selectedPoint: [42.67983789667071, -119.47442813567153],
       dataTableItems: [],
       headers: [
         { title: "Timestamp", align: "start", key: "Timestamp" },
@@ -90,7 +90,10 @@ export default {
         true //map points for mapping
       );
       this.mapJSONData = this.gpxMapData;
-      this.dataTableItems = this.convertGPXToArray(this.inputData); //this.convertGeoJsonToTableData(this.gpxMapData);
+      if (this.inputData.length > 0) {
+        console.log("this shouldn't run unless inputbox");
+        this.dataTableItems = this.convertGPXToArray(this.inputData); //this.convertGeoJsonToTableData(this.gpxMapData);
+      }
     },
     convertGPXToArray(gpxString) {
       const parser = new DOMParser();
@@ -101,6 +104,7 @@ export default {
       const trkpts = xmlDoc.getElementsByTagName("trkpt");
 
       // Loop through each <trkpt> element
+
       for (let i = 0; i < trkpts.length; i++) {
         const trkpt = trkpts[i];
 

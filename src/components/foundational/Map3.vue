@@ -71,21 +71,23 @@ export default {
   computed: {
     mapMarkerToPt() {
       console.log(this.inputLocation);
+      //todo: update this to allow for multiple markers.
       if (Array.isArray(this.inputLocation) && this.inputLocation.length < 3) {
         return this.inputLocation;
       } else {
-        if (true) {
-          console.log(this.inputLocation[2].Coordinates.split(","));
-          const latString = this.inputLocation[2].Coordinates.split(",")[0];
-          const lngString = this.inputLocation[2].Coordinates.split(",")[1];
-          const outLocation = [parseFloat(latString), parseFloat(lngString)];
-          this.markerLocation = this.inputLocation[2];
-          console.log(outLocation);
-          this.zoomUpdated(18);
-          this.centerUpdated(outLocation);
+        let i = 2;
+        for (i = 2; i < this.inputLocation.length - 1; i++)
+          console.log(this.inputLocation[i].Coordinates.split(","));
+        const latString = this.inputLocation[i].Coordinates.split(",")[0];
+        const lngString = this.inputLocation[i].Coordinates.split(",")[1];
+        const outLocation = [];
+        outLocation.push([parseFloat(latString), parseFloat(lngString)]);
+        this.markerLocation = this.inputLocation[i];
+        console.log(outLocation);
+        this.zoomUpdated(18);
+        this.centerUpdated(outLocation);
 
-          return outLocation;
-        }
+        return;
       }
     },
     updateGeoJSON() {
@@ -111,7 +113,7 @@ export default {
       center: [40.17029, -105.095],
       bounds: null,
       geojson: this.mapData,
-      markerLocation: null,
+      markerLocation: [],
 
       geoJsonStyles() {
         return {

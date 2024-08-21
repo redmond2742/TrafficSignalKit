@@ -3,7 +3,7 @@ import chartsAndPlots from "./chartsAndPlots";
 import { DateTime } from "luxon";
 //import * as toGeoJSON from "./mapbox/togeojson";
 import * as toGeoJSON from '@mapbox/togeojson';
-import * as GPX2GeoJSON from "../assets/js/gpx2geojson-master/gpx2geojson.js"
+import * as GPX2GeoJSON from "../assets/js/gpx2geojson-master/gpx2geojson.js" //  https://github.com/M-Reimer/gpx2geojson
 import { DOMParser } from '@xmldom/xmldom';
 
 export default {

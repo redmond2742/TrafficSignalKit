@@ -58,7 +58,7 @@ export default {
       signalCardCount: 0,
       inputData: "",
       gpxBoxXY: [],
-      selectedPoint: [42.67983789667071, -119.47442813567153],
+      selectedPoint: [],
       dataTableItems: [],
       headers: [
         { title: "Timestamp", align: "start", key: "Timestamp" },
@@ -130,6 +130,7 @@ export default {
         // Push the extracted data into the array
         dataArray.push({
           Timestamp: new Date(time).toLocaleString(),
+          OGtimestamp: time,
           Coordinates: coordinates,
           speed: (speed * 2.23694).toFixed(2),
           bearing: bearing,

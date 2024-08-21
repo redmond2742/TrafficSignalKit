@@ -18,8 +18,14 @@
         :geojson="updateGeoJSON"
         :options="geoJsonStyles"
       />
-      <l-marker :lat-lng="mapMarkerToPt">
-        <l-popup>{{ markerLocation }}</l-popup>
+      <!-- :lat-lng="mapMarkerToPt()"
+    :lat-lng="coordinate" -->
+      <l-marker
+        v-for="(locData, index) in this.inputLocation"
+        :key="index"
+        :lat-lng="checkLocationInput(locData)"
+      >
+        <l-popup>{{ markerInfo }}</l-popup>
       </l-marker>
     </l-map>
   </div>
@@ -65,31 +71,45 @@ export default {
     latLng: {
       type: Object,
       required: false,
-      value: [38.37747809671719, -117.81329468747997],
+      value: null,
     },
   },
   computed: {
-    mapMarkerToPt() {
-      console.log(this.inputLocation);
-      //todo: update this to allow for multiple markers.
-      if (Array.isArray(this.inputLocation) && this.inputLocation.length < 3) {
-        return this.inputLocation;
-      } else {
-        let i = 2;
-        for (i = 2; i < this.inputLocation.length - 1; i++)
-          console.log(this.inputLocation[i].Coordinates.split(","));
-        const latString = this.inputLocation[i].Coordinates.split(",")[0];
-        const lngString = this.inputLocation[i].Coordinates.split(",")[1];
-        const outLocation = [];
-        outLocation.push([parseFloat(latString), parseFloat(lngString)]);
-        this.markerLocation = this.inputLocation[i];
-        console.log(outLocation);
-        this.zoomUpdated(18);
-        this.centerUpdated(outLocation);
-
-        return;
-      }
+    ptToMarker(location) {
+      console.log(this.inputLocation, location);
+      let lat = location.split(",")[0];
+      let lon = location.split(",")[1];
+      let updatedLocation = [parseFloat(lat), parseFloat(lon)];
+      return updatedLocation;
     },
+    mapMarkerToPt() {
+      let allMarkers = [];
+      if (this.inputLocation != null) {
+        console.log(this.inputLocation, this.inputLocation.length);
+        for (let i = 0; i < this.inputLocation.length; i++) {
+          if (true) {
+            console.log("GPX info", i, this.inputLocation[i]);
+            //allMarkers.push(this.inputLocation[i]);
+            allMarkers.push([
+              this.inputLocation[i][0],
+              this.inputLocation[i][1],
+            ]);
+          } else {
+            const latString = this.inputLocation[i].Coordinates.split(",")[0];
+            const lngString = this.inputLocation[i].Coordinates.split(",")[1];
+            allMarkers.push([parseFloat(latString), parseFloat(lngString)]);
+            this.markerInfo = this.inputLocation[i];
+          }
+
+          //console.log(outLocation);
+          //this.zoomUpdated(18);
+          //this.centerUpdated(outLocation[i]);
+        }
+      }
+      console.log(allMarkers);
+      return allMarkers;
+    },
+
     updateGeoJSON() {
       console.log("Map data trying to plot:", this.mapData);
       if (this.mapData.features.length > 0) {
@@ -110,7 +130,7 @@ export default {
   data() {
     return {
       zoom: 4,
-      center: [40.17029, -105.095],
+      center: [0, 0],
       bounds: null,
       geojson: this.mapData,
       markerLocation: [],
@@ -124,9 +144,34 @@ export default {
     };
   },
   methods: {
-    latLonUpdate(location) {
+    checkLocationInput(loc) {
+      console.log("input:", loc, typeof loc, loc.length, loc?.Coordinates);
+      if (loc === null || loc.length == 0) {
+        console.log("no markers found");
+      } else if (loc?.Coordinates === undefined) {
+        //basic array of locations (default locations)
+        console.log("basic pt");
+        return loc;
+      } else {
+        console.log("gpx data");
+        const latitude = loc.Coordinates.split(",")[0];
+        const longitude = loc.Coordinates.split(",")[1];
+        const newMarker = [parseFloat(latitude), parseFloat(longitude)];
+        this.markerInfo = loc;
+
+        //this.centerUpdated(newMarker);
+
+        this.zoomUpdated(16);
+
+        return newMarker;
+      }
+    },
+    markerUpdate(location) {
       console.log(location);
       this.latLng = location;
+    },
+    centerUpdated(center) {
+      this.center = center;
     },
     zoomUpdated(zoom) {
       this.zoom = zoom;
@@ -134,9 +179,7 @@ export default {
     boundsUpdated(bounds) {
       this.bounds = bounds;
     },
-    centerUpdated(center) {
-      this.center = center;
-    },
+
     getCenterAndZoomFromGeoJson(map, geoJsonData) {
       // Create a GeoJSON layer from the data
       const geoJsonLayer = L.geoJSON(geoJsonData);

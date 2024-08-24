@@ -7,9 +7,15 @@
       @update:zoom="zoomUpdated"
       @update:center="centerUpdated"
       @update:bounds="boundsUpdated"
+      :attribution="attribution"
     >
-      <l-tile-layer
+      <!--
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+
+        L.tileLayer.here({ apiKey: 'abcde' }).addTo(map);
+    -->
+      <l-tile-layer
+        :url="url"
         layer-type="base"
         name="OpenStreetMap"
       ></l-tile-layer>
@@ -23,9 +29,9 @@
       <l-marker
         v-for="(locData, index) in this.inputLocation"
         :key="index"
-        :lat-lng="checkLocationInput(locData)"
+        :lat-lng="checkLocationInput(locData, index)"
       >
-        <l-popup>{{ markerInfo }}</l-popup>
+        <l-popup>{{ popUpData(locData) }}</l-popup>
       </l-marker>
     </l-map>
   </div>
@@ -129,8 +135,11 @@ export default {
   },
   data() {
     return {
+      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       zoom: 4,
       center: [0, 0],
+      attribution:
+        '&copy; <a target="_blank" href="http://osm.org/copyright">OpenStreetMap</a> contributors',
       bounds: null,
       geojson: this.mapData,
       markerLocation: [],
@@ -157,7 +166,7 @@ export default {
         const latitude = loc.Coordinates.split(",")[0];
         const longitude = loc.Coordinates.split(",")[1];
         const newMarker = [parseFloat(latitude), parseFloat(longitude)];
-        this.markerInfo = loc;
+        //this.markerInfo.push(loc);
 
         //this.centerUpdated(newMarker);
 
@@ -165,6 +174,27 @@ export default {
 
         return newMarker;
       }
+    },
+    popUpData(loc) {
+      const lat = loc.Coordinates.split(",")[0].trim();
+      const lng = loc.Coordinates.split(",")[1].trim();
+      const coord = `Lat, Lng: ${lat}, ${lng}`;
+      const time = loc.Timestamp ? `Time: ${loc.Timestamp}` : "Time: N/A";
+      const timestamp = loc.OGtimestamp
+        ? `Timestamp: ${loc.OGtimestamp}`
+        : "Timestamp: N/A";
+      const elevation = loc.elevation
+        ? `Elevation: ${loc.elevation} feet`
+        : "Elevation: N/A";
+      const bearing = loc.bearing ? `Bearing: ${loc.bearing}°` : "Bearing: N/A";
+
+      const outputString = `${time}\n
+      ${timestamp}\n
+      ${coord}\n
+      ${elevation}\n
+      ${bearing}`;
+
+      return outputString; //.replace(/(\r\n|\n|\r)/gm, "<br>");
     },
     markerUpdate(location) {
       console.log(location);

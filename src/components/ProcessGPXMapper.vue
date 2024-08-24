@@ -65,7 +65,7 @@ export default {
         { title: "Latitude, Longitude", align: "end", key: "Coordinates" },
         { title: "Speed (MPH)", align: "end", key: "speed" },
         { title: "Bearing (deg)", align: "end", key: "bearing" },
-        { title: "Elevation (ft)", align: "end", key: "Elevation" },
+        { title: "Elevation (ft)", align: "end", key: "elevation" },
       ],
     };
   },
@@ -134,7 +134,7 @@ export default {
           Coordinates: coordinates,
           speed: (speed * 2.23694).toFixed(2),
           bearing: bearing,
-          Elevation: (ele * 3.28084).toFixed(2),
+          elevation: (ele * 3.28084).toFixed(2),
         });
       }
 

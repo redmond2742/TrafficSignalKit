@@ -16,6 +16,7 @@
     "gpx-parser-builder": "^1.1.0",
     "gpxparser": "^3.0.8",
     "install": "^0.13.0",
+    "leaflet-tilelayer-here": "^2.0.1",
     "luxon": "^3.4.4",
     "npm": "^10.8.2",
     "roboto-fontface": "*",

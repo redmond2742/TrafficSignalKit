@@ -108,6 +108,14 @@ export default {
             "Coordination",
           ],
         },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+GPX+Map+and+Table.png",
+          title: "GPX Mapper",
+          description: "Plot GPX tracks on a map",
+          link: "/gpx-mapper",
+          topics: ["GPX", "Map"],
+        },
       ],
     };
   },

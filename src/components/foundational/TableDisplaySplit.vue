@@ -1,5 +1,5 @@
 <template>
-  <v-card-text v-if="showTables">
+  <v-card-text>
     <v-window v-model="tab">
       <v-window-item value="table-view">
         <div>
@@ -164,7 +164,7 @@ export default {
       });
     },
     processedMetrics() {
-      if (this.isDataPresent) {
+      if (this.isDataLoaded()) {
         let maxLength = this.tableData.length - 1;
 
         let phaseData = this.tableData[maxLength];
@@ -209,6 +209,13 @@ export default {
     },
   },
   methods: {
+    isDataLoaded() {
+      if (this.tableData.length > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    },
     highlightMatches(text) {
       if (typeof text === "string") {
         const matchExists = text

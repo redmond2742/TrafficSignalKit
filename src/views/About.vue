@@ -4,11 +4,14 @@
     <h1 class="h1-center-text">Traffic Signal Kit</h1>
 
     <h3>
-      Each month in 2024, I am building free traffic signal related tools for
-      traffic engineers. These tools bare bones proof of concepts that allow me
-      to move quickly and test what is worthy of additional resources. I am
-      building in public and leveraging ChatGPT to write code and help me learn
-      Vue.JS. Feedback (with the heart button) guides future features.
+      Every month this year, I’m rolling out free & open source tools for
+      traffic engineers. These are rapid-fire, proof-of-concept creations
+      designed to innovate, inspire, and provide insights into traffic signal
+      operations. I’m building these tools in public, with assistance from
+      ChatGPT and my journey into mastering Vue.js. Expect raw, early-stage
+      concepts—this is about speed, experimentation, and finding what truly
+      makes an impact. Your feedback is my roadmap! ❤️ Smash that heart button
+      to vote on features and shape the future of these tools.
     </h3>
 
     <v-container>

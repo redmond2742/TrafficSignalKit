@@ -14,7 +14,7 @@
     <hr />
 
     <div class="text-center">
-      <v-menu>
+      <v-menu v-if="mobileViewHide">
         <template v-slot:activator="{ props }">
           <v-btn v-bind="props"> 2024' Q1 Tools</v-btn>
         </template>
@@ -31,7 +31,7 @@
       </v-menu>
     </div>
     <div class="text-center">
-      <v-menu>
+      <v-menu v-if="mobileViewHide">
         <template v-slot:activator="{ props }">
           <v-btn v-bind="props"> 2024' Q2 Tools</v-btn>
         </template>
@@ -48,7 +48,7 @@
       </v-menu>
     </div>
     <div class="text-center">
-      <v-menu>
+      <v-menu v-if="mobileViewHide">
         <template v-slot:activator="{ props }">
           <v-btn v-bind="props"> 2024' Q3 Tools</v-btn>
         </template>
@@ -71,7 +71,7 @@
   </router-link>
     -->
 
-    <v-spacer></v-spacer>
+    <v-spacer v-if="mobileViewHide"></v-spacer>
 
     <template v-slot:append>
       <v-btn large plain
@@ -160,6 +160,9 @@ export default {
   computed: {
     mobileView() {
       return this.$vuetify.display.smAndDown;
+    },
+    mobileViewHide() {
+      return !this.$vuetify.display.smAndDown;
     },
   },
 };

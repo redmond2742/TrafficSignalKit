@@ -1,10 +1,14 @@
 <template>
   <v-app-bar :elevation="12" color="#009688">
+    <v-app-bar-nav-icon
+      v-if="mobileView"
+      @click="drawer = !drawer"
+    ></v-app-bar-nav-icon>
     <div class="title-justify">
       <v-app-bar-title>
         <router-link to="/about"
-          ><b>Traffic Signal Kit</b> <span class="beta">BETA</span></router-link
-        ></v-app-bar-title
+          ><b>Traffic Signal Kit</b>
+        </router-link></v-app-bar-title
       >
     </div>
     <hr />
@@ -96,28 +100,68 @@
       </v-dialog>
     </template>
   </v-app-bar>
+  <v-navigation-drawer v-model="drawer" app temporary>
+    <v-list>
+      <v-list-item
+        v-for="(item, index) in tools"
+        :key="index"
+        :to="item.path"
+        @click="drawer = false"
+      >
+        <v-list-item-title>{{ item.title }}</v-list-item-title>
+      </v-list-item>
+    </v-list>
+  </v-navigation-drawer>
 </template>
 
 <script>
 export default {
-  data: () => ({
-    q1Items: [
-      { title: "January: Split Calculator", path: "/split-calculator" },
-      { title: "Feburary: High Res. Explainer", path: "/explainer" },
-      { title: "March: Time Space Visualizer", path: "/gpx" },
-    ],
-    q2Items: [
-      { title: "April: Split History", path: "/split-history" },
-      { title: "May: Intersection Simulator", path: "/traffic-simulator" },
-      { title: "June: Phase Plotter", path: "/phase-plotter" },
-    ],
-    q3Items: [
-      { title: "July: GPX & Phase Plotter", path: "/gpx-phase-plotter" },
-      { title: "August: GPX Mapper", path: "/gpx-mapper" },
-    ],
+  data() {
+    return {
+      tools: [
+        { title: "Split Calculator", path: "/split-calculator" },
+        { title: "High Res. Explainer", path: "/explainer" },
+        { title: "Time Space Visualizer", path: "/gpx" },
+        { title: "Split History", path: "/split-history" },
+        {
+          title: "Intersection Simulator",
+          path: "/traffic-simulator",
+        },
+        { title: "Phase Plotter", path: "/phase-plotter" },
+        { title: "GPX & Phase Plotter", path: "/gpx-phase-plotter" },
+        { title: "GPX Mapper", path: "/gpx-mapper" },
+      ],
 
-    dialog: false,
-  }),
+      q1Items: [
+        { title: "January: Split Calculator", path: "/split-calculator" },
+        { title: "Feburary: High Res. Explainer", path: "/explainer" },
+        { title: "March: Time Space Visualizer", path: "/gpx" },
+      ],
+      q2Items: [
+        { title: "April: Split History", path: "/split-history" },
+        {
+          title: "May: Intersection Simulator",
+          path: "/traffic-simulator",
+        },
+        { title: "June: Phase Plotter", path: "/phase-plotter" },
+      ],
+      q3Items: [
+        { title: "July: GPX & Phase Plotter", path: "/gpx-phase-plotter" },
+        { title: "August: GPX Mapper", path: "/gpx-mapper" },
+      ],
+
+      dialog: false,
+      drawer: false, // Controls the drawer visibility
+    };
+  },
+  mounted() {
+    console.log(this.$vuetify.breakpoint);
+  },
+  computed: {
+    mobileView() {
+      return this.$vuetify.display.smAndDown;
+    },
+  },
 };
 </script>
 

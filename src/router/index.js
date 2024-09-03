@@ -1,4 +1,4 @@
-import {createRouter, createWebHistory} from 'vue-router'
+import {createRouter, createWebHistory, createMemoryHistory} from 'vue-router'
 
 import SplitCalculator from '../views/SplitCalculator'
 import HighResDataExplainer from '../views/HighResDataExplainer'
@@ -79,7 +79,9 @@ const routes = [
 ]
 
 const router = createRouter({
-    history: createWebHistory(process.env.BASE_URL), 
+    history: import.meta.env.SSR
+    ? createMemoryHistory("/")
+    : createWebHistory(process.env.BASE_URL), 
     routes
 })
 

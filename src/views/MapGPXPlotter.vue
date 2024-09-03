@@ -36,8 +36,7 @@
           value="detailed-explain"
         >
           <v-expansion-panel-text>
-            * Polyline Plot GPX from input box * Table of all coordinates *
-            Marker showing the timestamp and location when clicking on a dot
+            * Plot cumulative elevation gain over GPX track
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -114,14 +113,6 @@
             &lt;trkpt lat=&quot;37.89618&quot;
             lon=&quot;-122.06306&quot;&gt;&lt;ele&gt;40&lt;/ele&gt;&lt;time&gt;2024-03-02T19:33:38.190Z&lt;/time&gt;&lt;speed&gt;0.00&lt;/speed&gt;&lt;course&gt;152.52&lt;/course&gt;&lt;/trkpt&gt;
             &lt;/trkseg&gt; &lt;/trk&gt; &lt;/gpx&gt;
-
-            <br /><br /><br />
-            Main & Penniman, 37.91468731793959, -122.065680012584, <br />
-            CA/Civic, 37.9013511000743, -122.064401378189 <br />
-            CA/YVR, 37.90495039889445, -122.06575265782921 <br />
-            CA/Mt. D, 37.897397411618044, -122.06344916387569 <br />
-            CA/Olympic, 37.89600895917039, -122.06282426447109 <br />
-            CA/Bohtelo, 37.89457361001387, -122.061923996248 <br />
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>

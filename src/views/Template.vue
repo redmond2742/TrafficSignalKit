@@ -6,10 +6,10 @@
     <ul>
       <li>git branch MONTH-NAME</li>
       <li>
-        create new view and components (vbase (with plugin enabled) to setup
-        template/script/style), add to router as import and object in index.js.
-        Use this script and style below. Copy split calc for panels. Add Button
-        on header bar.
+        create new view and components (TYPE: vbase (with plugin enabled) to
+        setup template/script/style), add to router as import and object in
+        index.js. Use this script and style below. Copy split calc for panels.
+        Add Button on header bar.
       </li>
       <li>build, research, update</li>
       <li>

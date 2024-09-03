@@ -79,9 +79,8 @@ const routes = [
 ]
 
 const router = createRouter({
-    history: import.meta.env.SSR
-    ? createMemoryHistory("/")
-    : createWebHistory(process.env.BASE_URL), 
+    history: 
+   createWebHistory(process.env.BASE_URL), 
     routes
 })
 

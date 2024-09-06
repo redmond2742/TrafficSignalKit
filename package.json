@@ -19,6 +19,7 @@
     "leaflet-tilelayer-here": "^2.0.1",
     "luxon": "^3.4.4",
     "npm": "^10.8.2",
+    "pinia": "^2.2.2",
     "roboto-fontface": "*",
     "vite-plugin-favicons-inject": "^2.2.0",
     "vue": "^3.3.0",

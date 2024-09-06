@@ -148,6 +148,7 @@ export default {
       q3Items: [
         { title: "July: GPX & Phase Plotter", path: "/gpx-phase-plotter" },
         { title: "August: GPX Mapper", path: "/gpx-mapper" },
+        { title: "September: TBD", path: "/detectorRLR" },
       ],
 
       dialog: false,

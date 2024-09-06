@@ -10,6 +10,7 @@ import HighResPhasePlotter from '../views/HighResPhasePlotter'
 import TrafficSim from '../views/TrafficSim'
 import GPXPhasePlotter from '../views/GPXPhasePlotter'
 import GPXMapper from '../views/MapGPXPlotter'
+import HighResDetectors from '../views/HighResDetectors'
 
 
 
@@ -68,6 +69,11 @@ const routes = [
         path: '/gpx-mapper',
         name: 'gpxMapper',
         component: GPXMapper,
+    },
+    {
+        path: '/detectorRLR',
+        name: 'detectorRLR',
+        component: HighResDetectors,
     },
     {
         path: '/:pathMatch(.*)*',

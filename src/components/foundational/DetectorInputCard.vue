@@ -14,16 +14,26 @@
                 ></v-text-field>
               </div>
             </v-col>
+            <v-col sm="3">
+              <div class="form-group-select">
+                <v-select
+                  label="Posted Speed (MPH)"
+                  :items="[20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]"
+                  variant="outlined"
+                  v-model="signalForm.speed"
+                ></v-select>
+              </div>
+            </v-col>
 
             <v-col sm="2">
               <div>
                 <h6>Detector Channel</h6>
                 <v-text-field
-                  v-model.number="detectorChannel"
+                  v-model="localDetectorChannel"
                   label="Channel #"
                   type="number"
-                  @input="emitNumber"
-                  outlined
+                  @input="updateData"
+                  variant="outlined"
                 ></v-text-field>
               </div>
             </v-col>
@@ -99,13 +109,22 @@
 
 <script>
 import InputBox from "./InputBox.vue";
+import { ref } from "vue";
 
 import processPhaseSplits from "../../mixins/processPhaseSplits";
+import { mapState } from "pinia";
+import { mapActions } from "pinia";
+import { useDataStore } from "../../stores/data";
 
 export default {
   mixins: [processPhaseSplits],
   components: {
     InputBox,
+  },
+  setup() {
+    const dataStore = useDataStore();
+
+    return { dataStore };
   },
   props: {
     cardId: {
@@ -119,8 +138,8 @@ export default {
   },
   data() {
     return {
+      localDetectorChannel: 1,
       signalForm: { ...this.cardData },
-      detectorChannel: 1, // Default value
       buttonPressed: false,
       buttonColor: "primary",
       hdDataObj: [],
@@ -128,7 +147,16 @@ export default {
         "Paste in High-Resolution Traffic Signal Data as Text in CSV format",
     };
   },
+  computed: {
+    ...mapState(useDataStore, ["detChannel"]),
+  },
   methods: {
+    ...mapActions(useDataStore, ["updateDetChannel"]),
+
+    updateData() {
+      this.updateDetChannel(this.localDetectorChannel);
+      this.localDetectorChannel = this.detChannel;
+    },
     handleSubmit() {
       // Handle form submission
       //console.log(this.form);

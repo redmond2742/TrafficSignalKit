@@ -13,8 +13,6 @@ import { mapActions } from "pinia";
 import { useDataStore } from "../stores/data";
 import DetectorInputCard from "./foundational/DetectorInputCard.vue";
 
-//TODO: collect emitted detector input card data and store in DataStore here.
-
 export default {
   components: { DetectorInputCard },
   setup() {

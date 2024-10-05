@@ -64,6 +64,23 @@
         </v-list>
       </v-menu>
     </div>
+    <div class="text-center">
+      <v-menu v-if="mobileViewHide">
+        <template v-slot:activator="{ props }">
+          <v-btn v-bind="props"> 2024' Q4 Tools</v-btn>
+        </template>
+
+        <v-list>
+          <v-list-item v-for="(item, index) in q4Items" :key="index">
+            <v-list-item-title
+              ><router-link :to="item.path"
+                >{{ item.title }}
+              </router-link></v-list-item-title
+            >
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
 
     <!--
     <router-link v-for="route in routes" :key="route.path" :to="route.path">
@@ -150,6 +167,7 @@ export default {
         { title: "August: GPX Mapper", path: "/gpx-mapper" },
         { title: "September: TBD", path: "/detectorRLR" },
       ],
+      q4Items: [{ title: "October: Practice Exam", path: "/practiceExam" }],
 
       dialog: false,
       drawer: false, // Controls the drawer visibility

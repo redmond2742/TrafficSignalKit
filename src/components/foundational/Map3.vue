@@ -56,7 +56,6 @@ import {
 
 export default {
   components: {
-    L,
     LMap,
     LTileLayer,
     LGeoJson,

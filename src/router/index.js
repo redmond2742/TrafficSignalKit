@@ -11,6 +11,7 @@ import TrafficSim from '../views/TrafficSim'
 import GPXPhasePlotter from '../views/GPXPhasePlotter'
 import GPXMapper from '../views/MapGPXPlotter'
 import HighResDetectors from '../views/HighResDetectors'
+import PracticeExam from '../views/PracticeExam'
 
 
 
@@ -76,10 +77,16 @@ const routes = [
         component: HighResDetectors,
     },
     {
+        path: '/PracticeExam',
+        name: 'practiceExam',
+        component: PracticeExam,
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: "not-found",
         component: About,
     },
+    
      
     
 ]

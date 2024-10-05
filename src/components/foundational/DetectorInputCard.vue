@@ -17,24 +17,22 @@
             <v-col sm="3">
               <div class="form-group-select">
                 <v-select
-                  label="Posted Speed (MPH)"
-                  :items="[20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]"
+                  label="Approach Direction"
+                  :items="['NB', 'SB', 'EB', 'WB']"
                   variant="outlined"
-                  v-model="signalForm.speed"
+                  v-model="signalForm.direction"
                 ></v-select>
               </div>
             </v-col>
-
-            <v-col sm="2">
-              <div>
-                <h6>Detector Channel</h6>
-                <v-text-field
-                  v-model="localDetectorChannel"
-                  label="Channel #"
-                  type="number"
-                  @input="updateData"
+            <v-col sm="3">
+              <div class="form-group-select">
+                <v-select
+                  label="Posted Speed (MPH)"
+                  :items="[20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]"
                   variant="outlined"
-                ></v-text-field>
+                  v-model="localPostedSpeed"
+                  @update:modelValue="updateSpeedData"
+                ></v-select>
               </div>
             </v-col>
           </v-row>
@@ -49,7 +47,7 @@
                 ></v-text-field>
               </div>
             </v-col>
-            <v-col sm="3">
+            <v-col sm="4">
               <div class="form-group-select">
                 <v-select
                   label="Phase Select"
@@ -68,14 +66,16 @@
                 ></v-select>
               </div>
             </v-col>
-            <v-col sm="3">
-              <div class="form-group-select">
-                <v-select
-                  label="Approach Direction"
-                  :items="['NB', 'SB', 'EB', 'WB']"
+            <v-col sm="2">
+              <div>
+                <h6>Detector Channel</h6>
+                <v-text-field
+                  v-model="localDetectorChannel"
+                  label="Channel #"
+                  type="number"
+                  @input="updateDetData"
                   variant="outlined"
-                  v-model="signalForm.direction"
-                ></v-select>
+                ></v-text-field>
               </div>
             </v-col>
           </v-row>
@@ -139,6 +139,7 @@ export default {
   data() {
     return {
       localDetectorChannel: 1,
+      localPostedSpeed: 25,
       signalForm: { ...this.cardData },
       buttonPressed: false,
       buttonColor: "primary",
@@ -148,15 +149,23 @@ export default {
     };
   },
   computed: {
-    ...mapState(useDataStore, ["detChannel"]),
+    ...mapState(useDataStore, ["detChannel", "postedSpeed"]),
   },
   methods: {
-    ...mapActions(useDataStore, ["updateDetChannel"]),
-
-    updateData() {
+    ...mapActions(useDataStore, {
+      updateSpeed: "updateSpeed",
+      updateDetChannel: "updateDetChannel",
+    }),
+    updateDetData() {
       this.updateDetChannel(this.localDetectorChannel);
       this.localDetectorChannel = this.detChannel;
+      console.log("in Store:", this.detChannel);
     },
+    updateSpeedData() {
+      this.updateSpeed(this.localPostedSpeed);
+      this.localPostedSpeed = this.postedSpeed;
+    },
+    //TODO: update direction, phase and store the other stuff.
     handleSubmit() {
       // Handle form submission
       //console.log(this.form);

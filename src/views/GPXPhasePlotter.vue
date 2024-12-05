@@ -47,8 +47,16 @@
 
         <v-expansion-panel title="Example: Using This Tool" value="example">
           <v-expansion-panel-text>
-            GPX Data & Signal High Resolution Data needed during the same time
-            period.
+            <iframe
+              width="560"
+              height="315"
+              src="https://www.youtube.com/embed/MLJvc0Hdg6c?si=E7_dDF3_jd5eJoOd"
+              title="YouTube video player"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen
+            ></iframe>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>

@@ -41,7 +41,7 @@ export default {
       {
         id: 1,
         icon: "mdi-github",
-        link: "https://github.com/redmond2742",
+        link: "https://github.com/redmond2742/TrafficSignalKit",
       },
       {
         id: 2,

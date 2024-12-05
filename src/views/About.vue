@@ -10,7 +10,7 @@
       operations. I’m building these tools in public, with assistance from
       ChatGPT and my journey into mastering Vue.js. Expect raw, early-stage
       concepts—this is about speed, experimentation, and finding what truly
-      makes an impact. Your feedback is my roadmap! ❤️ Smash that heart button
+      makes an impact. Your feedback is my roadmap! ❤️ Click that heart button
       to vote on features and shape the future of these tools.
     </h3>
 

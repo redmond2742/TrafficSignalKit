@@ -44,7 +44,7 @@
             />
           </div>
           <v-btn @click="addDetector"
-            >Add Detector ({{ detectors.length }})</v-btn
+            >Add New Detector ({{ detectors.length }})</v-btn
           >
         </v-col>
         <v-col>
@@ -98,6 +98,8 @@ export default {
       localIntersectionName: "",
       localIntersectionLatLon: "",
       localHdData: "",
+
+      detectorDataArray: [],
 
       cardID: "",
       signalForm: { ...this.cardData },
@@ -153,32 +155,49 @@ export default {
         //this.signalForm.phaseData
       );
 
+      if (this.signalForm.hdData != null && this.detectorDataArray.length > 0) {
+        for (let i = 0; i < this.detectorDataArray.length - 1; i++) {
+          console.log("Item:", i, this.detectorDataArray[i + 1]);
+          console.log(
+            this.detectYRCrossings(
+              this.signalForm.hdData,
+              this.detectorDataArray[i + 1].detChannel,
+              this.detectorDataArray[i + 1].phase
+            )
+            //TODO: load this data into a table and present, also count number of each type
+          );
+        }
+      }
+
       //console.log(this.signalForm.hdData);
 
-      console.log(this.detectYRCrossings(this.signalForm.hdData, 4, 4));
+      //check if this.signalForm.hdData exists, then check YR crossings.
 
-      //TODO: process phase/det info to determine if red light was run.
+      //console.log(this.detectYRCrossings(this.signalForm.hdData, 4, 4));
 
       /* ----psudo code-----
 
       if we have a detection information, calculate if that detector turned on and off
       during a yellow event.
 
-      1.look through high res data for yellow start and end time and 
+      1.look through high res data for yellow start and end time and
       see if detector event channel# turns on and off during that duration.
 
       *--also consider looking for detetors turn off during this yellow state to see if people are running end of green.
 
       2. do this also for the all red state.
 
-
-
       */
       // TODO: emit the data to plot
     },
 
-    handleDetectorData(data) {
-      console.log(data);
+    handleDetectorData(detID, detData) {
+      console.log("handling emitted detector data");
+
+      this.detectorDataArray[detID] = detData;
+
+      console.log("emitted data :", detID, detData);
+      console.log("loaded: ", this.detectorDataArray);
     },
     updateLatLon(formInputLatLon) {
       if (formInputLatLon) {
@@ -199,7 +218,7 @@ export default {
         this.signalForm.phaseData = this.buildCycleItem(this.signalForm.hdData);
         console.log("Processig hd data");
       }
-      console.log(this.signalForm);
+      //console.log(this.signalForm);
 
       this.loadSignalData();
     },

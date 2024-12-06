@@ -466,14 +466,8 @@ export const quizData = {
                         "correctAnswer": "A"
                       }
                     ],
-
-
-       
       };
       
-  
-  
-
 export const useDataStore = defineStore('data', {
     state: () => ({
         count: 0,

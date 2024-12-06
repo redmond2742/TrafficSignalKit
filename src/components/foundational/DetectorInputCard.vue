@@ -148,7 +148,7 @@ export default {
       cardID: this.cardID,
       detectorID: 0,
       detectorForm: { ...this.cardData },
-      detectorData: {},
+      detectorData: [],
       location: {
         loaded: false,
         lat: 0,
@@ -219,20 +219,10 @@ export default {
       //console.log(this.form);
     },
     loadDetectorData() {
-      this.$emit("detector-data", this.detectorData);
+      this.$emit("detector-data", this.detectorID, this.detectorData);
       this.buttonPressed = true;
       this.buttonColor = "success";
-      console.log("Detector Form loading the following");
-      console.log(
-        this.detName,
-        this.heading,
-        this.postedSpeed,
-        this.location,
-        this.phase,
-        this.detChannel,
-        this.cardID,
-        this.detectorID
-      );
+      console.log("Detector Form loading the following", this.detectorData);
     },
 
     phaseToNumber(formInputPhase) {
@@ -254,19 +244,17 @@ export default {
         this.location.loaded = true;
       }
 
-      console.log(this.location);
-
       this.detectorID = this.cardIDToNumber(this.cardID);
 
       //create object that removes all the form specific data and prepares data as we want
       this.detectorData = {
+        detectorID: this.detectorID,
         detName: this.detName,
         heading: this.heading,
         postedSpeed: this.postedSpeed,
         detLatLon: this.location,
         phase: this.phaseToNumber(this.phase),
-        detChannel: this.detChannel,
-        detectorID: this.detectorID,
+        detChannel: parseInt(this.detChannel, 10),
       };
 
       this.loadDetectorData();

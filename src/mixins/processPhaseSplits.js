@@ -305,17 +305,9 @@ export default {
           let results = [];
           const yellowClearancePeriods = {};
 
-          
-
           hdData.forEach(event => {
             yellowChangeActive = this.isYellowChangeActive(event, activePhase);
             redClearActive = this.isRedClearActive(event, activePhase);
-           
-        
-
-            
-           
-
 
             /*
             [detON | detOFF]
@@ -323,7 +315,7 @@ export default {
            2. Y         R 8:08:32
            3. Y         R+
            4. R         R
-           5. R         R+
+           5. R         R+ (<5 sec)
 
           */
             // Starts in Yellow, Ends in Yellow
@@ -333,13 +325,11 @@ export default {
                   prevDetectorState = true; // vehicle approaching light
               }
               if(!detState && prevDetectorState){
-                results.push({YY:"Yellow Start/Yellow End"});
+                results.push({YY:"Yellow Start/Yellow End", timestamp: event.timestamp});
                 prevDetectorState = false;
                 console.log("yellow light runner", event)
                 console.count("Y:Y-runner")
               }
-           
-
             }
             //Starts in Yellow, ends in Red
             if(yellowChangeActive){
@@ -349,13 +339,11 @@ export default {
               }}
             if(redClearActive){
               if(!detState && prevDetectorState){
-                results.push({YR:"Yellow Start/Red End"});
+                results.push({YR:"Yellow Start/Red End", timestamp: event.timestamp});
                 prevDetectorState = false;
                 console.log("yellow-red light runner", event)
                 console.count("Y:R-runner")
               }
-            
-
             }
              //Starts in Red, ends in Red
              if(redClearActive){
@@ -365,17 +353,15 @@ export default {
               }}
 
               if(!detState && prevDetectorState){
-                results.push({RR:"Red Start/Red End"});
+                results.push({RR:"Red Start/Red End", timestamp: event.timestamp});
                 prevDetectorState = false;
                 console.log("red-red light runner", event)
                 console.count("R:R-runner")
               }
-              
-            
+
+              //TODO: find a way to check for start in yellow or red, and ends up to 5 sec after red.
           });
           return results;
-          
-          
         },
     
         isCycleComplete(ph) {

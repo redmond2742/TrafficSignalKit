@@ -2,11 +2,6 @@
   <div>
     <simple-intersection-input-card></simple-intersection-input-card>
   </div>
-  <div>
-    <v-btn color="info" @click="resetZoom">Reset Zoom</v-btn>
-
-    <RadarChart />
-  </div>
 </template>
 
 <script>

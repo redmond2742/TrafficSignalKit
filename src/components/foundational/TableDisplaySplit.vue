@@ -55,6 +55,17 @@
                 <td>{{ processedMetrics.skippedPercent7 }}%</td>
                 <td>{{ processedMetrics.skippedPercent8 }}%</td>
               </tr>
+              <tr>
+                <td>Total Count</td>
+                <td>{{ processedMetrics.totalPhaseCalls1 }}</td>
+                <td>{{ processedMetrics.totalPhaseCalls2 }}</td>
+                <td>{{ processedMetrics.totalPhaseCalls3 }}</td>
+                <td>{{ processedMetrics.totalPhaseCalls4 }}</td>
+                <td>{{ processedMetrics.totalPhaseCalls5 }}</td>
+                <td>{{ processedMetrics.totalPhaseCalls6 }}</td>
+                <td>{{ processedMetrics.totalPhaseCalls7 }}</td>
+                <td>{{ processedMetrics.totalPhaseCalls8 }}</td>
+              </tr>
             </tbody>
           </table>
           <br /><br />
@@ -169,6 +180,8 @@ export default {
 
         let phaseData = this.tableData[maxLength];
 
+        console.log(phaseData);
+
         return {
           gapOutPercent1: phaseData.gapOutPercents[0],
           gapOutPercent2: phaseData.gapOutPercents[1],
@@ -202,6 +215,14 @@ export default {
           skippedPercent6: phaseData.skippedPercents[5],
           skippedPercent7: phaseData.skippedPercents[6],
           skippedPercent8: phaseData.skippedPercents[7],
+          totalPhaseCalls1: phaseData.totalPhaseCalls[0],
+          totalPhaseCalls2: phaseData.totalPhaseCalls[1],
+          totalPhaseCalls3: phaseData.totalPhaseCalls[2],
+          totalPhaseCalls4: phaseData.totalPhaseCalls[3],
+          totalPhaseCalls5: phaseData.totalPhaseCalls[4],
+          totalPhaseCalls6: phaseData.totalPhaseCalls[5],
+          totalPhaseCalls7: phaseData.totalPhaseCalls[6],
+          totalPhaseCalls8: phaseData.totalPhaseCalls[7],
         };
       } else {
         return "";

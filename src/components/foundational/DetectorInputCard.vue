@@ -52,9 +52,9 @@
               </div>
             </v-col>
             <v-col sm="4">
+              <h6>Phase Select*</h6>
               <div class="form-group-select">
                 <v-select
-                  label="Phase Select"
                   :items="[
                     'Phase 1',
                     'Phase 2',
@@ -73,10 +73,9 @@
             </v-col>
             <v-col sm="2">
               <div>
-                <h6>Detector Channel</h6>
+                <h6>Detector Channel*</h6>
                 <v-text-field
                   v-model="localDetectorChannel"
-                  label="Channel #"
                   type="number"
                   @input="updateDetData"
                   variant="outlined"
@@ -88,7 +87,9 @@
 
         <v-col>
           <v-row>
+            <h5>* Required</h5>
             <div>
+              <br />
               <v-btn @click="handleClick" :color="buttonColor"
                 >Load Detector Data</v-btn
               >

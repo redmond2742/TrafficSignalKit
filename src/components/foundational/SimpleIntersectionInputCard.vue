@@ -108,6 +108,7 @@ export default {
       hdDataObj: [],
       textboxDefaultText:
         "Paste in High-Resolution Traffic Signal Data as Text in CSV format (timestamp, enumeration, phase/channel)",
+      rlrEvents: "",
     };
   },
   computed: {
@@ -136,8 +137,6 @@ export default {
       this.localHdData = this.hdData;
     },
 
-    //update HD data
-
     handleSubmit() {
       // Handle form submission
       console.log(this.form);
@@ -157,37 +156,20 @@ export default {
 
       if (this.signalForm.hdData != null && this.detectorDataArray.length > 0) {
         for (let i = 0; i < this.detectorDataArray.length - 1; i++) {
-          console.log("Item:", i, this.detectorDataArray[i + 1]);
-          console.log(
-            this.detectYRCrossings(
-              this.signalForm.hdData,
-              this.detectorDataArray[i + 1].detChannel,
-              this.detectorDataArray[i + 1].phase
-            )
-            //TODO: load this data into a table and present, also count number of each type
+          this.rlrEvents = this.detectYRCrossings(
+            this.signalForm.hdData,
+            this.detectorDataArray[i + 1].detChannel,
+            this.detectorDataArray[i + 1].phase
           );
+
+          console.log("Item:", i, this.detectorDataArray[i + 1]);
+          console.log(this.rlrEvents);
+
+          this.$emit("rlr-events", this.rlrEvents);
+          //TODO: load this data into a table and present, also count number of each type
         }
       }
 
-      //console.log(this.signalForm.hdData);
-
-      //check if this.signalForm.hdData exists, then check YR crossings.
-
-      //console.log(this.detectYRCrossings(this.signalForm.hdData, 4, 4));
-
-      /* ----psudo code-----
-
-      if we have a detection information, calculate if that detector turned on and off
-      during a yellow event.
-
-      1.look through high res data for yellow start and end time and
-      see if detector event channel# turns on and off during that duration.
-
-      *--also consider looking for detetors turn off during this yellow state to see if people are running end of green.
-
-      2. do this also for the all red state.
-
-      */
       // TODO: emit the data to plot
     },
 

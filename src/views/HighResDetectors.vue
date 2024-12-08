@@ -41,7 +41,9 @@
           value="detailed-explain"
         >
           <v-expansion-panel-text>
-            * Load in Detector Channel and Info <br />
+            * Show table of events for each detector channel<br />
+            * Calculate metric for number of yellow/red light runners per hour
+            break down by yellow, all red and red<br />
             * Determine where detector events turn on AND Off when signal phase
             is yellow or red <br />
             * Plot these events using TSD or along a phase chart, or use lat,

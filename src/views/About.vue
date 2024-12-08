@@ -127,6 +127,14 @@ export default {
           link: "/PracticeExam",
           topics: ["Exam", "Practice", "TE"],
         },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-Yellow+and+Red+Light+Running+Detection.png",
+          title: "Red Light Runner",
+          description: "Table of Yellow and Red light running events",
+          link: "/detectorRLR",
+          topics: ["Red Light Running", "Controller Data"],
+        },
       ],
     };
   },

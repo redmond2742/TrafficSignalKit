@@ -30,6 +30,9 @@ export default {
                 phase6: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
                 phase7: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
                 phase8: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+                phase9: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+                phase10: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
+                phase11: { skipped: 0, gapOut: 0, maxOut: 0, forceOff: 0 },
               },
             activeB1Phases: [],
             activeB2Phases: [],
@@ -39,11 +42,13 @@ export default {
             tspEventData: [],
             previousYellowChangeState: false,
             previousRedClearState: false,
+            previousPhaseState: false,
             previousDetectorState: false,
             eventStates: {},
             totalPhaseCalls:[],
             yellowStartTS: null,
             allRedStartTS: null,
+            phaseEndTS: null,
             
 
         };
@@ -149,6 +154,7 @@ export default {
         },
         countTotalTerminationsByPhase(phaseNumber) {
           let phaseName = "phase" + phaseNumber;
+          console.log("PZ:",phaseName,this.terminationResults )
           let totalTerminationCount =
             this.terminationResults[phaseName].gapOut +
             this.terminationResults[phaseName].maxOut +
@@ -196,22 +202,29 @@ export default {
           return this.eventStates[key].state;
         },
 
-        isYellowChangeActive(logEvent, phase){
+
+        //isGreenActive(logEvent, phase, startEnum = 1, endEnum = 7){
+         //TODO: Return Active Phase Number (might not be current phase)
+        //}
+        
+
+        isYellowChangeActive(logEvent, phase, startEnum = 8, endEnum = 9){
           let yellowChangeState = this.previousYellowChangeState;
           let prevYellowState = this.previousYellowChangeState;
           
-          if (this.determineParameterState(logEvent, 8, phase)) {
+          if (this.determineParameterState(logEvent, startEnum, phase)) {
               yellowChangeState = true;
             
               this.yellowStartTS = logEvent.timestamp
               console.log("new time starting yellow", this.yellowStartTS)
               
             }
-          if(this.determineParameterState(logEvent, 9, phase)){
+          if(this.determineParameterState(logEvent, endEnum, phase)){
             yellowChangeState = false;
           }
           this.previousYellowChangeState = yellowChangeState;
           return {
+            //TODO: Return Active Phases Number (might not be current phase)
             State: yellowChangeState,
             Timestamp: this.yellowStartTS,
             PrevState: prevYellowState,
@@ -237,6 +250,28 @@ export default {
           }
         },
 
+        isPhaseInactive(logEvent, phase, startEnum = 12, endEnum = 0){
+          let phaseState = this.previousPhaseState;
+          let prevPhaseState = this.previousPhaseState;
+          
+          if (this.determineParameterState(logEvent, startEnum, phase)) {
+              phaseState = true;
+            
+              this.phaseEndTS = logEvent.timestamp
+              console.log("new time starting Phase Inactive", this.phaseEndTS)
+              
+            }
+          if(this.determineParameterState(logEvent, endEnum, phase)){
+            phaseState = false;
+          }
+          this.previousPhaseState = phaseState;
+          return {
+            State: phaseState,
+            Timestamp: this.phaseEndTS,
+            PrevState: prevPhaseState,
+          }
+        },
+
         isDetectorOn(logEvent, detChannel){
           let detChannelState = this.previousDetectorState;
           let prevDetState = this.previousDetectorState;
@@ -258,6 +293,7 @@ export default {
         detectYRCrossings(hdData, channelNumber, activePhase){
           let yellowChange =false; 
           let redClear = false;
+          let phaseInactive = false;
           let detEvent = false;
           let prevDetectorState = false;
           let results = [];
@@ -268,6 +304,7 @@ export default {
           hdData.forEach(event => {
             yellowChange = this.isYellowChangeActive(event, activePhase);
             redClear = this.isRedClearActive(event, activePhase);
+            phaseInactive = this.isPhaseInactive(event, activePhase);
 
             /*
             [detON | detOFF]
@@ -288,47 +325,67 @@ export default {
               }
               if(!detEvent.State && prevDetectorState){
                 
-                  elapsedTime = (detEvent.Timestamp.MillisecFromEpoch - this.yellowStartTS.MillisecFromEpoch)/1000;
+                  elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.yellowStartTS.MillisecFromEpoch)/1000).toFixed(2);
                   results.push({Type:"Yellow Start/Yellow End", Timestamp: event.timestamp, Elapse: elapsedTime});
                   prevDetectorState = false;
-                  
-          
-                
               }
             }
-            //Starts in Yellow, ends in Red
+            // Starts in Yellow, ends in Red
             if(yellowChange.State){
               detEvent = this.isDetectorOn(event, channelNumber)
 
               if (detEvent.State) {  // detetor of interest is ON
                   prevDetectorState = true; // vehicle approaching light
               }}
-            if(redClear.State){
+            else if(redClear.State){
               if(!detEvent.State && prevDetectorState){
               
-                  elapsedTime = (detEvent.Timestamp.MillisecFromEpoch - this.allRedStartTS.MillisecFromEpoch)/1000;
+                  elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.allRedStartTS.MillisecFromEpoch)/1000).toFixed(2);
                   results.push({Type:"Yellow Start/Red End", Timestamp: event.timestamp, Elapse: elapsedTime});
                   prevDetectorState = false;
-                  
-          
-              
-            }}
-             //Starts in Red, ends in Red
-             if(redClear.State){
+              }
+            }
+             // Starts in Red, ends in Red
+            if(redClear.State){
               detEvent = this.isDetectorOn(event, channelNumber)
          
               if (detEvent.State) {  // detetor of interest is ON
                   prevDetectorState = true; // vehicle approaching light
-              }if(!detEvent.State && prevDetectorState){
+              }
+              if(!detEvent.State && prevDetectorState){
 
-                  elapsedTime = (detEvent.Timestamp.MillisecFromEpoch - this.allRedStartTS.MillisecFromEpoch)/1000;
+                  elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.allRedStartTS.MillisecFromEpoch)/1000).toFixed(2);
                   results.push({Type:"Red Start/Red End", Timestamp: event.timestamp, Elapse: elapsedTime});
                   prevDetectorState = false;
-                 
-                
-                
+              } // Starts in all Red, ends in Phase Inactive
+            }else if(phaseInactive.State){
+              detEvent = this.isDetectorOn(event, channelNumber)
+
+              if(detEvent.State) {
+                prevDetectorState = true;
+              }
+              if(!detEvent.State && prevDetectorState){
+                elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.phaseEndTS.MillisecFromEpoch)/1000).toFixed(2);
+                results.push({Type: "Red Start/ Phase Inactive End", Timestamp: event.timestamp, Elapse: elapsedTime});
+                prevDetectorState = false;
+              }
             }
-          }
+            // Starts in Phase Inactive, ends in Phase Inactive
+            if(phaseInactive.State){
+              detEvent = this.isDetectorOn(event, channelNumber)
+
+              if(detEvent.State){
+                prevDetectorState = true;
+              }
+              if(!detEvent.State && prevDetectorState){
+                elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.phaseEndTS.MillisecFromEpoch)/1000).toFixed(2);
+                results.push({Type: "Phase Inactive Start/ Phase Inactive End", Timestamp: event.timestamp, Elapse: elapsedTime});
+                prevDetectorState = false;
+              }
+            }
+            
+
+            
 
               //TODO: find a way to check for detector ON, and when it goes off, if not during Green.
           });

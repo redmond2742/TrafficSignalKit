@@ -167,6 +167,8 @@ export default {
 
           this.$emit("rlr-events", this.rlrEvents);
           //TODO: load this data into a table and present, also count number of each type
+          //TODO: count the average time into the yellow, all red for all occurances
+          //TODO: calculate the avg. rate of runners per hour fo the signal direction.
         }
       }
 

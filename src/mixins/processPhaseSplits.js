@@ -154,7 +154,7 @@ export default {
         },
         countTotalTerminationsByPhase(phaseNumber) {
           let phaseName = "phase" + phaseNumber;
-          console.log("PZ:",phaseName,this.terminationResults )
+       
           let totalTerminationCount =
             this.terminationResults[phaseName].gapOut +
             this.terminationResults[phaseName].maxOut +
@@ -326,7 +326,7 @@ export default {
               if(!detEvent.State && prevDetectorState){
                 
                   elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.yellowStartTS.MillisecFromEpoch)/1000).toFixed(2);
-                  results.push({Type:"Yellow Start/Yellow End", Timestamp: event.timestamp, Elapse: elapsedTime});
+                  results.push({Type:"Yellow Start/Yellow End", Timestamp: event.timestamp, Elapse: Number(elapsedTime)});
                   prevDetectorState = false;
               }
             }
@@ -341,7 +341,7 @@ export default {
               if(!detEvent.State && prevDetectorState){
               
                   elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.allRedStartTS.MillisecFromEpoch)/1000).toFixed(2);
-                  results.push({Type:"Yellow Start/Red End", Timestamp: event.timestamp, Elapse: elapsedTime});
+                  results.push({Type:"Yellow Start/Red End", Timestamp: event.timestamp, Elapse: Number(elapsedTime)});
                   prevDetectorState = false;
               }
             }
@@ -355,7 +355,7 @@ export default {
               if(!detEvent.State && prevDetectorState){
 
                   elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.allRedStartTS.MillisecFromEpoch)/1000).toFixed(2);
-                  results.push({Type:"Red Start/Red End", Timestamp: event.timestamp, Elapse: elapsedTime});
+                  results.push({Type:"Red Start/Red End", Timestamp: event.timestamp, Elapse: Number(elapsedTime)});
                   prevDetectorState = false;
               } // Starts in all Red, ends in Phase Inactive
             }else if(phaseInactive.State){
@@ -366,7 +366,7 @@ export default {
               }
               if(!detEvent.State && prevDetectorState){
                 elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.phaseEndTS.MillisecFromEpoch)/1000).toFixed(2);
-                results.push({Type: "Red Start/ Phase Inactive End", Timestamp: event.timestamp, Elapse: elapsedTime});
+                results.push({Type: "Red Start/Phase Inactive End", Timestamp: event.timestamp, Elapse: Number(elapsedTime)});
                 prevDetectorState = false;
               }
             }
@@ -379,7 +379,7 @@ export default {
               }
               if(!detEvent.State && prevDetectorState){
                 elapsedTime = ((detEvent.Timestamp.MillisecFromEpoch - this.phaseEndTS.MillisecFromEpoch)/1000).toFixed(2);
-                results.push({Type: "Phase Inactive Start/ Phase Inactive End", Timestamp: event.timestamp, Elapse: elapsedTime});
+                results.push({Type: "Phase Inactive Start/Phase Inactive End", Timestamp: event.timestamp, Elapse: Number(elapsedTime)});
                 prevDetectorState = false;
               }
             }

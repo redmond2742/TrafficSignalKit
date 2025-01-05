@@ -16,11 +16,11 @@
     <div class="text-center">
       <v-menu v-if="mobileViewHide">
         <template v-slot:activator="{ props }">
-          <v-btn v-bind="props"> 2024' Q1 Tools</v-btn>
+          <v-btn v-bind="props"> Traffic Signal Data</v-btn>
         </template>
 
         <v-list>
-          <v-list-item v-for="(item, index) in q1Items" :key="index">
+          <v-list-item v-for="(item, index) in TSdataTools" :key="index">
             <v-list-item-title
               ><router-link :to="item.path"
                 >{{ item.title }}
@@ -33,11 +33,11 @@
     <div class="text-center">
       <v-menu v-if="mobileViewHide">
         <template v-slot:activator="{ props }">
-          <v-btn v-bind="props"> 2024' Q2 Tools</v-btn>
+          <v-btn v-bind="props"> Time-Space & GPX</v-btn>
         </template>
 
         <v-list>
-          <v-list-item v-for="(item, index) in q2Items" :key="index">
+          <v-list-item v-for="(item, index) in TSgpxTools" :key="index">
             <v-list-item-title
               ><router-link :to="item.path"
                 >{{ item.title }}
@@ -50,28 +50,11 @@
     <div class="text-center">
       <v-menu v-if="mobileViewHide">
         <template v-slot:activator="{ props }">
-          <v-btn v-bind="props"> 2024' Q3 Tools</v-btn>
+          <v-btn v-bind="props"> Misc.</v-btn>
         </template>
 
         <v-list>
-          <v-list-item v-for="(item, index) in q3Items" :key="index">
-            <v-list-item-title
-              ><router-link :to="item.path"
-                >{{ item.title }}
-              </router-link></v-list-item-title
-            >
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </div>
-    <div class="text-center">
-      <v-menu v-if="mobileViewHide">
-        <template v-slot:activator="{ props }">
-          <v-btn v-bind="props"> 2024' Q4 Tools</v-btn>
-        </template>
-
-        <v-list>
-          <v-list-item v-for="(item, index) in q4Items" :key="index">
+          <v-list-item v-for="(item, index) in MiscTools" :key="index">
             <v-list-item-title
               ><router-link :to="item.path"
                 >{{ item.title }}
@@ -146,38 +129,40 @@ export default {
     return {
       darkMode: true, // Initial mode state
       tools: [
-        { title: "Split Calculator", path: "/split-calculator" },
+        { title: "Split History", path: "/split-history" },
+        { title: "Red Light Runners", path: "/detectorRLR" },
+        { title: "Phase Plotter", path: "/phase-plotter" },
         { title: "High Res. Explainer", path: "/explainer" },
         { title: "Time Space Visualizer", path: "/gpx" },
-        { title: "Split History", path: "/split-history" },
+        { title: "GPX & Phase Plotter", path: "/gpx-phase-plotter" },
+        { title: "GPX Mapper", path: "/gpx-mapper" },
+        { title: "Split Calculator", path: "/split-calculator" },
         {
           title: "Intersection Simulator",
           path: "/traffic-simulator",
         },
+        { title: "Practice Exam", path: "/practiceExam" },
+      ],
+
+      TSdataTools: [
+        { title: "Split History", path: "/split-history" },
+        { title: "Red Light Runners", path: "/detectorRLR" },
         { title: "Phase Plotter", path: "/phase-plotter" },
+        { title: "High Resolution Explainer", path: "/explainer" },
+      ],
+      TSgpxTools: [
+        { title: "Time Space Visualizer", path: "/gpx" },
         { title: "GPX & Phase Plotter", path: "/gpx-phase-plotter" },
         { title: "GPX Mapper", path: "/gpx-mapper" },
       ],
-
-      q1Items: [
-        { title: "January: Split Calculator", path: "/split-calculator" },
-        { title: "Feburary: High Res. Explainer", path: "/explainer" },
-        { title: "March: Time Space Visualizer", path: "/gpx" },
-      ],
-      q2Items: [
-        { title: "April: Split History", path: "/split-history" },
+      MiscTools: [
+        { title: "Split Calculator", path: "/split-calculator" },
         {
-          title: "May: Intersection Simulator",
+          title: "Intersection Simulator",
           path: "/traffic-simulator",
         },
-        { title: "June: Phase Plotter", path: "/phase-plotter" },
+        { title: "Practice Exam", path: "/practiceExam" },
       ],
-      q3Items: [
-        { title: "July: GPX & Phase Plotter", path: "/gpx-phase-plotter" },
-        { title: "August: GPX Mapper", path: "/gpx-mapper" },
-        { title: "September: Red Light Runners", path: "/detectorRLR" },
-      ],
-      q4Items: [{ title: "October: Practice Exam", path: "/practiceExam" }],
 
       dialog: false,
       drawer: false, // Controls the drawer visibility

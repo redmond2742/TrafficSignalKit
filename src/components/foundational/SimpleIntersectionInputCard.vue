@@ -108,7 +108,7 @@ export default {
       hdDataObj: [],
       textboxDefaultText:
         "Paste in High-Resolution Traffic Signal Data as Text in CSV format (timestamp, enumeration, phase/channel)",
-      rlrEvents: "",
+      rlrEventsArray: [],
     };
   },
   computed: {
@@ -145,30 +145,19 @@ export default {
       //this.$emit("signal-data", this.cardId + 1, this.signalForm);
       this.buttonPressed = true;
       this.buttonColor = "success";
-      console.log("Signal Intersection Form loading the following");
-      console.log(
-        //this.hdData,
-        this.intersectionName,
-        this.intersectionLatLon
-        //this.localHdData
-        //this.signalForm.phaseData
-      );
 
       if (this.signalForm.hdData != null && this.detectorDataArray.length > 0) {
         for (let i = 0; i < this.detectorDataArray.length - 1; i++) {
-          this.rlrEvents = this.detectYRCrossings(
+          this.rlrEventsArray[i] = this.detectYRCrossings(
             this.signalForm.hdData,
             this.detectorDataArray[i + 1].detChannel,
             this.detectorDataArray[i + 1].phase
           );
 
           console.log("Item:", i, this.detectorDataArray[i + 1]);
-          console.log(this.rlrEvents);
+          console.log(this.rlrEventsArray);
 
-          this.$emit("rlr-events", this.rlrEvents);
-          //TODO: load this data into a table and present, also count number of each type
-          //TODO: count the average time into the yellow, all red for all occurances
-          //TODO: calculate the avg. rate of runners per hour fo the signal direction.
+          this.$emit("rlr-events", this.rlrEventsArray);
         }
       }
 

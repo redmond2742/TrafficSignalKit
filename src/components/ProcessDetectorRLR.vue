@@ -1,7 +1,7 @@
 <template>
   <div>
     <simple-intersection-input-card
-      @rlr-events="handleRLREvents"
+      @rlr-events="handleRLREventsArray"
     ></simple-intersection-input-card>
   </div>
   <div>
@@ -63,8 +63,9 @@ export default {
   },
   methods: {
     ...mapActions(useDataStore, ["increment"]),
-    handleRLREvents(data) {
+    handleRLREventsArray(data) {
       console.log("emitted data from process", data);
+
       let yEvents = this.countEventData(data, "Yellow Start/Yellow End");
       let rcEvents = this.countEventData(data, "Red Start/Red End");
       let rEvents = this.countEventData(data, "Red Start/Phase Inactive End");

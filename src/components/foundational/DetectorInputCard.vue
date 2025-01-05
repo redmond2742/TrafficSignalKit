@@ -245,7 +245,7 @@ export default {
         this.location.loaded = true;
       }
 
-      this.detectorID = this.cardIDToNumber(this.cardID);
+      this.detectorID = this.cardIDToNumber(this.cardID) - 1;
 
       //create object that removes all the form specific data and prepares data as we want
       this.detectorData = {
@@ -257,6 +257,30 @@ export default {
         phase: this.phaseToNumber(this.phase),
         detChannel: parseInt(this.detChannel, 10),
       };
+
+      //TODO: Update to export as JSON for multiple detectors, and save all signal data for future inporting
+
+      /*
+        const saveData = () => {
+      const dataStr = JSON.stringify(detectors.value, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "detectors.json";
+      link.click();
+    };
+
+    const loadData = (data) => {
+      try {
+        const parsedData = JSON.parse(data);
+        detectors.value = parsedData;
+      } catch (error) {
+        console.error("Error loading JSON data:", error);
+      }
+    };
+
+
+      */
 
       this.loadDetectorData();
     },

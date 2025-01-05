@@ -36,8 +36,8 @@
           <v-card-title class="title-container">
             <v-icon class="red-circle-icon">mdi-circle</v-icon>
             <div class="title">
-              Red Light <br />
-              Runners
+              Movement on <br />
+              Red
             </div>
           </v-card-title>
           <v-card-text justify="center">

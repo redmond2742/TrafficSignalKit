@@ -1,6 +1,6 @@
 # Traffic Signal Kit
 
-Welcome to the Traffic Signal Kit! This project is a learning journey into Vue.js with a focus on building practical traffic signal-related tools. In 2024, the goal is to dive deep into Vue.js, exploring various aspects of the framework by creating a new tool each month. Were moving fast so these tools will serve as proof of concepts, showcasing different Vue.js features and techniques while providing a useful tool related to traffic signals.
+Welcome to the Traffic Signal Kit! This project is a learning journey into Vue.js with a focus on building practical traffic signal-related tools. These tools were built fast to serve as proof of concepts, showcasing different Vue.js features and techniques while providing a useful tool related to traffic signals.
 
 ## Purpose
 

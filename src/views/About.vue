@@ -4,14 +4,12 @@
     <h1 class="h1-center-text">Traffic Signal Kit</h1>
 
     <h3>
-      Every month this year, I’m rolling out free & open source tools for
-      traffic engineers. These are rapid-fire, proof-of-concept creations
-      designed to innovate, inspire, and provide insights into traffic signal
-      operations. I’m building these tools in public, with assistance from
-      ChatGPT and my journey into mastering Vue.js. Expect raw, early-stage
-      concepts—this is about speed, experimentation, and finding what truly
-      makes an impact. Your feedback is my roadmap! ❤️ Click that heart button
-      to vote on features and shape the future of these tools.
+      Various experimental free & open source tools for traffic engineers. These
+      are rapid-fire, proof-of-concept creations designed to innovate, inspire,
+      and provide insights into traffic signal operations. Expect raw,
+      early-stage concepts—this is about speed, experimentation, and finding
+      what truly makes an impact. Your feedback is my roadmap! ❤️ Click that
+      heart button to vote on features and shape the future of these tools.
     </h3>
 
     <v-container>
@@ -49,28 +47,11 @@ export default {
       posts: [
         {
           image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-split-calculator.png",
-          title: "Split Calculator",
-          description: "Verify splits and cycle lengths during adjustments",
-          link: "/split-calculator",
-          topics: ["Coordination", "Split", "Calculator"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
-          title: "High Resolution Data Explainer",
-          description:
-            "Explore traffic signal controller enumerations and high resolution data logs",
-          link: "/explainer",
-          topics: ["Controller Data", "Enumerations"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-timespace-diagram-gpx-plot.png",
-          title: "Time Space Diagram Visulizer",
-          description: "Plot a GPX file in a timespace diagram plot",
-          link: "/gpx",
-          topics: ["GPX", "Time-Space"],
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-Yellow+and+Red+Light+Running+Detection.png",
+          title: "Red Light Runner",
+          description: "Table of Yellow and Red light running events",
+          link: "/detectorRLR",
+          topics: ["Red Light Running", "Controller Data"],
         },
         {
           image:
@@ -82,18 +63,19 @@ export default {
         },
         {
           image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+intersection+simulator.png",
-          title: "Max Out and Gap Out Traffic Simulator",
-          description: "Simulate Basic Intersection Functionality",
-          link: "/traffic-simulator",
-          topics: ["Simulation", "Basic Timing"],
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+GPX+Map+and+Table.png",
+          title: "GPX Mapper",
+          description: "Plot GPX tracks on a map",
+          link: "/gpx-mapper",
+          topics: ["GPX", "Map"],
         },
         {
           image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/Trafficsignalkit.com+-+Signal+Phase+Plotter+-+Red-Green-Yellow.png",
-          title: "Phase Plotter",
-          description: "Plot Phase State over Time",
-          link: "/phase-plotter",
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
+          title: "High Resolution Data Explainer",
+          description:
+            "Explore traffic signal controller enumerations and high resolution data logs",
+          link: "/explainer",
           topics: ["Controller Data", "Enumerations"],
         },
         {
@@ -113,11 +95,35 @@ export default {
         },
         {
           image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+GPX+Map+and+Table.png",
-          title: "GPX Mapper",
-          description: "Plot GPX tracks on a map",
-          link: "/gpx-mapper",
-          topics: ["GPX", "Map"],
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/Trafficsignalkit.com+-+Signal+Phase+Plotter+-+Red-Green-Yellow.png",
+          title: "Phase Plotter",
+          description: "Plot Phase State over Time",
+          link: "/phase-plotter",
+          topics: ["Controller Data", "Enumerations"],
+        },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+intersection+simulator.png",
+          title: "Max Out and Gap Out Traffic Simulator",
+          description: "Simulate Basic Intersection Functionality",
+          link: "/traffic-simulator",
+          topics: ["Simulation", "Basic Timing"],
+        },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-split-calculator.png",
+          title: "Split Calculator",
+          description: "Verify splits and cycle lengths during adjustments",
+          link: "/split-calculator",
+          topics: ["Coordination", "Split", "Calculator"],
+        },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-timespace-diagram-gpx-plot.png",
+          title: "Time Space Diagram Visulizer",
+          description: "Plot a GPX file in a timespace diagram plot",
+          link: "/gpx",
+          topics: ["GPX", "Time-Space"],
         },
         {
           image:
@@ -126,14 +132,6 @@ export default {
           description: "Practice exam questions and grading",
           link: "/PracticeExam",
           topics: ["Exam", "Practice", "TE"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-Yellow+and+Red+Light+Running+Detection.png",
-          title: "Red Light Runner",
-          description: "Table of Yellow and Red light running events",
-          link: "/detectorRLR",
-          topics: ["Red Light Running", "Controller Data"],
         },
       ],
     };

@@ -46,29 +46,17 @@ export const useQuizStore = defineStore('quizStore', {
        
       },
     nextQuestion() {
-      let questionCount = this.currentQuestionIndex +1;
+      let questionCount = this.currentQuestionIndex + 1;
 
-      if(this.topic_index == 2){
-
-        this.llUserAnswers[questionCount] = this.userAnswers[this.currentQuestionIndex];
-
-        console.log(this.llUserAnswers)
-
-
-      }else{
-
-    
-      
+     
       if (this.userAnswers[this.currentQuestionIndex] === this.questions[this.currentQuestionIndex].correctAnswer) {
         this.score++;
-        console.log("Q"+questionCount+": You got correct, incrementing score")
-      }
-      else{
-        console.log("Q"+questionCount+": you got wrong")
+        console.log(`Q${questionCount}: You got it correct, incrementing score`);
+      } else {
+        console.log(`Q${questionCount}: You got it wrong`);
       }
       
-    }
-    this.currentQuestionIndex++;
+      this.currentQuestionIndex++;
     },
 
     next10Question() {
@@ -80,7 +68,7 @@ export const useQuizStore = defineStore('quizStore', {
           console.log("Q"+questionCount+": You got correct, incrementing score")
         }
         else{
-          console.log("Q"+questionCount+": you got wrong")
+          console.log("Q"+questionCount+": You got it wrong")
         }
         
     

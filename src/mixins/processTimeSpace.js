@@ -507,14 +507,20 @@ export default {
                         );
                         //console.log("i: " + i + "    J: " + j);
                         // Calclate all the distances from each gps point (j) to the center of the intersection (i)
+                        let distanceToSignal;
+                        if (signalObj[i].useSignalDistance){
+                          distanceToSignal = signalObj[i].distanceToPrevSignal;
+                        }else{
+                          distanceToSignal = this.earthDistance(
+                            currentLoc,
+                            [signalObj[i].latitude, signalObj[i].longitude],
+                            false
+                          );
+
+                        }
+                        
                         signalObj[i].distances.push([
-                          [
-                            this.earthDistance(
-                              currentLoc,
-                              [signalObj[i].latitude, signalObj[i].longitude],
-                              false
-                            ),
-                          ],
+                          [distanceToSignal],
                           [signalCumlDistance],
                         ]);
                       }

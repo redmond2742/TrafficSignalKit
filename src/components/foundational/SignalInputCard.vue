@@ -42,18 +42,41 @@
               </div>
             </v-col>
           </v-row>
+
           <v-row>
-            <v-col sm="6">
+            <v-col>
+              <div sm="2">
+                <v-switch
+                  label="Signal Distance"
+                  id="useSignalDistance"
+                  v-model="useSignalDistance"
+                  inset
+                ></v-switch>
+              </div>
+            </v-col>
+            <v-col sm="6" v-if="!useSignalDistance">
               <div class="form-group-input">
                 <v-text-field
                   label="Latitude, Longitude"
                   prepend-icon="mdi-map-marker"
                   variant="outlined"
                   v-model="signalForm.latlon"
+                  :disabled="useSignalDistance"
                 ></v-text-field>
               </div>
             </v-col>
-            <v-col sm="3">
+            <v-col sm="6" v-if="useSignalDistance">
+              <div class="form-group-input">
+                <v-text-field
+                  label="Distance to Previous Signal (FT)"
+                  prepend-icon="mdi-map-marker-distance"
+                  variant="outlined"
+                  v-model="distanceToPrevSignal"
+                  :disabled="!useSignalDistance"
+                ></v-text-field>
+              </div>
+            </v-col>
+            <v-col sm="2">
               <div class="form-group-select">
                 <v-select
                   label="Phase Select"
@@ -72,7 +95,7 @@
                 ></v-select>
               </div>
             </v-col>
-            <v-col sm="3">
+            <v-col sm="2">
               <div class="form-group-select">
                 <v-select
                   label="TSP LP #"
@@ -133,6 +156,8 @@ export default {
   data() {
     return {
       signalForm: { ...this.cardData },
+      useSignalDistance: false,
+      distanceToPrevSignal: "",
       typeStaticObject: "Traffic Signal",
       selectedColor: "#A020F0", // Default color
       lineThickness: 2, // Default value
@@ -179,6 +204,8 @@ export default {
       this.updateLatLon(this.signalForm.latlon);
       this.signalForm.typeStaticObject = this.typeStaticObject;
       this.signalForm.color = this.selectedColor;
+      this.signalForm.useSignalDistance = this.useSignalDistance;
+      this.signalForm.distanceToPrevSignal = this.distanceToPrevSignal;
       this.signalForm.lineThickness = this.lineThickness;
       this.signalForm.phaseValue = this.phaseToNumber(this.signalForm.phase);
       this.signalForm.tspValue = this.tspToNumber(this.signalForm.tsp);

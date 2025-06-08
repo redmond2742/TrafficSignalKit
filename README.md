@@ -36,3 +36,45 @@ The Traffic Signal Kit project is licensed under the [MIT License](LICENSE). Fee
 ---
 
 Thanks for checking out Traffic Signal Kit! 🚦✨
+
+## Routing Setup
+
+Install the head manager used for dynamic metadata:
+
+```bash
+npm install @vueuse/head
+```
+
+When deploying with history mode, configure your server to fallback to
+`index.html` so client-side routes resolve correctly.
+
+### Nginx
+
+```nginx
+location / {
+  try_files $uri $uri/ /index.html;
+}
+```
+
+### Apache
+
+```apache
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+```
+
+### Netlify
+
+Create a `_redirects` file with:
+
+```
+/*    /index.html   200
+```
+
+Hash mode requires no special server configuration.

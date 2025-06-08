@@ -60,18 +60,21 @@
             src="../assets/Arrow-Up.png"
             :style="imageStyle"
             class="rotated-image"
+            alt="Through movement arrow"
           />
           <img
             v-else-if="radioMovement === 'L'"
             src="../assets/Arrow-Left.png"
             :style="imageStyle"
             class="rotated-image"
+            alt="Left turn arrow"
           />
           <img
             v-else
             src="../assets/Arrow-Up.png"
             :style="imageStyle"
             class="rotated-image"
+            alt="Default arrow"
           />
         </v-col>
       </v-row>

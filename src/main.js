@@ -11,7 +11,6 @@ import { createPinia } from 'pinia';
 // Components
 import App from './App.vue'
 import router from './router'
-import { createHead } from '@vueuse/head'
 
 // Composables
 import { createApp } from 'vue'
@@ -46,12 +45,9 @@ export default createVuetify({
 
 const app = createApp(App)
 
-const head = createHead()
-
 registerPlugins(app)
 
 app.use(router)
-app.use(head)
 app.use(createPinia());
 
 

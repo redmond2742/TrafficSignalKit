@@ -16,22 +16,19 @@
   </v-app>
 </template>
 
-<script setup>
-import Header from './components/Header.vue'
-import Footer from './components/Footer.vue'
-import { useRoute } from 'vue-router'
-import { useHead } from '@vueuse/head'
+<script>
+import Header from "./components/Header.vue";
+import Footer from "./components/Footer.vue";
 
-const route = useRoute()
-
-useHead(() => ({
-  title: route.meta.title || 'Traffic Signal Kit',
-  meta: [
-    {
-      name: 'description',
-      content: route.meta.description || 'Traffic Signal Kit tools',
-    },
-  ],
-}))
+export default {
+  name: "App",
+  components: {
+    Header,
+    Footer,
+  },
+  data: () => ({
+    tab: null,
+  }),
+};
 </script>
 <style></style>

@@ -1,153 +1,99 @@
-import {
-  createRouter,
-  createWebHistory,
-  createWebHashHistory,
-} from 'vue-router'
-import { defineAsyncComponent } from 'vue'
+import { createRouter, createWebHistory } from 'vue-router'
 
-const lazy = (name) =>
-  defineAsyncComponent(() => import(`../views/${name}.vue`))
+import SplitCalculator from '../views/SplitCalculator'
+import HighResDataExplainer from '../views/HighResDataExplainer'
+import About from '../views/About'
+import TermsOfService from '../views/TermsOfService'
+import GPXPlotter from '../views/GPXPlotter'
+import SplitHistory from '../views/SplitHistory'
+import HighResPhasePlotter from '../views/HighResPhasePlotter'
+import TrafficSim from '../views/TrafficSim'
+import GPXPhasePlotter from '../views/GPXPhasePlotter'
+import GPXMapper from '../views/MapGPXPlotter'
+import HighResDetectors from '../views/HighResDetectors'
+import PracticeExam from '../views/PracticeExam'
 
 
 
 const routes = [
-  {
-    path: '/',
-    name: 'home',
-    component: lazy('About'),
-    meta: {
-      title: 'Traffic Signal Kit',
-      description: 'Home page listing available tools.',
+    {
+        path: '/',
+        name: 'home',
+        component: About
     },
-  },
-  {
-    path: '/about',
-    name: 'About',
-    component: lazy('About'),
-    meta: {
-      title: 'About',
-      description: 'About Traffic Signal Kit.',
+    {
+        path: '/about',
+        name: 'About',
+        component: About
     },
-  },
-  {
-    path: '/terms-of-service',
-    name: 'TermsOfService',
-    component: lazy('TermsOfService'),
-    meta: {
-      title: 'Terms of Service',
-      description: 'Usage terms for the tools.',
+    {  
+        path: '/terms-of-service',
+        name: 'TermsOfService',
+        component: TermsOfService, 
     },
-  },
-  {
-    path: '/split-calculator',
-    name: 'SplitCalculator',
-    component: lazy('SplitCalculator'),
-    meta: {
-      title: 'Split Calculator',
-      description: 'Verify splits and cycle lengths.',
+    {
+        path: '/split-calculator',
+        name: 'SplitCalculator',
+        component: SplitCalculator,
     },
-  },
-  {
-    path: '/explainer',
-    name: 'HighResDataExplainer',
-    component: lazy('HighResDataExplainer'),
-    meta: {
-      title: 'High Res Data Explainer',
-      description: 'Explore controller enumerations and logs.',
+    {
+        path: '/explainer',
+        name: 'HighResDataExplainer',
+        component: HighResDataExplainer,
     },
-  },
-  {
-    path: '/gpx',
-    name: 'gpxPlotter',
-    component: lazy('GPXPlotter'),
-    meta: {
-      title: 'GPX Plotter',
-      description: 'Plot a GPX file in time-space.',
+    {
+        path: '/gpx',
+        name: 'gpxPlotter',
+        component: GPXPlotter,
     },
-  },
-  {
-    path: '/split-history',
-    name: 'splitHistory',
-    component: lazy('SplitHistory'),
-    meta: {
-      title: 'Split History',
-      description: 'View phase durations from high-res data.',
+    {
+        path: '/split-history',
+        name: 'splitHistory',
+        component: SplitHistory,
     },
-  },
-  {
-    path: '/traffic-simulator',
-    name: 'trafficSim',
-    component: lazy('TrafficSim'),
-    meta: {
-      title: 'Traffic Simulator',
-      description: 'Simulate basic intersection timing.',
+    {
+        path: '/traffic-simulator',
+        name: 'trafficSim',
+        component: TrafficSim,
     },
-  },
-  {
-    path: '/phase-plotter',
-    name: 'phasePlotter',
-    component: lazy('HighResPhasePlotter'),
-    meta: {
-      title: 'Phase Plotter',
-      description: 'Plot phase state over time.',
+    {
+        path: '/phase-plotter',
+        name: 'phasePlotter',
+        component: HighResPhasePlotter,
     },
-  },
-  {
-    path: '/gpx-phase-plotter',
-    name: 'gpxPhasePlotter',
-    component: lazy('GPXPhasePlotter'),
-    meta: {
-      title: 'GPX Phase Plotter',
-      description: 'Combine GPX and phase state plots.',
+    {
+        path: '/gpx-phase-plotter',
+        name: 'gpxPhasePlotter',
+        component: GPXPhasePlotter,
     },
-  },
-  {
-    path: '/gpx-mapper',
-    name: 'gpxMapper',
-    component: lazy('MapGPXPlotter'),
-    meta: {
-      title: 'GPX Mapper',
-      description: 'Map GPX tracks on a leaflet map.',
+    {
+        path: '/gpx-mapper',
+        name: 'gpxMapper',
+        component: GPXMapper,
     },
-  },
-  {
-    path: '/detectorRLR',
-    name: 'detectorRLR',
-    component: lazy('HighResDetectors'),
-    meta: {
-      title: 'Red Light Runner',
-      description: 'Table of RLR events.',
+    {
+        path: '/detectorRLR',
+        name: 'detectorRLR',
+        component: HighResDetectors,
     },
-  },
-  {
-    path: '/PracticeExam',
-    name: 'practiceExam',
-    component: lazy('PracticeExam'),
-    meta: {
-      title: 'Practice Exam',
-      description: 'Practice exam questions and grading.',
+    {
+        path: '/PracticeExam',
+        name: 'practiceExam',
+        component: PracticeExam,
     },
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'not-found',
-    component: lazy('About'),
-    meta: {
-      title: 'Not Found',
-      description: 'The page could not be found.',
+    {
+        path: '/:pathMatch(.*)*',
+        name: "not-found",
+        component: About,
     },
-  },
     
      
     
 ]
 
 const router = createRouter({
-  history:
-    import.meta.env.VITE_ROUTER_MODE === 'hash'
-      ? createWebHashHistory()
-      : createWebHistory(import.meta.env.BASE_URL),
-  routes,
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes,
 })
 
 export default router

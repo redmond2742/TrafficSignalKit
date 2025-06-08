@@ -11,6 +11,7 @@
       src="../assets/Arrow-Up.png"
       :style="imageStyle"
       class="rotated-image"
+      alt="Directional arrow"
     />
   </div>
 </template>

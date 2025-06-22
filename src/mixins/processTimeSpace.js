@@ -63,6 +63,7 @@ export default {
               gpxYmin: 0,
               gpxYmax: 500,
               gpxMapData:"",
+              gpxPointList: [],
   
 
         }
@@ -446,6 +447,7 @@ export default {
               console.log(error);
             } else {
               gpx.parse(inputGPXData);
+              this.gpxPointList = gpx.tracks[0].points;
 
               if(mapPoints){
                 this.gpxMapData = this.loadMapPoints(inputGPXData);

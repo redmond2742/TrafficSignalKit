@@ -92,49 +92,35 @@ export default {
       this.mapJSONData = this.gpxMapData;
       if (this.inputData.length > 0) {
         console.log("this shouldn't run unless inputbox");
-        this.dataTableItems = this.convertGPXToArray(this.inputData); //this.convertGeoJsonToTableData(this.gpxMapData);
+        this.dataTableItems = this.convertGPXToArray();
       }
     },
-    convertGPXToArray(gpxString) {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(gpxString, "application/xml");
+    convertGPXToArray() {
       const dataArray = [];
 
-      // Get all the <trkpt> elements in the GPX file
-      const trkpts = xmlDoc.getElementsByTagName("trkpt");
+      if (!this.gpxPointList || this.gpxPointList.length === 0) {
+        return dataArray;
+      }
 
-      // Loop through each <trkpt> element
+      for (let i = 0; i < this.gpxPointList.length; i++) {
+        const pt = this.gpxPointList[i];
 
-      for (let i = 0; i < trkpts.length; i++) {
-        const trkpt = trkpts[i];
-
-        // Extract the latitude and longitude
-        const lat = trkpt.getAttribute("lat");
-        const lon = trkpt.getAttribute("lon");
+        const lat = pt.lat;
+        const lon = pt.lon;
         const coordinates = `${lat}, ${lon}`;
 
-        // Extract the elevation (optional, so check if it exists)
-        const ele = trkpt.getElementsByTagName("ele")[0]?.textContent || null;
+        const ele = pt.ele || pt.elevation || null;
+        const time = pt.time ? pt.time.toISOString() : null;
+        const speed = pt.speed || null;
+        const bearing = pt.course || null;
 
-        // Extract the timestamp (optional, so check if it exists)
-        const time = trkpt.getElementsByTagName("time")[0]?.textContent || null;
-
-        // Extract the speed(optional, so check if it exists)
-        const speed =
-          trkpt.getElementsByTagName("speed")[0]?.textContent || null;
-
-        // Extract the course(optional, so check if it exists)
-        const bearing =
-          trkpt.getElementsByTagName("course")[0]?.textContent || null;
-
-        // Push the extracted data into the array
         dataArray.push({
-          Timestamp: new Date(time).toLocaleString(),
+          Timestamp: time ? new Date(time).toLocaleString() : "",
           OGtimestamp: time,
           Coordinates: coordinates,
-          speed: (speed * 2.23694).toFixed(2),
+          speed: speed ? (speed * 2.23694).toFixed(2) : null,
           bearing: bearing,
-          elevation: (ele * 3.28084).toFixed(2),
+          elevation: ele ? (ele * 3.28084).toFixed(2) : null,
         });
       }
 

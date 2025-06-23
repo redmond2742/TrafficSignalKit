@@ -57,7 +57,7 @@ export default {
         datasets: [
           {
             label: 'Elevation',
-            data,
+            data: dataset,
             borderColor: 'rgba(30, 139, 195, 1)',
             backgroundColor: 'rgba(30, 139, 195, 0.5)',
             showLine: true,

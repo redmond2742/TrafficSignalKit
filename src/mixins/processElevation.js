@@ -1,5 +1,7 @@
 import gpxParser from 'gpxparser'
-import { Chart, Colors } from 'chart.js'
+import { Colors } from 'chart.js'
+import { Chart } from 'chart.js/auto'
+
 import zoomPlugin from 'chartjs-plugin-zoom'
 Chart.register(zoomPlugin)
 Chart.register(Colors)

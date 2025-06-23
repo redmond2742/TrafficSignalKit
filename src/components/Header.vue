@@ -154,6 +154,7 @@ export default {
         { title: "Time Space Visualizer", path: "/gpx" },
         { title: "GPX & Phase Plotter", path: "/gpx-phase-plotter" },
         { title: "GPX Mapper", path: "/gpx-mapper" },
+        { title: "GPX Elevation", path: "/gpx-elevation" },
       ],
       MiscTools: [
         { title: "Split Calculator", path: "/split-calculator" },

@@ -10,6 +10,7 @@ import HighResPhasePlotter from '../views/HighResPhasePlotter'
 import TrafficSim from '../views/TrafficSim'
 import GPXPhasePlotter from '../views/GPXPhasePlotter'
 import GPXMapper from '../views/MapGPXPlotter'
+import GPXElevation from '../views/GPXElevation'
 import HighResDetectors from '../views/HighResDetectors'
 import PracticeExam from '../views/PracticeExam'
 
@@ -70,6 +71,11 @@ const routes = [
         path: '/gpx-mapper',
         name: 'gpxMapper',
         component: GPXMapper,
+    },
+    {
+        path: '/gpx-elevation',
+        name: 'gpxElevation',
+        component: GPXElevation,
     },
     {
         path: '/detectorRLR',

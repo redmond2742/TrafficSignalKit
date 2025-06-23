@@ -29,6 +29,10 @@ Please note that the tools developed as part of the Traffic Signal Kit are inten
 
 Feedback, suggestions, bug reports, and contributions are welcome! If you have any ideas for new tools, improvements to existing tools, or general feedback about the project, feel free to open an issue, submit a pull request on GitHub or [fill out this feedback survey](https://forms.gle/eWchSuYdDwG6MsTx9).
 
+## GPX Elevation Plotter
+
+The GPX Elevation Plotter converts GPX files into an elevation profile. Paste GPX text into the tool and view a chart of elevation versus distance to analyze climbs and descents along your track.
+
 ## License
 
 The Traffic Signal Kit project is licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute the code for educational or personal projects. Refer to the LICENSE file for more information.

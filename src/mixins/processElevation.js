@@ -9,7 +9,10 @@ Chart.register(Colors)
 export default {
   data() {
     return {
-      hoveredPoint: null
+
+      hoveredPoint: null,
+      hoveredPoints: []
+
     }
   },
   methods: {
@@ -81,12 +84,20 @@ export default {
         onHover: (event, activeElements, chart) => {
           if (activeElements.length) {
             const raw = activeElements[0].element.$context.raw
-            this.hoveredPoint = {
+
+            const newPoint = {
+
               distance: raw.x,
               elevation: raw.y,
               lat: raw.lat,
               lon: raw.lon
             }
+
+            if (!this.hoveredPoint || this.hoveredPoint.lat !== newPoint.lat || this.hoveredPoint.lon !== newPoint.lon) {
+              this.hoveredPoints.unshift(newPoint)
+            }
+            this.hoveredPoint = newPoint
+
           } else {
             this.hoveredPoint = null
           }

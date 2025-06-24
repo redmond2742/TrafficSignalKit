@@ -8,21 +8,31 @@
   <br />
   <canvas ref="scatterPlotCanvas"></canvas>
   <br />
-  <table v-if="hoveredPoint">
+
+  <table v-if="hoveredPoints.length">
+
     <thead>
       <tr>
         <th>Distance (ft)</th>
         <th>Elevation (ft)</th>
         <th>Latitude</th>
         <th>Longitude</th>
+
+        <th></th>
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td>{{ hoveredPoint.distance.toFixed(1) }}</td>
-        <td>{{ hoveredPoint.elevation.toFixed(1) }}</td>
-        <td>{{ hoveredPoint.lat.toFixed(5) }}</td>
-        <td>{{ hoveredPoint.lon.toFixed(5) }}</td>
+      <tr v-for="(point, index) in hoveredPoints" :key="index">
+        <td>{{ point.distance.toFixed(1) }}</td>
+        <td>{{ point.elevation.toFixed(1) }}</td>
+        <td>{{ point.lat.toFixed(5) }}</td>
+        <td>{{ point.lon.toFixed(5) }}</td>
+        <td>
+          <v-btn size="x-small" color="primary" @click="copyLatLon(point)">
+            Copy
+          </v-btn>
+        </td>
+
       </tr>
     </tbody>
   </table>
@@ -45,6 +55,10 @@ export default {
     btnPlot() {
       const pts = this.processGPXElevation(this.inputData);
       this.renderElevationChart(pts);
+    },
+    copyLatLon(point) {
+      const text = `${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}`
+      navigator.clipboard?.writeText(text)
     }
   }
 };

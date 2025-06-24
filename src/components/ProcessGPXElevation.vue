@@ -8,13 +8,16 @@
   <br />
   <canvas ref="scatterPlotCanvas"></canvas>
   <br />
+
   <table v-if="hoveredPoints.length">
+
     <thead>
       <tr>
         <th>Distance (ft)</th>
         <th>Elevation (ft)</th>
         <th>Latitude</th>
         <th>Longitude</th>
+
         <th></th>
       </tr>
     </thead>
@@ -29,6 +32,7 @@
             Copy
           </v-btn>
         </td>
+
       </tr>
     </tbody>
   </table>

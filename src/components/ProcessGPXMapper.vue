@@ -32,6 +32,9 @@
           return-object
           show-select
         >
+          <template v-slot:item.streetView="{ item }">
+            <a :href="item.streetView" target="_blank">Street View</a>
+          </template>
           <template v-slot:item.copy="{ item }">
             <v-btn icon @click="copyCoordinates(item)">
               <v-icon>mdi-content-copy</v-icon>
@@ -75,6 +78,7 @@ export default {
         { title: "Speed (MPH)", align: "end", key: "speed" },
         { title: "Bearing (deg)", align: "end", key: "bearing" },
         { title: "Elevation (ft)", align: "end", key: "elevation" },
+        { title: "Street View", align: "end", key: "streetView", sortable: false },
         { title: "Copy", align: "end", key: "copy", sortable: false },
       ],
       snackbar: false,
@@ -126,6 +130,9 @@ export default {
         const speed = pt.speed || null;
         const bearing = pt.course || null;
 
+        const streetViewLink =
+          `https://www.google.com/maps/@${lat},${lon},3a,75y,${bearing || 0}h,90t/data=!3m7!1e1!3m5!1sjPxhPvbX83coQq-MEPy-ag!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D0%26panoid%3DjPxhPvbX83coQq-MEPy-ag%26yaw%3D257.5721171177321!7i16384!8i8192?entry=ttu&g_ep=EgoyMDI1MDYxNy4wIKXMDSoASAFQAw%3D%3D`;
+
         dataArray.push({
           Timestamp: time ? new Date(time).toLocaleString() : "",
           OGtimestamp: time,
@@ -133,6 +140,7 @@ export default {
           speed: speed ? (speed * 2.23694).toFixed(2) : null,
           bearing: bearing,
           elevation: ele ? (ele * 3.28084).toFixed(2) : null,
+          streetView: streetViewLink,
         });
       }
 

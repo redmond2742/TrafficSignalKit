@@ -7,6 +7,25 @@
   <v-btn color="info" @click="resetZoom">Reset Zoom</v-btn>
   <br />
   <canvas ref="scatterPlotCanvas"></canvas>
+  <br />
+  <table v-if="hoveredPoint">
+    <thead>
+      <tr>
+        <th>Distance (ft)</th>
+        <th>Elevation (ft)</th>
+        <th>Latitude</th>
+        <th>Longitude</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ hoveredPoint.distance.toFixed(1) }}</td>
+        <td>{{ hoveredPoint.elevation.toFixed(1) }}</td>
+        <td>{{ hoveredPoint.lat.toFixed(5) }}</td>
+        <td>{{ hoveredPoint.lon.toFixed(5) }}</td>
+      </tr>
+    </tbody>
+  </table>
 </template>
 
 <script>

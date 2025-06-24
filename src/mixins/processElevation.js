@@ -8,7 +8,9 @@ Chart.register(Colors)
 
 export default {
   data() {
-    return {}
+    return {
+      hoveredPoint: null
+    }
   },
   methods: {
     earthDistance(point1, point2, miles = true) {
@@ -75,6 +77,19 @@ export default {
         scales: {
           x: { type: 'linear', position: 'bottom', title: { display: true, text: 'Distance (ft)' } },
           y: { type: 'linear', position: 'left', title: { display: true, text: 'Elevation (ft)' } }
+        },
+        onHover: (event, activeElements, chart) => {
+          if (activeElements.length) {
+            const raw = activeElements[0].element.$context.raw
+            this.hoveredPoint = {
+              distance: raw.x,
+              elevation: raw.y,
+              lat: raw.lat,
+              lon: raw.lon
+            }
+          } else {
+            this.hoveredPoint = null
+          }
         },
         plugins: {
           tooltip: {

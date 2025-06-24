@@ -47,7 +47,12 @@ export default {
           cumDist += this.earthDistance(p1, p2, false)
         }
         const eleFt = pts[i].ele ? pts[i].ele * 3.28084 : 0
-        dataset.push({ x: cumDist, y: eleFt })
+        dataset.push({
+          x: cumDist,
+          y: eleFt,
+          lat: pts[i].lat,
+          lon: pts[i].lon
+        })
       }
       return dataset
     },

@@ -77,6 +77,15 @@ export default {
           y: { type: 'linear', position: 'left', title: { display: true, text: 'Elevation (ft)' } }
         },
         plugins: {
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const { x, y, lat, lon } = context.raw
+                return `Dist: ${x.toFixed(1)} ft, Elev: ${y.toFixed(1)} ft, ` +
+                  `Lat: ${lat.toFixed(5)}, Lon: ${lon.toFixed(5)}`
+              }
+            }
+          },
           zoom: {
             zoom: {
               wheel: { enabled: true },

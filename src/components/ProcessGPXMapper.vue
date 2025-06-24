@@ -31,7 +31,16 @@
           item-value="name"
           return-object
           show-select
-        ></v-data-table-virtual>
+        >
+          <template v-slot:item.copy="{ item }">
+            <v-btn icon @click="copyCoordinates(item)">
+              <v-icon>mdi-content-copy</v-icon>
+            </v-btn>
+          </template>
+        </v-data-table-virtual>
+        <v-snackbar v-model="snackbar" timeout="2000" color="success">
+          {{ snackbarMessage }}
+        </v-snackbar>
       </div>
     </v-col>
   </v-container>
@@ -66,7 +75,10 @@ export default {
         { title: "Speed (MPH)", align: "end", key: "speed" },
         { title: "Bearing (deg)", align: "end", key: "bearing" },
         { title: "Elevation (ft)", align: "end", key: "elevation" },
+        { title: "Copy", align: "end", key: "copy", sortable: false },
       ],
+      snackbar: false,
+      snackbarMessage: "",
     };
   },
   methods: {
@@ -125,6 +137,24 @@ export default {
       }
 
       return dataArray;
+    },
+    copyCoordinates(item) {
+      if (!item || !item.Coordinates) return;
+      const parts = item.Coordinates.split(',');
+      if (parts.length < 2) return;
+      const lat = parts[0].trim();
+      const lon = parts[1].trim();
+      const coordString = `${lon},${lat}`;
+      navigator.clipboard
+        .writeText(coordString)
+        .then(() => {
+          this.snackbarMessage = `Copied ${coordString}`;
+          this.snackbar = true;
+        })
+        .catch(() => {
+          this.snackbarMessage = 'Copy failed';
+          this.snackbar = true;
+        });
     },
   },
 };

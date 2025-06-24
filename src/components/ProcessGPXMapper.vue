@@ -123,25 +123,50 @@ export default {
 
         const ele = pt.ele || pt.elevation || null;
         const time = pt.time ? pt.time.toISOString() : null;
-        const speed = pt.speed || null;
 
+        let speed = null;
         let bearing = pt.course || null;
-        if (!bearing && i > 0) {
+
+        if (i > 0) {
           const prevPt = this.gpxPointList[i - 1];
-          bearing = this.calculateBearing(
-            prevPt.lat,
-            prevPt.lon,
-            lat,
-            lon
-          );
+          const sameCoords = lat === prevPt.lat && lon === prevPt.lon;
+
+          if (sameCoords) {
+            speed = 0;
+            const prevBearing = dataArray[i - 1]?.bearing;
+            if (prevBearing !== undefined && prevBearing !== null) {
+              bearing = prevBearing;
+            }
+          } else {
+            const distanceFt = this.earthDistance(
+              [prevPt.lat, prevPt.lon],
+              [lat, lon],
+              false
+            );
+            const timeDiffSec =
+              (pt.time.getTime() - prevPt.time.getTime()) / 1000;
+
+            if (timeDiffSec !== 0) {
+              speed = (distanceFt / timeDiffSec) * 0.681818;
+            }
+
+            if (!bearing) {
+              bearing = this.calculateBearing(
+                prevPt.lat,
+                prevPt.lon,
+                lat,
+                lon
+              );
+            }
+          }
         }
 
         dataArray.push({
           Timestamp: time ? new Date(time).toLocaleString() : "",
           OGtimestamp: time,
           Coordinates: coordinates,
-          speed: speed ? (speed * 2.23694).toFixed(2) : null,
-          bearing: bearing ? parseFloat(bearing).toFixed(2) : null,
+          speed: speed !== null ? speed.toFixed(2) : null,
+          bearing: bearing !== null ? parseFloat(bearing).toFixed(2) : null,
           elevation: ele ? (ele * 3.28084).toFixed(2) : null,
         });
       }

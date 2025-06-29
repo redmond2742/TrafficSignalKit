@@ -78,7 +78,12 @@ export default {
         { title: "Speed (MPH)", align: "end", key: "speed" },
         { title: "Bearing (deg)", align: "end", key: "bearing" },
         { title: "Elevation (ft)", align: "end", key: "elevation" },
-        { title: "Street View", align: "end", key: "streetView", sortable: false },
+        {
+          title: "Street View",
+          align: "end",
+          key: "streetView",
+          sortable: false,
+        },
         { title: "Copy", align: "end", key: "copy", sortable: false },
       ],
       snackbar: false,
@@ -131,6 +136,8 @@ export default {
         let speed = null;
         let bearing = pt.course || null;
 
+        let streetViewLink = "";
+
         if (i > 0) {
           const prevPt = this.gpxPointList[i - 1];
           const sameCoords = lat === prevPt.lat && lon === prevPt.lon;
@@ -155,18 +162,15 @@ export default {
             }
 
             if (!bearing) {
-              bearing = this.calculateBearing(
-                prevPt.lat,
-                prevPt.lon,
-                lat,
-                lon
-              );
+              bearing = this.calculateBearing(prevPt.lat, prevPt.lon, lat, lon);
             }
           }
+          streetViewLink =
+            `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=lat,lng&heading=bearing&pitch=0&fov=80`
+              .replace("lat", lat)
+              .replace("lng", lon)
+              .replace("bearing", bearing || 0);
         }
-
-        const streetViewLink =
-          `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=lat,lng&heading=bearing&pitch=0&fov=80
 
         dataArray.push({
           Timestamp: time ? new Date(time).toLocaleString() : "",
@@ -198,11 +202,11 @@ export default {
     },
     copyCoordinates(item) {
       if (!item || !item.Coordinates) return;
-      const parts = item.Coordinates.split(',');
+      const parts = item.Coordinates.split(",");
       if (parts.length < 2) return;
       const lat = parts[0].trim();
       const lon = parts[1].trim();
-      const coordString = `${lon},${lat}`;
+      const coordString = `${lat},${lon}`;
       navigator.clipboard
         .writeText(coordString)
         .then(() => {
@@ -210,7 +214,7 @@ export default {
           this.snackbar = true;
         })
         .catch(() => {
-          this.snackbarMessage = 'Copy failed';
+          this.snackbarMessage = "Copy failed";
           this.snackbar = true;
         });
     },

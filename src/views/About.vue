@@ -133,6 +133,14 @@ export default {
           link: "/PracticeExam",
           topics: ["Exam", "Practice", "TE"],
         },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-GPX+Elevation+Plot+and+Location.png",
+          title: "GPX Elevation Plotter",
+          description: "Plot elevation data from GPX files",
+          link: "/gpx-elevation",
+          topics: ["GPX", "Elevation", "Chart"],
+        },
       ],
     };
   },

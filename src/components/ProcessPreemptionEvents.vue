@@ -49,7 +49,7 @@ export default {
           .map((value) => value.trim());
 
         const eventCode = parseInt(eventCodeRaw, 10);
-        if (Number.isNaN(eventCode) || eventCode < 101 || eventCode > 119) {
+        if (Number.isNaN(eventCode)) {
           return;
         }
 

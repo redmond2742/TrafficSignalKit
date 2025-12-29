@@ -23,6 +23,7 @@
           ><v-sheet class="ma-2 pa-2">
             <DisplayCard
               :image="post.image"
+              :image-alt="post.title"
               :title="post.title"
               :description="post.description"
               :link="post.link"

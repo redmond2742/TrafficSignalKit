@@ -9,91 +9,44 @@
       <InputBox v-model="inputData" />
 
       <v-card>
-        <v-tabs v-model="tab" bg-color="primary" center>
-          <v-tab @click="processCSV" value="table-view">
-            <v-icon>mdi-table</v-icon>
-            Tabluated
-          </v-tab>
-          <v-tab @click="processTimeSeriesData" value="two">
-            <v-icon>mdi-text</v-icon>
-            Explained
-          </v-tab>
-          <v-tab value="three">
-            <v-icon>mdi-chart-bar-stacked</v-icon>
-            Graph
-          </v-tab>
-        </v-tabs>
+        <v-card-text>
+          <v-btn
+            color="primary"
+            :loading="isProcessing"
+            :disabled="isProcessing || !inputData.trim()"
+            @click="processCSV"
+          >
+            Process High Resolution Data
+          </v-btn>
+        </v-card-text>
 
         <v-card-text>
-          <v-window v-model="tab">
-            <v-window-item value="table-view">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Filter by timestamp, enumeration or channel/phase"
-                  v-model="filter"
-                />
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Timestamp</th>
-                      <th>Enumeration</th>
-                      <th>Channel/Phase</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="(row, index) in filteredRows"
-                      :key="`employee-${index}`"
-                    >
-                      <td v-html="highlightMatches(row.timestamp)"></td>
-                      <td v-html="row.enumeration"></td>
-                      <td v-html="row.channel"></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </v-window-item>
-
-            <v-window-item value="two">
-              Still working on this view of the data
-              <span>
-                <div>
-                  <dl>
-                    <v-list
-                      v-for="(item, index) in timeSeriesText"
-                      :key="index"
-                    >
-                      <dt>{{ item[0] }}</dt>
-                      <!--Timestamp-->
-                      <v-list
-                        v-for="(signalEventArray, i) in item.slice(1)"
-                        :key="i"
-                      >
-                        <dd
-                          v-for="(signalEvent, j) in signalEventArray.split(
-                            ','
-                          )"
-                          :key="j"
-                        >
-                          {{ signalEvent }}
-                        </dd>
-                      </v-list>
-                    </v-list>
-                  </dl>
-                </div>
-              </span>
-            </v-window-item>
-
-            <v-window-item value="three">
-              Something
-              <a
-                href="https://observablehq.com/@d3/the-impact-of-vaccines?intent=fork"
-                >like this
-              </a>
-              to be explored in another month.
-            </v-window-item>
-          </v-window>
+          <div>
+            <input
+              type="text"
+              placeholder="Filter by timestamp, enumeration or channel/phase"
+              v-model="filter"
+            />
+            <table>
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Enumeration</th>
+                  <th>Channel/Phase</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, index) in filteredRows"
+                  :key="`employee-${index}`"
+                >
+                  <td v-html="highlightMatches(row.timestamp)"></td>
+                  <td v-html="row.enumeration"></td>
+                  <td v-html="row.channel"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </v-card-text>
       </v-card>
     </div>
@@ -103,7 +56,6 @@
 <script>
 import InputBox from "./foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
-import { DateTime } from "luxon";
 
 export default {
   mixins: [convertTime],
@@ -113,13 +65,11 @@ export default {
   },
   data() {
     return {
-      tab: null,
       inputData: "",
       filter: "",
-      humanDate: 0,
       rowData: [],
+      isProcessing: false,
       timezoneOffset: "America/Los_Angeles",
-      timeSeriesText: [],
       usaTimezones: {
         "America/New_York": -5, // UTC offset: -5 hours
         "America/Chicago": -6, // UTC offset: -6 hours
@@ -294,60 +244,48 @@ export default {
     selectedTimezone(tzData) {
       this.timezoneOffset = tzData;
     },
-    processCSV() {
-      let dateTimeObj;
-      let dateTimeOriginal;
-      let dateTimeString;
-      let dtString;
-      let tsArray = [];
+    async processCSV() {
+      this.isProcessing = true;
+      this.rowData = [];
+      const rows = this.inputData
+        .split("\n")
+        .map((row) => row.trim())
+        .filter(Boolean);
+      const chunkSize = 500;
 
-      const rows = this.inputData.split("\n");
-      const processedData = rows.map((row) => {
-        const values = row.split(",");
-        //this.convertTimestamp(values[0]);
-        dateTimeOriginal = this.convertTimestamp(
-          values[0],
-          this.timezoneOffset
-        );
+      for (let i = 0; i < rows.length; i += chunkSize) {
+        const chunk = rows.slice(i, i + chunkSize);
+        const chunkData = chunk.map((row) => {
+          const values = row.split(",").map((value) => value.trim());
+          const dateTimeOriginal = this.convertTimestamp(
+            values[0],
+            this.timezoneOffset
+          );
+          const tempEnumeration =
+            this.enumerations[Number(values[1])] || "-";
+          const dtString = dateTimeOriginal.new
+            ? dateTimeOriginal.humanReadable
+            : dateTimeOriginal.OGtimestamp;
+          return {
+            timestamp: dtString,
+            enumeration: tempEnumeration,
+            channel: Number(values[2]),
+          };
+        });
+        this.rowData.push(...chunkData);
+        await this.yieldToMainThread();
+      }
 
-        /*dateTimeString = this.convertTimestamp(
-          dateTimeOriginal.secFromEpoch,
-          this.timezoneOffset
-        ); */
-
-        let tempEnumeration;
-        this.enumerations[Number(values[1])]
-          ? (tempEnumeration = this.enumerations[Number(values[1])])
-          : (tempEnumeration = "-");
-
-        if (this.enumerations[Number(values[1])]) {
-          console.log("The value is in the array.");
-        } else {
-          console.log("The value is not in the array.");
-        }
-
-        if (dateTimeOriginal.new) {
-          dtString = dateTimeOriginal.humanReadable;
-          tsArray.push(dateTimeOriginal.iso);
-        } else {
-          dtString = dateTimeOriginal.OGtimestamp;
-        }
-        console.log("dtString: " + dtString);
-        const explainInfo = {
-          timestamp: dtString,
-          enumeration: tempEnumeration,
-          channel: Number(values[2]),
-        };
-        this.rowData.push(explainInfo);
-        console.log("ts:  " + explainInfo.timestamp);
-        return explainInfo;
-      });
-      //this.inputDataProcessed(processedData);
-
-      console.log(processedData);
+      this.isProcessing = false;
     },
-    handleProcessedData(data) {
-      this.processedData = data;
+    yieldToMainThread() {
+      return new Promise((resolve) => {
+        if (window.requestIdleCallback) {
+          window.requestIdleCallback(() => resolve(), { timeout: 50 });
+        } else {
+          setTimeout(resolve, 0);
+        }
+      });
     },
     highlightMatches(text) {
       if (typeof text === "string") {
@@ -363,62 +301,6 @@ export default {
       } else {
         console.log("number, not text");
       }
-    },
-    processTimeSeriesData() {
-      const signalStates = {};
-      let dateData;
-
-      const options = {
-        weekday: "short",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        second: "numeric",
-        fractionalSecondDigits: 2,
-        timeZone: "UTC",
-      };
-      const locale = navigator.language;
-      let displayDate;
-
-      this.humanDate = dateData.toLocaleDateString(undefined, options);
-
-      console.log(this.inputData);
-
-      const rows = this.inputData.split("\n");
-
-      rows.map((row) => {
-        const [timestamp, state, chan] = row.split(", ");
-        dateData = this.convertTimestamp(timestamp, this.timezoneOffset);
-        console.log("inputDate in processtimeseries: " + dateData);
-        const time = dateData; //Math.floor(parseFloat(inputDate));
-        console.log("Time: " + time + " " + typeof time);
-
-        if (signalStates[time]) {
-          signalStates[time].push({ state, chan });
-        } else {
-          signalStates[time] = [{ state, chan }];
-        }
-      });
-
-      const output = [];
-      for (const time in signalStates) {
-        const states = signalStates[time]
-          .map(
-            ({ state, chan }) =>
-              `${this.parameterSwitch(chan)} ${chan} ${
-                this.enumerations[state]
-              }`
-          )
-          .join();
-        displayDate = time.toLocaleDateString(undefined, options);
-        //output.push([`${this.convertTimestamp(Number(time))}`, `${states}`]);
-        output.push([`${displayDate}`, `${states}`]);
-        console.log(states);
-      }
-      this.timeSeriesText = output;
-      return output;
     },
   },
   computed: {

@@ -69,11 +69,21 @@
             </tbody>
           </table>
           <br /><br />
-          <input
-            type="text"
-            placeholder="Filter by start timestamp, cycle length, phase or duration values"
-            v-model="filter"
-          />
+          <div class="split-history-controls">
+            <input
+              type="text"
+              placeholder="Filter by start timestamp, cycle length, phase or duration values"
+              v-model="filter"
+            />
+            <v-btn
+              color="primary"
+              class="split-history-export"
+              @click="downloadCsv"
+              :disabled="exportRows.length === 0"
+            >
+              Download CSV (Excel)
+            </v-btn>
+          </div>
           <br />
           <table>
             <thead>
@@ -174,6 +184,15 @@ export default {
         );
       });
     },
+    exportRows() {
+      return this.filteredRows.map((row) => ({
+        timestamp: row.timestampStart,
+        cycleLength: this.truncateToOneDecimal(row.cycleLength),
+        phase: row.phase,
+        duration: this.truncateToOneDecimal(row.duration),
+        termReason: row.termReason,
+      }));
+    },
     processedMetrics() {
       if (this.isDataLoaded()) {
         let maxLength = this.tableData.length - 1;
@@ -230,6 +249,48 @@ export default {
     },
   },
   methods: {
+    buildCsvValue(value) {
+      if (value === null || value === undefined) {
+        return "";
+      }
+      const stringValue = String(value);
+      const escapedValue = stringValue.replace(/"/g, '""');
+      if (/[",\n]/.test(escapedValue)) {
+        return `"${escapedValue}"`;
+      }
+      return escapedValue;
+    },
+    buildCsvContent() {
+      const header = [
+        "Start Timestamp",
+        "Cycle Length (s)",
+        "Phase",
+        "Duration (s)",
+        "Termination Reason",
+      ];
+      const rows = this.exportRows.map((row) => [
+        row.timestamp,
+        row.cycleLength,
+        row.phase,
+        row.duration,
+        row.termReason,
+      ]);
+      return [header, ...rows]
+        .map((row) => row.map(this.buildCsvValue).join(","))
+        .join("\n");
+    },
+    downloadCsv() {
+      const csvContent = this.buildCsvContent();
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "High_Resolution_Split_History.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
     isDataLoaded() {
       if (this.tableData.length > 0) {
         return true;
@@ -265,3 +326,11 @@ export default {
   },
 };
 </script>
+<style scoped>
+.split-history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+</style>

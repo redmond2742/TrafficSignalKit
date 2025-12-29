@@ -314,36 +314,28 @@ export default {
     exportToExcel() {
       const rows = this.filteredRows.length ? this.filteredRows : this.rowData;
       const header = ["Timestamp", "Enumeration", "Channel/Phase"];
-      const bodyRows = rows
-        .map((row) => {
-          return `
-            <tr>
-              <td>${row.timestamp}</td>
-              <td>${row.enumeration}</td>
-              <td>${row.channel}</td>
-            </tr>
-          `;
-        })
-        .join("");
-      const tableHtml = `
-        <table>
-          <thead>
-            <tr>
-              ${header.map((label) => `<th>${label}</th>`).join("")}
-            </tr>
-          </thead>
-          <tbody>
-            ${bodyRows}
-          </tbody>
-        </table>
-      `;
-      const blob = new Blob(["\ufeff", tableHtml], {
-        type: "application/vnd.ms-excel",
+      const escapeCsvValue = (value) => {
+        const stringValue = `${value}`;
+        if (/[",\n\t]/.test(stringValue)) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      };
+      const bodyRows = rows.map((row) => [
+        row.timestamp,
+        row.enumeration,
+        row.channel,
+      ]);
+      const csvContent = [header, ...bodyRows]
+        .map((row) => row.map(escapeCsvValue).join(","))
+        .join("\n");
+      const blob = new Blob(["\ufeff", csvContent], {
+        type: "text/csv;charset=utf-8",
       });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "high-resolution-data-explainer.xls";
+      link.download = "high-resolution-data-explainer.csv";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

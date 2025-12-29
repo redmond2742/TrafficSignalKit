@@ -20,12 +20,15 @@
         </template>
 
         <v-list>
-          <v-list-item v-for="(item, index) in TSdataTools" :key="index">
-            <v-list-item-title
-              ><router-link :to="item.path"
-                >{{ item.title }}
-              </router-link></v-list-item-title
-            >
+          <v-list-item
+            v-for="(item, index) in TSdataTools"
+            :key="index"
+            :to="item.path"
+            link
+            active-class="nav-item-active"
+            class="nav-list-item"
+          >
+            <v-list-item-title>{{ item.title }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
@@ -37,12 +40,15 @@
         </template>
 
         <v-list>
-          <v-list-item v-for="(item, index) in TSgpxTools" :key="index">
-            <v-list-item-title
-              ><router-link :to="item.path"
-                >{{ item.title }}
-              </router-link></v-list-item-title
-            >
+          <v-list-item
+            v-for="(item, index) in TSgpxTools"
+            :key="index"
+            :to="item.path"
+            link
+            active-class="nav-item-active"
+            class="nav-list-item"
+          >
+            <v-list-item-title>{{ item.title }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
@@ -54,12 +60,15 @@
         </template>
 
         <v-list>
-          <v-list-item v-for="(item, index) in MiscTools" :key="index">
-            <v-list-item-title
-              ><router-link :to="item.path"
-                >{{ item.title }}
-              </router-link></v-list-item-title
-            >
+          <v-list-item
+            v-for="(item, index) in MiscTools"
+            :key="index"
+            :to="item.path"
+            link
+            active-class="nav-item-active"
+            class="nav-list-item"
+          >
+            <v-list-item-title>{{ item.title }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
@@ -113,6 +122,9 @@
         v-for="(item, index) in tools"
         :key="index"
         :to="item.path"
+        link
+        active-class="nav-item-active"
+        class="nav-list-item"
         @click="drawer = false"
       >
         <v-list-item-title>{{ item.title }}</v-list-item-title>
@@ -214,5 +226,13 @@ a {
 .title-justify {
   justify-content: flex-start;
   margin-left: 10px;
+}
+:deep(.nav-item-active) {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
+}
+:deep(.nav-list-item:focus-visible) {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
 }
 </style>

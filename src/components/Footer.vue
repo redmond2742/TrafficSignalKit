@@ -10,6 +10,7 @@
         :key="icon.id"
         class="mx-4"
         :icon="icon.icon"
+        :aria-label="icon.label"
         variant="plain"
         size="small"
         :href="icon.link"
@@ -41,11 +42,13 @@ export default {
       {
         id: 1,
         icon: "mdi-github",
+        label: "GitHub repository",
         link: "https://github.com/redmond2742/TrafficSignalKit",
       },
       {
         id: 2,
         icon: "mdi-linkedin",
+        label: "LinkedIn profile",
         link: "https://www.linkedin.com/in/matt-redmond-00700a36/",
       },
     ],

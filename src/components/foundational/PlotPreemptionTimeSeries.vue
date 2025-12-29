@@ -12,9 +12,18 @@
 <script>
 import { Scatter } from "vue-chartjs";
 import zoom from "chartjs-plugin-zoom";
-import { Chart as ChartJS, Title, Tooltip, Legend, PointElement, LinearScale } from "chart.js";
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+} from "chart.js";
+import enumerationObj from "../../data/enumerations.json";
 
-ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale, zoom);
+ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale, CategoryScale, zoom);
 
 export default {
   components: { Scatter },
@@ -25,12 +34,18 @@ export default {
     },
   },
   computed: {
-    baseTimeMs() {
-      return this.plotData.length > 0 ? this.plotData[0].timestampMs : 0;
+    enumerations() {
+      return enumerationObj.map((item) => ({
+        code: parseInt(item.eventCode, 10),
+        label: `${parseInt(item.eventCode, 10)}: ${item.eventDescriptor.trim()}`,
+      }));
+    },
+    enumerationLabels() {
+      return this.enumerations.map((item) => item.label);
     },
     eventLookup() {
-      return this.plotData.reduce((lookup, item) => {
-        lookup[item.eventCode] = item.eventDescriptor;
+      return this.enumerations.reduce((lookup, item) => {
+        lookup[item.code] = item.label;
         return lookup;
       }, {});
     },
@@ -53,8 +68,8 @@ export default {
           {
             label: "Preemption Events",
             data: this.plotData.map((event) => ({
-              x: (event.timestampMs - this.baseTimeMs) / 1000,
-              y: event.eventCode,
+              x: event.timestampMs,
+              y: this.eventLookup[event.eventCode] ?? `Event ${event.eventCode}`,
               event,
             })),
             borderColor: "#009688",
@@ -108,18 +123,24 @@ export default {
             position: "bottom",
             title: {
               display: true,
-              text: "Seconds from first preemption event",
+              text: "Timestamp",
+            },
+            ticks: {
+              callback: (value) => {
+                const timestamp = typeof value === "string" ? parseFloat(value) : value;
+                if (Number.isNaN(timestamp)) {
+                  return value;
+                }
+                return new Date(timestamp).toLocaleString();
+              },
             },
           },
           y: {
-            type: "linear",
+            type: "category",
+            labels: this.enumerationLabels,
             title: {
               display: true,
-              text: "Preemption Event",
-            },
-            ticks: {
-              stepSize: 1,
-              callback: (value) => this.eventLookup[value] || value,
+              text: "Enumeration",
             },
           },
         },

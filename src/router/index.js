@@ -13,6 +13,7 @@ import GPXMapper from '../views/MapGPXPlotter'
 import GPXElevation from '../views/GPXElevation'
 import HighResDetectors from '../views/HighResDetectors'
 import PracticeExam from '../views/PracticeExam'
+import HighResPreemptionPlotter from '../views/HighResPreemptionPlotter'
 
 
 
@@ -81,6 +82,11 @@ const routes = [
         path: '/detectorRLR',
         name: 'detectorRLR',
         component: HighResDetectors,
+    },
+    {
+        path: '/preemption-plotter',
+        name: 'preemptionPlotter',
+        component: HighResPreemptionPlotter,
     },
     {
         path: '/PracticeExam',

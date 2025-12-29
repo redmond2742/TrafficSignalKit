@@ -1,7 +1,7 @@
 <template>
   <div>
     &nbsp;
-    <h1 class="h1-center-text">Preemption Event Plotter</h1>
+    <h1 class="h1-center-text">Timeseries Plot All Enumerations</h1>
 
     <div class="left-justify-text">
       <v-expansion-panels v-model="panel" multiple>

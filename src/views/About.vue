@@ -56,7 +56,7 @@ export default {
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
-          title: "Preemption Event Plotter",
+          title: "Timeseries Plot All Enumerations",
           description: "Plot preemption (101-119) enumeration events over time",
           link: "/preemption-plotter",
           topics: ["Controller Data", "Enumerations", "Preemption"],

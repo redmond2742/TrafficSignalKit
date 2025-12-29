@@ -143,7 +143,7 @@ export default {
       tools: [
         { title: "Split History", path: "/split-history" },
         { title: "Red Light Runners", path: "/detectorRLR" },
-        { title: "Preemption Plotter", path: "/preemption-plotter" },
+        { title: "Timeseries Plot All Enumerations", path: "/preemption-plotter" },
         { title: "Phase Plotter", path: "/phase-plotter" },
         { title: "High Res. Explainer", path: "/explainer" },
         { title: "Time Space Visualizer", path: "/gpx" },
@@ -160,7 +160,7 @@ export default {
       TSdataTools: [
         { title: "Split History", path: "/split-history" },
         { title: "Red Light Runners", path: "/detectorRLR" },
-        { title: "Preemption Plotter", path: "/preemption-plotter" },
+        { title: "Timeseries Plot All Enumerations", path: "/preemption-plotter" },
         { title: "Phase Plotter", path: "/phase-plotter" },
         { title: "High Resolution Explainer", path: "/explainer" },
       ],

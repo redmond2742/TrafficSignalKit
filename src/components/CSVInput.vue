@@ -27,6 +27,15 @@
               placeholder="Filter by timestamp, enumeration or channel/phase"
               v-model="filter"
             />
+            <div class="table-actions">
+              <v-btn
+                color="secondary"
+                :disabled="!rowData.length"
+                @click="exportToExcel"
+              >
+                Export to Excel
+              </v-btn>
+            </div>
             <table>
               <thead>
                 <tr>
@@ -302,6 +311,44 @@ export default {
         console.log("number, not text");
       }
     },
+    exportToExcel() {
+      const rows = this.filteredRows.length ? this.filteredRows : this.rowData;
+      const header = ["Timestamp", "Enumeration", "Channel/Phase"];
+      const bodyRows = rows
+        .map((row) => {
+          return `
+            <tr>
+              <td>${row.timestamp}</td>
+              <td>${row.enumeration}</td>
+              <td>${row.channel}</td>
+            </tr>
+          `;
+        })
+        .join("");
+      const tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              ${header.map((label) => `<th>${label}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${bodyRows}
+          </tbody>
+        </table>
+      `;
+      const blob = new Blob(["\ufeff", tableHtml], {
+        type: "application/vnd.ms-excel",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "high-resolution-data-explainer.xls";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
   },
   computed: {
     filteredRows() {
@@ -401,6 +448,11 @@ select {
   border-radius: 4px;
   box-sizing: border-box;
   margin-top: 25px;
+}
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
 }
 dd {
   margin-left: 0;

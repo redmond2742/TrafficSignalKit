@@ -14,6 +14,7 @@ import GPXElevation from '../views/GPXElevation'
 import HighResDetectors from '../views/HighResDetectors'
 import PracticeExam from '../views/PracticeExam'
 import HighResPreemptionPlotter from '../views/HighResPreemptionPlotter'
+import Reference from '../views/Reference'
 
 
 
@@ -92,6 +93,11 @@ const routes = [
         path: '/PracticeExam',
         name: 'practiceExam',
         component: PracticeExam,
+    },
+    {
+        path: '/reference',
+        name: 'Reference',
+        component: Reference,
     },
     {
         path: '/:pathMatch(.*)*',

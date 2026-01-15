@@ -154,6 +154,7 @@ export default {
           title: "Intersection Simulator",
           path: "/traffic-simulator",
         },
+        { title: "Reference", path: "/reference" },
         { title: "Practice Exam", path: "/practiceExam" },
       ],
 
@@ -176,6 +177,7 @@ export default {
           title: "Intersection Simulator",
           path: "/traffic-simulator",
         },
+        { title: "Reference", path: "/reference" },
         { title: "Practice Exam", path: "/practiceExam" },
       ],
 

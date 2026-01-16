@@ -44,9 +44,11 @@
     <br />
     <ProcessDetectionEvents
       @detectionEvents="storeDetectionEvents"
+      @phaseEvents="storePhaseEvents"
     ></ProcessDetectionEvents>
     <PlotDetectionTimeSeries
       :plotData="detectionEvents"
+      :phaseData="phaseEvents"
     ></PlotDetectionTimeSeries>
   </div>
 </template>
@@ -65,11 +67,15 @@ export default {
     return {
       panel: [],
       detectionEvents: [],
+      phaseEvents: [],
     };
   },
   methods: {
     storeDetectionEvents(events) {
       this.detectionEvents = events;
+    },
+    storePhaseEvents(events) {
+      this.phaseEvents = events;
     },
   },
 };

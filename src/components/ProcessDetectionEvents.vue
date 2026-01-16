@@ -34,6 +34,37 @@ export default {
         .filter((item) => item.eventDescriptor.toLowerCase().includes("detector"))
         .map((item) => parseInt(item.eventCode, 10));
     },
+    phaseEventStates() {
+      return enumerationObj.reduce((lookup, item) => {
+        if (!item.parameterType || item.parameterType.toLowerCase() !== "phase") {
+          return lookup;
+        }
+
+        const descriptor = item.eventDescriptor.trim().toLowerCase();
+        const eventCode = parseInt(item.eventCode, 10);
+        if (Number.isNaN(eventCode)) {
+          return lookup;
+        }
+
+        if (descriptor.includes("phase begin green")) {
+          lookup[eventCode] = "green";
+        } else if (descriptor.includes("phase begin yellow clearance")) {
+          lookup[eventCode] = "yellow";
+        } else if (
+          descriptor.includes("phase begin red clearance") ||
+          descriptor.includes("phase end yellow clearance")
+        ) {
+          lookup[eventCode] = "red";
+        } else if (
+          descriptor.includes("phase end red clearance") ||
+          descriptor.includes("phase inactive")
+        ) {
+          lookup[eventCode] = "inactive";
+        }
+
+        return lookup;
+      }, {});
+    },
     detectionLookup() {
       return enumerationObj.reduce((lookup, item) => {
         const code = parseInt(item.eventCode, 10);
@@ -46,6 +77,7 @@ export default {
     processDetectionEvents() {
       const lines = this.inputData.split("\n");
       const events = [];
+      const phaseEvents = [];
 
       lines.forEach((line) => {
         const trimmedLine = line.trim();
@@ -58,7 +90,7 @@ export default {
           .map((value) => value.trim());
 
         const eventCode = parseInt(eventCodeRaw, 10);
-        if (Number.isNaN(eventCode) || !this.detectionEventCodes.includes(eventCode)) {
+        if (Number.isNaN(eventCode)) {
           return;
         }
 
@@ -72,18 +104,35 @@ export default {
           return;
         }
 
-        events.push({
-          timestampISO: timestampInfo.iso,
-          timestampMs: timestampInfo.MillisecFromEpoch,
-          humanReadable: timestampInfo.humanReadable,
-          eventCode,
-          eventDescriptor: this.detectionLookup[eventCode] ?? `Event ${eventCode}`,
-          parameterCode,
-        });
+        if (this.detectionEventCodes.includes(eventCode)) {
+          events.push({
+            timestampISO: timestampInfo.iso,
+            timestampMs: timestampInfo.MillisecFromEpoch,
+            humanReadable: timestampInfo.humanReadable,
+            eventCode,
+            eventDescriptor: this.detectionLookup[eventCode] ?? `Event ${eventCode}`,
+            parameterCode,
+          });
+        }
+
+        const phaseState = this.phaseEventStates[eventCode];
+        if (phaseState) {
+          phaseEvents.push({
+            timestampISO: timestampInfo.iso,
+            timestampMs: timestampInfo.MillisecFromEpoch,
+            humanReadable: timestampInfo.humanReadable,
+            eventCode,
+            eventDescriptor: this.detectionLookup[eventCode] ?? `Event ${eventCode}`,
+            parameterCode,
+            phaseState,
+          });
+        }
       });
 
       events.sort((a, b) => a.timestampMs - b.timestampMs);
+      phaseEvents.sort((a, b) => a.timestampMs - b.timestampMs);
       this.$emit("detectionEvents", events);
+      this.$emit("phaseEvents", phaseEvents);
     },
   },
 };

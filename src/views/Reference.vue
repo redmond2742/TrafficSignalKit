@@ -72,6 +72,46 @@
         </v-table>
       </v-col>
     </v-row>
+
+    <v-row class="mt-8">
+      <v-col>
+        <h2>Enumeration 150 - Coord Cycle State Change</h2>
+        <v-table density="compact" class="mt-3">
+          <thead>
+            <tr>
+              <th class="text-left">Parameter</th>
+              <th class="text-left">Definition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="state in coordCycleStates" :key="state.parameter">
+              <td>{{ state.parameter }}</td>
+              <td>{{ state.definition }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+    </v-row>
+
+    <v-row class="mt-8">
+      <v-col>
+        <h2>Enumeration 155 - Unit Control Status Change</h2>
+        <v-table density="compact" class="mt-3">
+          <thead>
+            <tr>
+              <th class="text-left">Parameter</th>
+              <th class="text-left">Definition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="status in unitControlStatuses" :key="status.parameter">
+              <td>{{ status.parameter }}</td>
+              <td>{{ status.definition }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
@@ -139,6 +179,28 @@ export default {
           description:
             "When the Controller Unit is operating in the coordinated mode and cycling diagnostics indicate that a serviceable call exists that has not been serviced for two cycles.",
         },
+      ],
+      coordCycleStates: [
+        { parameter: 0, definition: "Free" },
+        { parameter: 1, definition: "In Step" },
+        { parameter: 2, definition: "Transition - Add" },
+        { parameter: 3, definition: "Transition - Subtract" },
+        { parameter: 4, definition: "Transition - Dwell" },
+        { parameter: 5, definition: "Local Zero" },
+        { parameter: 6, definition: "Begin Pickup" },
+        { parameter: 7, definition: "Master Cycle Zero" },
+      ],
+      unitControlStatuses: [
+        { parameter: 1, definition: "Other" },
+        { parameter: 2, definition: "System Control" },
+        { parameter: 3, definition: "System Standby" },
+        { parameter: 4, definition: "Backup Mode" },
+        { parameter: 5, definition: "Manual" },
+        { parameter: 6, definition: "Timebase" },
+        { parameter: 7, definition: "Interconnect" },
+        { parameter: 8, definition: "Interconnect Backup" },
+        { parameter: 9, definition: "Remote Manual Control" },
+        { parameter: 10, definition: "Local Manual Control" },
       ],
     };
   },

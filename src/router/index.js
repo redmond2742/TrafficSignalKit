@@ -15,6 +15,7 @@ import HighResDetectors from '../views/HighResDetectors'
 import PracticeExam from '../views/PracticeExam'
 import HighResPreemptionPlotter from '../views/HighResPreemptionPlotter'
 import Reference from '../views/Reference'
+import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
 
 
 
@@ -88,6 +89,11 @@ const routes = [
         path: '/preemption-plotter',
         name: 'preemptionPlotter',
         component: HighResPreemptionPlotter,
+    },
+    {
+        path: '/detection-plotter',
+        name: 'detectionPlotter',
+        component: HighResDetectionPlotter,
     },
     {
         path: '/PracticeExam',

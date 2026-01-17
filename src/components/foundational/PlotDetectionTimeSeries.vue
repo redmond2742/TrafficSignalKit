@@ -1,5 +1,34 @@
 <template>
   <br />
+  <v-card class="mapping-card" variant="outlined">
+    <v-card-title>Detector-to-Phase Alignment</v-card-title>
+    <v-card-text>
+      <v-row>
+        <v-col cols="12" md="7">
+          <v-textarea
+            v-model="mappingInput"
+            :placeholder="mappingPlaceholder"
+            label="Detector-to-Phase Table"
+            rows="8"
+            auto-grow
+          ></v-textarea>
+        </v-col>
+        <v-col cols="12" md="5">
+          <v-radio-group v-model="alignmentMode" label="Alignment Mode">
+            <v-radio
+              label="Keep detectors sorted; align phases to detectors"
+              value="channels"
+            ></v-radio>
+            <v-radio
+              label="Sort by phase; move detectors to match"
+              value="phases"
+            ></v-radio>
+          </v-radio-group>
+        </v-col>
+      </v-row>
+    </v-card-text>
+  </v-card>
+  <br />
   <v-btn @click="resetZoom">Reset Zoom</v-btn>
   <br />
   <Scatter
@@ -46,7 +75,50 @@ export default {
       default: () => [],
     },
   },
+  data() {
+    return {
+      mappingInput: "",
+      alignmentMode: "channels",
+      mappingPlaceholder:
+        "Paste detector-to-phase mappings, e.g.\nDet 1\t6\nDet 2\t2\nDet 3\t0",
+    };
+  },
   computed: {
+    mappingEntries() {
+      if (!this.mappingInput) {
+        return [];
+      }
+
+      return this.mappingInput
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const numbers = line.match(/\d+/g);
+          if (!numbers || numbers.length < 2) {
+            return null;
+          }
+          const detector = parseInt(numbers[0], 10);
+          const phase = parseInt(numbers[1], 10);
+          if (Number.isNaN(detector) || Number.isNaN(phase)) {
+            return null;
+          }
+          return {
+            detector,
+            phase: phase === 0 ? null : phase,
+          };
+        })
+        .filter(Boolean);
+    },
+    mappingByChannel() {
+      return this.mappingEntries.reduce((lookup, entry) => {
+        lookup[entry.detector] = entry.phase;
+        return lookup;
+      }, {});
+    },
+    hasMapping() {
+      return Object.keys(this.mappingByChannel).length > 0;
+    },
     channels() {
       const channelSet = new Set();
       this.plotData.forEach((event) => {
@@ -56,12 +128,52 @@ export default {
       });
       return Array.from(channelSet).sort((a, b) => a - b);
     },
+    alignedRows() {
+      const rows = this.channels.map((channel) => ({
+        channel,
+        phase: this.mappingByChannel[channel] ?? null,
+      }));
+
+      if (!this.hasMapping) {
+        return rows;
+      }
+
+      if (this.alignmentMode === "phases") {
+        return [...rows].sort((a, b) => {
+          if (a.phase === null && b.phase === null) {
+            return a.channel - b.channel;
+          }
+          if (a.phase === null) {
+            return 1;
+          }
+          if (b.phase === null) {
+            return -1;
+          }
+          if (a.phase === b.phase) {
+            return a.channel - b.channel;
+          }
+          return a.phase - b.phase;
+        });
+      }
+
+      return rows;
+    },
     channelLabels() {
-      return this.channels.map((channel) => `Channel ${channel}`);
+      if (!this.hasMapping) {
+        return this.channels.map((channel) => `Channel ${channel}`);
+      }
+      return this.alignedRows.map((row) => `Channel ${row.channel}`);
     },
     channelLookup() {
-      return this.channels.reduce((lookup, channel) => {
-        lookup[channel] = `Channel ${channel}`;
+      if (!this.hasMapping) {
+        return this.channels.reduce((lookup, channel) => {
+          lookup[channel] = `Channel ${channel}`;
+          return lookup;
+        }, {});
+      }
+
+      return this.alignedRows.reduce((lookup, row) => {
+        lookup[row.channel] = `Channel ${row.channel}`;
         return lookup;
       }, {});
     },
@@ -74,12 +186,59 @@ export default {
       });
       return Array.from(phaseSet).sort((a, b) => a - b);
     },
+    phaseAxisLabels() {
+      if (!this.hasMapping) {
+        return this.phases.map((phase) => ({
+          axisLabel: `Phase ${phase}`,
+          displayLabel: `Phase ${phase}`,
+        }));
+      }
+
+      return this.alignedRows.map((row, index) => {
+        const baseLabel = row.phase ? `Phase ${row.phase}` : "Unassigned";
+        return {
+          axisLabel: `${baseLabel}||row-${index}`,
+          displayLabel: baseLabel,
+        };
+      });
+    },
     phaseLabels() {
-      return this.phases.map((phase) => `Phase ${phase}`);
+      return this.phaseAxisLabels.map((label) => label.axisLabel);
+    },
+    phaseDisplayLabelLookup() {
+      return this.phaseAxisLabels.reduce((lookup, label) => {
+        lookup[label.axisLabel] = label.displayLabel;
+        return lookup;
+      }, {});
     },
     phaseLookup() {
-      return this.phases.reduce((lookup, phase) => {
-        lookup[phase] = `Phase ${phase}`;
+      if (!this.hasMapping) {
+        return this.phases.reduce((lookup, phase) => {
+          lookup[phase] = `Phase ${phase}`;
+          return lookup;
+        }, {});
+      }
+
+      return this.alignedRows.reduce((lookup, row, index) => {
+        if (row.phase) {
+          lookup[row.phase] = this.phaseAxisLabels[index].axisLabel;
+        }
+        return lookup;
+      }, {});
+    },
+    phaseAxisLabelGroups() {
+      if (!this.hasMapping) {
+        return {};
+      }
+
+      return this.alignedRows.reduce((lookup, row, index) => {
+        if (!row.phase) {
+          return lookup;
+        }
+        if (!lookup[row.phase]) {
+          lookup[row.phase] = [];
+        }
+        lookup[row.phase].push(this.phaseAxisLabels[index].axisLabel);
         return lookup;
       }, {});
     },
@@ -166,20 +325,38 @@ export default {
         red: "rgba(229, 57, 53, 0.7)",
       };
 
+      const phaseDataPoints = [];
+      if (this.hasMapping) {
+        this.phaseIntervals.forEach((interval) => {
+          const labels = this.phaseAxisLabelGroups[interval.phase] ?? [];
+          labels.forEach((label) => {
+            phaseDataPoints.push({
+              x: [interval.start, interval.end],
+              y: label,
+              phase: interval,
+            });
+          });
+        });
+      } else {
+        phaseDataPoints.push(
+          ...this.phaseIntervals.map((interval) => ({
+            x: [interval.start, interval.end],
+            y: this.phaseLookup[interval.phase] ?? `Phase ${interval.phase}`,
+            phase: interval,
+          }))
+        );
+      }
+
       return {
         type: "bar",
         label: "Phase State",
         yAxisID: "y1",
-        data: this.phaseIntervals.map((interval) => ({
-          x: [interval.start, interval.end],
-          y: this.phaseLookup[interval.phase] ?? `Phase ${interval.phase}`,
-          phase: interval,
-        })),
-        backgroundColor: this.phaseIntervals.map(
-          (interval) => stateColors[interval.state] ?? "#9e9e9e"
+        data: phaseDataPoints,
+        backgroundColor: phaseDataPoints.map(
+          (point) => stateColors[point.phase.state] ?? "#9e9e9e"
         ),
-        borderColor: this.phaseIntervals.map(
-          (interval) => borderColors[interval.state] ?? "#9e9e9e"
+        borderColor: phaseDataPoints.map(
+          (point) => borderColors[point.phase.state] ?? "#9e9e9e"
         ),
         borderWidth: 1,
         borderSkipped: false,
@@ -233,12 +410,12 @@ export default {
                 if (!event) {
                   if (phase) {
                     return [
-                      `${context.parsed.y}: ${phase.state.toUpperCase()}`,
+                      `${this.formatPhaseAxisLabel(context.parsed.y)}: ${phase.state.toUpperCase()}`,
                       `Start: ${new Date(phase.start).toLocaleString()}`,
                       `End: ${new Date(phase.end).toLocaleString()}`,
                     ];
                   }
-                  return `${context.parsed.y}`;
+                  return `${this.formatPhaseAxisLabel(context.parsed.y)}`;
                 }
                 return [
                   `${event.eventDescriptor} (Code ${event.eventCode})`,
@@ -303,15 +480,34 @@ export default {
             grid: {
               drawOnChartArea: false,
             },
+            ticks: {
+              callback: (value) => this.formatPhaseAxisLabel(value),
+            },
           },
         },
       };
     },
   },
   methods: {
+    formatPhaseAxisLabel(value) {
+      if (value == null) {
+        return "";
+      }
+      if (typeof value === "number") {
+        const label = this.phaseLabels[value];
+        return this.phaseDisplayLabelLookup[label] ?? label ?? value;
+      }
+      return this.phaseDisplayLabelLookup[value] ?? value;
+    },
     resetZoom() {
       this.$refs.scatterChart.chart.resetZoom();
     },
   },
 };
 </script>
+
+<style scoped>
+.mapping-card {
+  margin-bottom: 16px;
+}
+</style>

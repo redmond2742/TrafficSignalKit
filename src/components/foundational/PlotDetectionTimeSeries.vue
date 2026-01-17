@@ -90,6 +90,21 @@ export default {
       ].filter((value) => typeof value === "number");
       return timestamps.length ? Math.max(...timestamps) : null;
     },
+    detectionRange() {
+      const timestamps = this.plotData
+        .map((event) => event.timestampMs)
+        .filter((value) => typeof value === "number");
+      if (!timestamps.length) {
+        return null;
+      }
+      const min = Math.min(...timestamps);
+      const max = Math.max(...timestamps);
+      if (min === max) {
+        return { min: min - 1000, max: max + 1000 };
+      }
+      const padding = Math.max((max - min) * 0.05, 1);
+      return { min: min - padding, max: max + padding };
+    },
     phaseIntervals() {
       if (!this.phaseData.length) {
         return [];
@@ -141,9 +156,14 @@ export default {
       }
 
       const stateColors = {
-        green: "#4caf50",
-        yellow: "#fbc02d",
-        red: "#e53935",
+        green: "rgba(76, 175, 80, 0.25)",
+        yellow: "rgba(251, 192, 45, 0.25)",
+        red: "rgba(229, 57, 53, 0.25)",
+      };
+      const borderColors = {
+        green: "rgba(76, 175, 80, 0.7)",
+        yellow: "rgba(251, 192, 45, 0.7)",
+        red: "rgba(229, 57, 53, 0.7)",
       };
 
       return {
@@ -159,7 +179,7 @@ export default {
           (interval) => stateColors[interval.state] ?? "#9e9e9e"
         ),
         borderColor: this.phaseIntervals.map(
-          (interval) => stateColors[interval.state] ?? "#9e9e9e"
+          (interval) => borderColors[interval.state] ?? "#9e9e9e"
         ),
         borderWidth: 1,
         borderSkipped: false,
@@ -175,8 +195,8 @@ export default {
             {
               label: "Detection Events",
               data: [],
-              borderColor: "#4caf50",
-              backgroundColor: "#4caf50",
+              borderColor: "#1976d2",
+              backgroundColor: "#1976d2",
             },
           ].concat(this.phaseDataset ? [this.phaseDataset] : []),
         };
@@ -191,8 +211,8 @@ export default {
               y: this.channelLookup[event.parameterCode] ?? `Channel ${event.parameterCode}`,
               event,
             })),
-            borderColor: "#4caf50",
-            backgroundColor: "#4caf50",
+            borderColor: "#1976d2",
+            backgroundColor: "#1976d2",
             pointRadius: 4,
           },
         ].concat(this.phaseDataset ? [this.phaseDataset] : []),
@@ -248,6 +268,8 @@ export default {
           x: {
             type: "linear",
             position: "bottom",
+            min: this.detectionRange?.min,
+            max: this.detectionRange?.max,
             title: {
               display: true,
               text: "Timestamp",

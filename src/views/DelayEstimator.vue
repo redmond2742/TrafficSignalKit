@@ -8,12 +8,11 @@
         <v-expansion-panel title="About: Delay Estimator" value="about">
           <v-expansion-panel-text>
             This tool estimates the delay between the first detector call and
-            when the corresponding phase is served. It uses the first detector
-            ON event within a cycle as the call start and then looks for the
-            phase ON (or phase begin green) event to calculate the delay. If a
-            call is not served before the cycle ends, it will be marked as
-            skipped and the skip timestamp will be recorded at the cycle
-            boundary or the phase skipped event if present.
+            when the corresponding phase is served. You can toggle between
+            using the first detector ON event or the phase call registered
+            event as the call start, and the delay is calculated to the phase
+            ON (or phase begin green) event. Skipped values are only marked
+            when a phase skipped event is present.
           </v-expansion-panel-text>
         </v-expansion-panel>
         <v-expansion-panel title="Example: Using This Tool" value="example">

@@ -12,15 +12,50 @@
       </div>
     </div>
     <div class="actions">
+      <v-btn-toggle
+        v-model="timeReference"
+        class="time-toggle"
+        mandatory
+        divided
+      >
+        <v-btn value="detector">Detector On → Phase On</v-btn>
+        <v-btn value="phaseCall">Phase Call Registered → Phase On</v-btn>
+      </v-btn-toggle>
       <v-btn @click="processDelays" color="primary">Process</v-btn>
     </div>
 
     <div v-if="tableRows.length" class="delay-table-wrapper">
+      <table class="delay-table summary-table">
+        <thead>
+          <tr>
+            <th>Summary</th>
+            <th v-for="phase in phaseColumns" :key="`summary-phase-${phase}`">
+              Phase {{ phase }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Average Delay</td>
+            <td
+              v-for="phase in phaseColumns"
+              :key="`summary-average-${phase}`"
+            >
+              <span v-if="averageDelayByPhase[phase] !== null">
+                {{ formatDelay(averageDelayByPhase[phase]) }}
+              </span>
+              <span v-else>-</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
       <table class="delay-table">
         <thead>
           <tr>
             <th>Cycle #</th>
             <th>Cycle Start</th>
+            <th>Cycle Length</th>
             <th v-for="phase in phaseColumns" :key="`phase-${phase}`">
               Phase {{ phase }}
             </th>
@@ -30,6 +65,7 @@
           <tr v-for="row in tableRows" :key="`cycle-${row.cycle}`">
             <td>{{ row.cycle }}</td>
             <td>{{ row.startTime }}</td>
+            <td>{{ formatDelay(row.cycleLengthSeconds) }}</td>
             <td
               v-for="phase in phaseColumns"
               :key="`cycle-${row.cycle}-phase-${phase}`"
@@ -68,6 +104,7 @@ export default {
     return {
       inputData: "",
       detectorMapInput: "",
+      timeReference: "detector",
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, channel)",
       detectorDefaultText:
@@ -75,6 +112,31 @@ export default {
       phaseColumns: [],
       tableRows: [],
     };
+  },
+  computed: {
+    averageDelayByPhase() {
+      const averages = {};
+      this.phaseColumns.forEach((phase) => {
+        const delays = this.tableRows
+          .map((row) => row.phases[phase])
+          .filter((cell) => cell && !cell.skipped && cell.delaySeconds !== null)
+          .map((cell) => cell.delaySeconds);
+        if (!delays.length) {
+          averages[phase] = null;
+          return;
+        }
+        const sum = delays.reduce((total, value) => total + value, 0);
+        averages[phase] = sum / delays.length;
+      });
+      return averages;
+    },
+  },
+  watch: {
+    timeReference() {
+      if (this.tableRows.length) {
+        this.processDelays();
+      }
+    },
   },
   methods: {
     processDelays() {
@@ -97,6 +159,7 @@ export default {
         const row = {
           cycle: cycle.index,
           startTime: this.formatMillis(cycle.start),
+          cycleLengthSeconds: (cycle.end - cycle.start) / 1000,
           phases: {},
         };
 
@@ -105,10 +168,10 @@ export default {
             .filter(([, mappedPhase]) => mappedPhase === phase)
             .map(([detector]) => Number(detector));
 
-          const callEvent = cycleEvents.find(
-            (event) =>
-              event.eventCode === 82 &&
-              detectorsForPhase.includes(event.parameterCode)
+          const callEvent = this.findCallEvent(
+            cycleEvents,
+            phase,
+            detectorsForPhase
           );
 
           if (!callEvent) {
@@ -138,13 +201,14 @@ export default {
             phase,
             tCall
           );
-          const tSkipped = skippedEvent ? skippedEvent.millis : cycle.end;
-          row.phases[phase] = {
-            delaySeconds: (tSkipped - tCall) / 1000,
-            skipped: true,
-            tCallStart: tCall,
-            tSkipped,
-          };
+          if (skippedEvent) {
+            row.phases[phase] = {
+              delaySeconds: (skippedEvent.millis - tCall) / 1000,
+              skipped: true,
+              tCallStart: tCall,
+              tSkipped: skippedEvent.millis,
+            };
+          }
         });
 
         return row;
@@ -245,6 +309,16 @@ export default {
       }
       return this.findPhaseEvent(events, 1, phase, tCall);
     },
+    findCallEvent(events, phase, detectorsForPhase) {
+      if (this.timeReference === "phaseCall") {
+        return this.findPhaseEvent(events, 43, phase, -Infinity);
+      }
+      return events.find(
+        (event) =>
+          event.eventCode === 82 &&
+          detectorsForPhase.includes(event.parameterCode)
+      );
+    },
     findPhaseEvent(events, eventCode, phase, minMillis) {
       return events.find(
         (event) =>
@@ -260,11 +334,8 @@ export default {
       if (seconds === null || seconds === undefined) {
         return "-";
       }
-      const rounded = Number(seconds.toFixed(2));
-      if (rounded >= 60) {
-        return `${rounded}s (${(rounded / 60).toFixed(2)}m)`;
-      }
-      return `${rounded}s`;
+      const rounded = Math.round(seconds * 10) / 10;
+      return `${rounded.toFixed(1)} sec`;
     },
     cellTitle(cell) {
       if (!cell) {
@@ -292,6 +363,10 @@ export default {
 }
 
 .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
   margin: 16px 0;
 }
 
@@ -310,6 +385,10 @@ export default {
   padding: 8px;
   text-align: left;
   vertical-align: top;
+}
+
+.summary-table {
+  margin-bottom: 16px;
 }
 
 .grow-wrap {

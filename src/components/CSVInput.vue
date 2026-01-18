@@ -36,25 +36,32 @@
                 Export to Excel
               </v-btn>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Enumeration</th>
-                  <th>Channel/Phase</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(row, index) in filteredRows"
-                  :key="`employee-${index}`"
-                >
-                  <td v-html="highlightMatches(row.timestamp)"></td>
-                  <td v-html="row.enumeration"></td>
-                  <td v-html="row.channel"></td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="virtual-table">
+              <div class="virtual-table__header">
+                <div class="virtual-table__cell">Timestamp</div>
+                <div class="virtual-table__cell">Enumeration</div>
+                <div class="virtual-table__cell">Channel/Phase</div>
+              </div>
+              <v-virtual-scroll
+                class="virtual-table__body"
+                :items="filteredRows"
+                :item-height="44"
+              >
+                <template #default="{ item, index }">
+                  <div class="virtual-table__row" :key="`row-${index}`">
+                    <div
+                      class="virtual-table__cell"
+                      v-html="highlightMatches(item.timestamp)"
+                    ></div>
+                    <div
+                      class="virtual-table__cell"
+                      v-html="item.enumeration"
+                    ></div>
+                    <div class="virtual-table__cell" v-html="item.channel"></div>
+                  </div>
+                </template>
+              </v-virtual-scroll>
+            </div>
           </div>
         </v-card-text>
       </v-card>
@@ -397,6 +404,45 @@ export default {
 
   /* Place on top of each other */
   grid-area: 1 / 1 / 2 / 2;
+}
+
+.virtual-table {
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.virtual-table__header,
+.virtual-table__row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 0.75rem;
+}
+
+.virtual-table__header {
+  background: #f5f5f5;
+  font-weight: 600;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.virtual-table__body {
+  max-height: 420px;
+}
+
+.virtual-table__row {
+  border-bottom: 1px solid #ececec;
+}
+
+.virtual-table__row:last-child {
+  border-bottom: none;
+}
+
+.virtual-table__cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 textarea {

@@ -12,15 +12,6 @@
       </div>
     </div>
     <div class="actions">
-      <v-btn-toggle
-        v-model="timeReference"
-        class="time-toggle"
-        mandatory
-        divided
-      >
-        <v-btn value="detector">Detector On → Phase On</v-btn>
-        <v-btn value="phaseCall">Phase Call Registered → Phase On</v-btn>
-      </v-btn-toggle>
       <v-btn @click="processDelays" color="primary">Process</v-btn>
     </div>
 
@@ -36,13 +27,25 @@
         </thead>
         <tbody>
           <tr>
-            <td>Average Delay</td>
+            <td>Vehicle Avg Delay</td>
             <td
               v-for="phase in phaseColumns"
-              :key="`summary-average-${phase}`"
+              :key="`summary-vehicle-average-${phase}`"
             >
-              <span v-if="averageDelayByPhase[phase] !== null">
-                {{ formatDelay(averageDelayByPhase[phase]) }}
+              <span v-if="averageVehicleDelayByPhase[phase] !== null">
+                {{ formatDelay(averageVehicleDelayByPhase[phase]) }}
+              </span>
+              <span v-else>-</span>
+            </td>
+          </tr>
+          <tr>
+            <td>Pedestrian Avg Delay</td>
+            <td
+              v-for="phase in phaseColumns"
+              :key="`summary-ped-average-${phase}`"
+            >
+              <span v-if="averagePedDelayByPhase[phase] !== null">
+                {{ formatDelay(averagePedDelayByPhase[phase]) }}
               </span>
               <span v-else>-</span>
             </td>
@@ -50,6 +53,7 @@
         </tbody>
       </table>
 
+      <h3>Vehicle Phase Delays</h3>
       <table class="delay-table">
         <thead>
           <tr>
@@ -84,6 +88,44 @@
           </tr>
         </tbody>
       </table>
+
+      <div v-if="hasPedestrianData" class="delay-table-wrapper">
+        <h3>Pedestrian Phase Delays</h3>
+        <table class="delay-table">
+          <thead>
+            <tr>
+              <th>Cycle #</th>
+              <th>Cycle Start</th>
+              <th>Cycle Length</th>
+              <th v-for="phase in phaseColumns" :key="`ped-phase-${phase}`">
+                Ped Phase {{ phase }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in pedTableRows" :key="`ped-cycle-${row.cycle}`">
+              <td>{{ row.cycle }}</td>
+              <td>{{ row.startTime }}</td>
+              <td>{{ formatDelay(row.cycleLengthSeconds) }}</td>
+              <td
+                v-for="phase in phaseColumns"
+                :key="`ped-cycle-${row.cycle}-phase-${phase}`"
+                :title="cellTitle(row.phases[phase])"
+              >
+                <span v-if="row.phases[phase]">
+                  <span v-if="row.phases[phase].skipped">
+                    Skipped ({{ formatDelay(row.phases[phase].delaySeconds) }})
+                  </span>
+                  <span v-else>
+                    {{ formatDelay(row.phases[phase].delaySeconds) }}
+                  </span>
+                </span>
+                <span v-else>-</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -104,17 +146,17 @@ export default {
     return {
       inputData: "",
       detectorMapInput: "",
-      timeReference: "detector",
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, channel)",
       detectorDefaultText:
         "Det 1\t6\nDet 2\t2\nDet 3\t0\nDet 4\t0\nDet 5\t0",
       phaseColumns: [],
       tableRows: [],
+      pedTableRows: [],
     };
   },
   computed: {
-    averageDelayByPhase() {
+    averageVehicleDelayByPhase() {
       const averages = {};
       this.phaseColumns.forEach((phase) => {
         const delays = this.tableRows
@@ -130,12 +172,26 @@ export default {
       });
       return averages;
     },
-  },
-  watch: {
-    timeReference() {
-      if (this.tableRows.length) {
-        this.processDelays();
-      }
+    averagePedDelayByPhase() {
+      const averages = {};
+      this.phaseColumns.forEach((phase) => {
+        const delays = this.pedTableRows
+          .map((row) => row.phases[phase])
+          .filter((cell) => cell && !cell.skipped && cell.delaySeconds !== null)
+          .map((cell) => cell.delaySeconds);
+        if (!delays.length) {
+          averages[phase] = null;
+          return;
+        }
+        const sum = delays.reduce((total, value) => total + value, 0);
+        averages[phase] = sum / delays.length;
+      });
+      return averages;
+    },
+    hasPedestrianData() {
+      return this.pedTableRows.some((row) =>
+        Object.values(row.phases).some((cell) => cell)
+      );
     },
   },
   methods: {
@@ -147,16 +203,27 @@ export default {
       const events = this.parseHighResData(this.inputData);
       if (!events.length || !phaseColumns.length) {
         this.tableRows = [];
+        this.pedTableRows = [];
         return;
       }
 
       const cycles = this.buildCycles(events);
-      this.tableRows = cycles.map((cycle) => {
+      const vehicleRows = [];
+      const pedRows = [];
+
+      cycles.forEach((cycle) => {
         const cycleEvents = events.filter(
           (event) => event.millis >= cycle.start && event.millis <= cycle.end
         );
 
-        const row = {
+        const vehicleRow = {
+          cycle: cycle.index,
+          startTime: this.formatMillis(cycle.start),
+          cycleLengthSeconds: (cycle.end - cycle.start) / 1000,
+          phases: {},
+        };
+
+        const pedRow = {
           cycle: cycle.index,
           startTime: this.formatMillis(cycle.start),
           cycleLengthSeconds: (cycle.end - cycle.start) / 1000,
@@ -168,51 +235,35 @@ export default {
             .filter(([, mappedPhase]) => mappedPhase === phase)
             .map(([detector]) => Number(detector));
 
-          const callEvent = this.findCallEvent(
-            cycleEvents,
+          this.populateDelayCell(
+            vehicleRow.phases,
             phase,
-            detectorsForPhase
+            this.findDetectorCallEvent(
+              cycleEvents,
+              detectorsForPhase,
+              82
+            ),
+            cycleEvents
           );
 
-          if (!callEvent) {
-            return;
-          }
-
-          const tCall = callEvent.millis;
-          const servedEvent = this.findPhaseServedEvent(
-            cycleEvents,
+          this.populateDelayCell(
+            pedRow.phases,
             phase,
-            tCall
+            this.findDetectorCallEvent(
+              cycleEvents,
+              detectorsForPhase,
+              90
+            ),
+            cycleEvents
           );
-
-          if (servedEvent) {
-            row.phases[phase] = {
-              delaySeconds: (servedEvent.millis - tCall) / 1000,
-              skipped: false,
-              tCallStart: tCall,
-              tServed: servedEvent.millis,
-            };
-            return;
-          }
-
-          const skippedEvent = this.findPhaseEvent(
-            cycleEvents,
-            14,
-            phase,
-            tCall
-          );
-          if (skippedEvent) {
-            row.phases[phase] = {
-              delaySeconds: (skippedEvent.millis - tCall) / 1000,
-              skipped: true,
-              tCallStart: tCall,
-              tSkipped: skippedEvent.millis,
-            };
-          }
         });
 
-        return row;
+        vehicleRows.push(vehicleRow);
+        pedRows.push(pedRow);
       });
+
+      this.tableRows = vehicleRows;
+      this.pedTableRows = pedRows;
     },
     parseDetectorMapping(text) {
       const detectorToPhase = {};
@@ -246,8 +297,7 @@ export default {
         .map((line) => line.trim())
         .filter((line) => line)
         .map((line) => {
-          const [timestamp, eventCode, parameter] = line.split(","
-          );
+          const [timestamp, eventCode, parameter] = line.split(",");
           const converted = this.convertTimestamp(timestamp?.trim() || "");
           if (!converted?.MillisecFromEpoch) {
             return null;
@@ -309,15 +359,52 @@ export default {
       }
       return this.findPhaseEvent(events, 1, phase, tCall);
     },
-    findCallEvent(events, phase, detectorsForPhase) {
-      if (this.timeReference === "phaseCall") {
-        return this.findPhaseEvent(events, 43, phase, -Infinity);
+    findDetectorCallEvent(events, detectorsForPhase, eventCode) {
+      if (!detectorsForPhase.length) {
+        return null;
       }
       return events.find(
         (event) =>
-          event.eventCode === 82 &&
+          event.eventCode === eventCode &&
           detectorsForPhase.includes(event.parameterCode)
       );
+    },
+    populateDelayCell(phaseCells, phase, callEvent, cycleEvents) {
+      if (!callEvent) {
+        return;
+      }
+
+      const tCall = callEvent.millis;
+      const servedEvent = this.findPhaseServedEvent(
+        cycleEvents,
+        phase,
+        tCall
+      );
+
+      if (servedEvent) {
+        phaseCells[phase] = {
+          delaySeconds: (servedEvent.millis - tCall) / 1000,
+          skipped: false,
+          tCallStart: tCall,
+          tServed: servedEvent.millis,
+        };
+        return;
+      }
+
+      const skippedEvent = this.findPhaseEvent(
+        cycleEvents,
+        14,
+        phase,
+        tCall
+      );
+      if (skippedEvent) {
+        phaseCells[phase] = {
+          delaySeconds: (skippedEvent.millis - tCall) / 1000,
+          skipped: true,
+          tCallStart: tCall,
+          tSkipped: skippedEvent.millis,
+        };
+      }
     },
     findPhaseEvent(events, eventCode, phase, minMillis) {
       return events.find(

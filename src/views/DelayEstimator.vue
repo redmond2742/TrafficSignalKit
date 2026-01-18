@@ -8,11 +8,11 @@
         <v-expansion-panel title="About: Delay Estimator" value="about">
           <v-expansion-panel-text>
             This tool estimates the delay between the first detector call and
-            when the corresponding phase is served. You can toggle between
-            using the first detector ON event or the phase call registered
-            event as the call start, and the delay is calculated to the phase
-            ON (or phase begin green) event. Skipped values are only marked
-            when a phase skipped event is present.
+            when the corresponding phase is served. The delay is calculated
+            from detector ON events to the phase ON (or phase begin green)
+            event, and the tool also calculates pedestrian delays from
+            pedestrian button events to phase service. Skipped values are only
+            marked when a phase skipped event is present.
           </v-expansion-panel-text>
         </v-expansion-panel>
         <v-expansion-panel title="Example: Using This Tool" value="example">

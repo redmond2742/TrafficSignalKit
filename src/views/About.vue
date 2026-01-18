@@ -1,34 +1,43 @@
 <template>
   <div>
     &nbsp;
-    <h1 class="h1-center-text">Traffic Signal Kit</h1>
-
-    <h3>
-      Various experimental free & open source tools for traffic engineers. These
-      are rapid-fire, proof-of-concept creations designed to innovate, inspire,
-      and provide insights into traffic signal operations. Expect raw,
-      early-stage concepts—this is about speed, experimentation, and finding
-      what truly makes an impact. Your feedback is my roadmap! ❤️ Click that
-      heart button to vote on features and shape the future of these tools.
-    </h3>
+    <h1 class="h1-center-text">About Traffic Signal Kit</h1>
+    <p class="intro-text">
+      Traffic Signal Kit is a collection of focused, practical tools for traffic
+      engineers and signal timing specialists. Each tool is designed to answer
+      a specific operational question, from understanding controller events to
+      visualizing GPX data. Use the links below to jump directly into a tool and
+      explore the workflows that best fit your project.
+    </p>
 
     <v-container>
-      <v-row no-gutters>
+      <v-row>
         <v-col
-          v-for="(post, index) in posts"
-          :key="index"
+          v-for="section in sections"
+          :key="section.title"
           cols="12"
-          sm="6"
-          md="4"
-          ><v-sheet class="ma-2 pa-2">
-            <DisplayCard
-              :image="post.image"
-              :image-alt="post.title"
-              :title="post.title"
-              :description="post.description"
-              :link="post.link"
-              :topics="post.topics"
-          /></v-sheet>
+          md="6"
+        >
+          <v-card class="ma-2 pa-4" elevation="2">
+            <v-card-title class="section-title">
+              {{ section.title }}
+            </v-card-title>
+            <v-card-text>
+              <p class="section-description">{{ section.description }}</p>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="tool in section.tools"
+                  :key="tool.title"
+                  :to="tool.path"
+                  link
+                  class="tool-list-item"
+                >
+                  <v-list-item-title>{{ tool.title }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ tool.description }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
         </v-col>
       </v-row>
     </v-container>
@@ -36,169 +45,136 @@
 </template>
 
 <script>
-import DisplayCard from "@/components/foundational/DisplayCard.vue";
 export default {
-  components: {
-    DisplayCard,
-  },
   name: "About",
   data() {
     return {
-      panel: ["detailed-explain"],
-      posts: [
+      sections: [
         {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-Yellow+and+Red+Light+Running+Detection.png",
-          title: "Red Light Runner",
-          description: "Table of Yellow and Red light running events",
-          link: "/detectorRLR",
-          topics: ["Red Light Running", "Controller Data"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
-          title: "Delay Estimator",
-          description: "Estimate detector call delays to phase service",
-          link: "/delay-estimator",
-          topics: ["Controller Data", "Delay", "Enumerations"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
-          title: "Timeseries Plot All Enumerations",
-          description: "Plot preemption (101-119) enumeration events over time",
-          link: "/preemption-plotter",
-          topics: ["Controller Data", "Enumerations", "Preemption"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
-          title: "Detection Channel Plotter",
+          title: "Traffic Signal Data Tools",
           description:
-            "Plot detection enumeration events by channel over time",
-          link: "/detection-plotter",
-          topics: ["Controller Data", "Enumerations", "Detection"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+split+history+phase+termination+table.png",
-          title: "High Resolution Split History",
-          description: "Calculate Phase Durations from High Resolution Data",
-          link: "/split-history",
-          topics: ["Controller Data", "Enumerations", "Split"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+GPX+Map+and+Table.png",
-          title: "GPX Mapper",
-          description: "Plot GPX tracks on a map",
-          link: "/gpx-mapper",
-          topics: ["GPX", "Map"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
-          title: "High Resolution Data Explainer",
-          description:
-            "Explore traffic signal controller enumerations and high resolution data logs",
-          link: "/explainer",
-          topics: ["Controller Data", "Enumerations"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-GPX+and+High+Resolution+Signal+Data+for+Transit+Signal+Priority+(TSP).png",
-          title: "GPX Time-Space & Phase Plotter (with TSP Events)",
-          description:
-            "Plot GPX as time space combined with Phase State over Time (with Transit Signal Priority (TSP) events)",
-          link: "/gpx-phase-plotter",
-          topics: [
-            "Controller Data",
-            "Enumerations",
-            "GPX",
-            "Time-Space",
-            "Coordination",
+            "Analyze controller event logs, splits, and detection events to understand timing performance and operational reliability.",
+          tools: [
+            {
+              title: "High Resolution Split History",
+              description:
+                "Calculate phase durations from high-resolution controller data.",
+              path: "/split-history",
+            },
+            {
+              title: "Red Light Runner",
+              description:
+                "Review red-light running events using detection and phase data.",
+              path: "/detectorRLR",
+            },
+            {
+              title: "Timeseries Plot All Enumerations",
+              description:
+                "Plot preemption and event enumerations over time for diagnostics.",
+              path: "/preemption-plotter",
+            },
+            {
+              title: "Detection Channel Plotter",
+              description:
+                "Visualize detection events by channel to validate detector health.",
+              path: "/detection-plotter",
+            },
+            {
+              title: "Delay Estimator",
+              description:
+                "Estimate call delay between detector actuations and phase service.",
+              path: "/delay-estimator",
+            },
+            {
+              title: "Phase Plotter",
+              description:
+                "Plot phase state changes across time to troubleshoot timing logic.",
+              path: "/phase-plotter",
+            },
+            {
+              title: "High Resolution Data Explainer",
+              description:
+                "Explore event enumerations and how they map to controller behavior.",
+              path: "/explainer",
+            },
           ],
         },
         {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/Trafficsignalkit.com+-+Signal+Phase+Plotter+-+Red-Green-Yellow.png",
-          title: "Phase Plotter",
-          description: "Plot Phase State over Time",
-          link: "/phase-plotter",
-          topics: ["Controller Data", "Enumerations"],
+          title: "Time-Space & GPX Tools",
+          description:
+            "Connect GPX traces with signal data to visualize movement, travel time, and time-space relationships.",
+          tools: [
+            {
+              title: "Time Space Diagram Visualizer",
+              description: "Plot GPX traces into a time-space diagram.",
+              path: "/gpx",
+            },
+            {
+              title: "GPX Time-Space & Phase Plotter",
+              description:
+                "Compare GPX movement with phase state and TSP events.",
+              path: "/gpx-phase-plotter",
+            },
+            {
+              title: "GPX Mapper",
+              description: "Map GPX tracks spatially to validate alignment.",
+              path: "/gpx-mapper",
+            },
+            {
+              title: "GPX Elevation Plotter",
+              description: "Plot elevation changes along a GPX path.",
+              path: "/gpx-elevation",
+            },
+          ],
         },
         {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+intersection+simulator.png",
-          title: "Max Out and Gap Out Traffic Simulator",
-          description: "Simulate Basic Intersection Functionality",
-          link: "/traffic-simulator",
-          topics: ["Simulation", "Basic Timing"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-split-calculator.png",
-          title: "Split Calculator",
-          description: "Verify splits and cycle lengths during adjustments",
-          link: "/split-calculator",
-          topics: ["Coordination", "Split", "Calculator"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-timespace-diagram-gpx-plot.png",
-          title: "Time Space Diagram Visulizer",
-          description: "Plot a GPX file in a timespace diagram plot",
-          link: "/gpx",
-          topics: ["GPX", "Time-Space"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-PracticeExamTE.jpg",
-          title: "Practice Exam",
-          description: "Practice exam questions and grading",
-          link: "/PracticeExam",
-          topics: ["Exam", "Practice", "TE"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-GPX+Elevation+Plot+and+Location.png",
-          title: "GPX Elevation Plotter",
-          description: "Plot elevation data from GPX files",
-          link: "/gpx-elevation",
-          topics: ["GPX", "Elevation", "Chart"],
+          title: "Miscellaneous Tools",
+          description:
+            "Supporting tools for coordination checks, simulations, and exam prep.",
+          tools: [
+            {
+              title: "Split Calculator",
+              description:
+                "Validate splits and cycle length changes during coordination work.",
+              path: "/split-calculator",
+            },
+            {
+              title: "Max Out and Gap Out Traffic Simulator",
+              description: "Simulate basic intersection functionality.",
+              path: "/traffic-simulator",
+            },
+            {
+              title: "Reference",
+              description: "Quick reference notes and resources.",
+              path: "/reference",
+            },
+            {
+              title: "Practice Exam",
+              description:
+                "Practice exam questions and grading support for certification prep.",
+              path: "/practice-exam",
+            },
+          ],
         },
       ],
     };
   },
-  methods: {
-    checkImg() {
-      console.log(image);
-    },
-  },
 };
 </script>
 
-<style>
-.left-justify-text {
-  margin: 0;
-  padding: 0;
-  text-align: left; /* Aligning text to left */
-}
-p {
+<style scoped>
+.intro-text {
+  max-width: 900px;
+  margin: 0 auto 24px auto;
   text-align: left;
 }
-.buffer {
-  width: 80%;
-  height: 20px;
-  float: center;
-  padding: 0.25em;
+.section-title {
+  font-weight: 600;
 }
-li {
-  text-align: left;
+.section-description {
+  margin-bottom: 16px;
 }
-
-.v-container {
-  max-width: 1200px;
-  margin: 0 auto;
+.tool-list-item :deep(.v-list-item-title) {
+  font-weight: 500;
 }
 </style>

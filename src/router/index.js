@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import SplitCalculator from '../views/SplitCalculator'
 import HighResDataExplainer from '../views/HighResDataExplainer'
 import About from '../views/About'
+import Home from '../views/Home'
 import TermsOfService from '../views/TermsOfService'
 import GPXPlotter from '../views/GPXPlotter'
 import SplitHistory from '../views/SplitHistory'
@@ -24,7 +25,7 @@ const routes = [
     {
         path: '/',
         name: 'home',
-        component: About
+        component: Home
     },
     {
         path: '/about',
@@ -102,9 +103,17 @@ const routes = [
         component: DelayEstimator,
     },
     {
-        path: '/PracticeExam',
+        path: '/practice-exam',
         name: 'practiceExam',
         component: PracticeExam,
+    },
+    {
+        path: '/PracticeExam',
+        redirect: '/practice-exam',
+    },
+    {
+        path: '/practiceExam',
+        redirect: '/practice-exam',
     },
     {
         path: '/reference',

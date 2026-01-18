@@ -6,7 +6,7 @@
     ></v-app-bar-nav-icon>
     <div class="title-justify">
       <v-app-bar-title>
-        <router-link to="/about"
+        <router-link to="/"
           ><b>Traffic Signal Kit</b>
         </router-link></v-app-bar-title
       >
@@ -157,7 +157,7 @@ export default {
           path: "/traffic-simulator",
         },
         { title: "Reference", path: "/reference" },
-        { title: "Practice Exam", path: "/practiceExam" },
+        { title: "Practice Exam", path: "/practice-exam" },
       ],
 
       TSdataTools: [
@@ -182,7 +182,7 @@ export default {
           path: "/traffic-simulator",
         },
         { title: "Reference", path: "/reference" },
-        { title: "Practice Exam", path: "/practiceExam" },
+        { title: "Practice Exam", path: "/practice-exam" },
       ],
 
       dialog: false,

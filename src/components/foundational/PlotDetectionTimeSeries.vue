@@ -437,9 +437,21 @@ export default {
               y: this.channelLookup[event.parameterCode] ?? `Channel ${event.parameterCode}`,
               event,
             })),
-            borderColor: "#1976d2",
-            backgroundColor: "#1976d2",
-            pointRadius: 4,
+            borderColor: this.plotData.map(
+              (event) => this.getDetectionEventStyle(event).color
+            ),
+            backgroundColor: this.plotData.map(
+              (event) => this.getDetectionEventStyle(event).color
+            ),
+            pointRadius: this.plotData.map(
+              (event) => this.getDetectionEventStyle(event).radius
+            ),
+            pointStyle: this.plotData.map(
+              (event) => this.getDetectionEventStyle(event).style
+            ),
+            pointHoverRadius: this.plotData.map(
+              (event) => this.getDetectionEventStyle(event).radius + 1
+            ),
           },
         ].concat(this.phaseDataset ? [this.phaseDataset] : []),
       };
@@ -542,6 +554,23 @@ export default {
     },
   },
   methods: {
+    getDetectionEventStyle(event) {
+      const descriptor = event?.eventDescriptor?.toLowerCase() ?? "";
+
+      if (descriptor.includes("fault") || descriptor.includes("failed")) {
+        return { color: "#e53935", style: "crossRot", radius: 6 };
+      }
+
+      if (descriptor.includes("detector on")) {
+        return { color: "#1e88e5", style: "circle", radius: 4 };
+      }
+
+      if (descriptor.includes("detector off")) {
+        return { color: "#8e24aa", style: "circle", radius: 4 };
+      }
+
+      return { color: "#546e7a", style: "circle", radius: 4 };
+    },
     formatPhaseAxisLabel(value) {
       if (value == null) {
         return "";

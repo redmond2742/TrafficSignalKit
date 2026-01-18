@@ -9,21 +9,18 @@
             v-model="mappingInput"
             :placeholder="mappingPlaceholder"
             label="Detector-to-Phase Table"
-            rows="8"
-            auto-grow
+            rows="6"
+            class="mapping-textarea"
           ></v-textarea>
         </v-col>
         <v-col cols="12" md="5">
-          <v-radio-group v-model="alignmentMode" label="Alignment Mode">
-            <v-radio
-              label="Keep detectors sorted; align phases to detectors"
-              value="channels"
-            ></v-radio>
-            <v-radio
-              label="Sort by phase; move detectors to match"
-              value="phases"
-            ></v-radio>
-          </v-radio-group>
+          <div class="alignment-toggle">
+            <div class="alignment-label">Sort rows by</div>
+            <v-btn-toggle v-model="alignmentMode" color="primary" mandatory>
+              <v-btn value="channels">Detection</v-btn>
+              <v-btn value="phases">Phase</v-btn>
+            </v-btn-toggle>
+          </div>
         </v-col>
       </v-row>
     </v-card-text>
@@ -186,12 +183,24 @@ export default {
       });
       return Array.from(phaseSet).sort((a, b) => a - b);
     },
-    phaseAxisLabels() {
+    mappedPhaseCodes() {
       if (!this.hasMapping) {
-        return this.phases.map((phase) => ({
-          axisLabel: `Phase ${phase}`,
-          displayLabel: `Phase ${phase}`,
-        }));
+        return [];
+      }
+      return this.alignedRows
+        .map((row) => row.phase)
+        .filter((phase) => typeof phase === "number");
+    },
+    extraPhases() {
+      if (!this.hasMapping) {
+        return [];
+      }
+      const mappedPhases = new Set(this.mappedPhaseCodes);
+      return this.phases.filter((phase) => !mappedPhases.has(phase));
+    },
+    mappedPhaseAxisLabels() {
+      if (!this.hasMapping) {
+        return [];
       }
 
       return this.alignedRows.map((row, index) => {
@@ -199,8 +208,31 @@ export default {
         return {
           axisLabel: `${baseLabel}||row-${index}`,
           displayLabel: baseLabel,
+          phase: row.phase,
         };
       });
+    },
+    extraPhaseAxisLabels() {
+      if (!this.hasMapping) {
+        return [];
+      }
+
+      return this.extraPhases.map((phase) => ({
+        axisLabel: `Phase ${phase}||extra-${phase}`,
+        displayLabel: `Phase ${phase}`,
+        phase,
+      }));
+    },
+    phaseAxisLabels() {
+      if (!this.hasMapping) {
+        return this.phases.map((phase) => ({
+          axisLabel: `Phase ${phase}`,
+          displayLabel: `Phase ${phase}`,
+          phase,
+        }));
+      }
+
+      return [...this.mappedPhaseAxisLabels, ...this.extraPhaseAxisLabels];
     },
     phaseLabels() {
       return this.phaseAxisLabels.map((label) => label.axisLabel);
@@ -219,12 +251,18 @@ export default {
         }, {});
       }
 
-      return this.alignedRows.reduce((lookup, row, index) => {
+      const lookup = this.alignedRows.reduce((lookup, row, index) => {
         if (row.phase) {
-          lookup[row.phase] = this.phaseAxisLabels[index].axisLabel;
+          lookup[row.phase] = this.mappedPhaseAxisLabels[index].axisLabel;
         }
         return lookup;
       }, {});
+
+      this.extraPhaseAxisLabels.forEach((label) => {
+        lookup[label.phase] = label.axisLabel;
+      });
+
+      return lookup;
     },
     phaseAxisLabelGroups() {
       if (!this.hasMapping) {
@@ -238,7 +276,7 @@ export default {
         if (!lookup[row.phase]) {
           lookup[row.phase] = [];
         }
-        lookup[row.phase].push(this.phaseAxisLabels[index].axisLabel);
+        lookup[row.phase].push(this.mappedPhaseAxisLabels[index].axisLabel);
         return lookup;
       }, {});
     },
@@ -249,10 +287,11 @@ export default {
       ].filter((value) => typeof value === "number");
       return timestamps.length ? Math.max(...timestamps) : null;
     },
-    detectionRange() {
-      const timestamps = this.plotData
-        .map((event) => event.timestampMs)
-        .filter((value) => typeof value === "number");
+    eventRange() {
+      const timestamps = [
+        ...this.plotData.map((event) => event.timestampMs),
+        ...this.phaseData.map((event) => event.timestampMs),
+      ].filter((value) => typeof value === "number");
       if (!timestamps.length) {
         return null;
       }
@@ -329,13 +368,23 @@ export default {
       if (this.hasMapping) {
         this.phaseIntervals.forEach((interval) => {
           const labels = this.phaseAxisLabelGroups[interval.phase] ?? [];
-          labels.forEach((label) => {
+          if (labels.length) {
+            labels.forEach((label) => {
+              phaseDataPoints.push({
+                x: [interval.start, interval.end],
+                y: label,
+                phase: interval,
+              });
+            });
+          } else {
+            const fallbackLabel =
+              this.phaseLookup[interval.phase] ?? `Phase ${interval.phase}`;
             phaseDataPoints.push({
               x: [interval.start, interval.end],
-              y: label,
+              y: fallbackLabel,
               phase: interval,
             });
-          });
+          }
         });
       } else {
         phaseDataPoints.push(
@@ -433,11 +482,15 @@ export default {
               pinch: {
                 enabled: true,
               },
-              mode: "xy",
+              drag: {
+                enabled: true,
+                backgroundColor: "rgba(25, 118, 210, 0.15)",
+              },
+              mode: "x",
             },
             pan: {
               enabled: true,
-              mode: "xy",
+              mode: "x",
             },
           },
         },
@@ -445,8 +498,8 @@ export default {
           x: {
             type: "linear",
             position: "bottom",
-            min: this.detectionRange?.min,
-            max: this.detectionRange?.max,
+            min: this.eventRange?.min,
+            max: this.eventRange?.max,
             title: {
               display: true,
               text: "Timestamp",
@@ -509,5 +562,20 @@ export default {
 <style scoped>
 .mapping-card {
   margin-bottom: 16px;
+}
+
+.mapping-textarea {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.alignment-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alignment-label {
+  font-weight: 500;
 }
 </style>

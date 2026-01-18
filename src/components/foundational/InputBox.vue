@@ -1,10 +1,11 @@
 <template>
   <textarea
     type="text"
-    rows="20"
+    rows="10"
     v-model="inputData"
     @blur="emitInput"
     @focus="clearText"
+    class="input-box"
   />
 </template>
 
@@ -73,9 +74,10 @@ export default {
   grid-area: 1 / 1 / 2 / 2;
 }
 
-textarea {
-  overflow-y: scroll;
-  height: 100px;
+.input-box {
+  overflow-y: auto;
+  max-height: 220px;
+  min-height: 140px;
 }
 
 input[type="text"],

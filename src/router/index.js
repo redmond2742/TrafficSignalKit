@@ -16,6 +16,7 @@ import PracticeExam from '../views/PracticeExam'
 import HighResPreemptionPlotter from '../views/HighResPreemptionPlotter'
 import Reference from '../views/Reference'
 import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
+import DelayEstimator from '../views/DelayEstimator'
 
 
 
@@ -94,6 +95,11 @@ const routes = [
         path: '/detection-plotter',
         name: 'detectionPlotter',
         component: HighResDetectionPlotter,
+    },
+    {
+        path: '/delay-estimator',
+        name: 'delayEstimator',
+        component: DelayEstimator,
     },
     {
         path: '/PracticeExam',

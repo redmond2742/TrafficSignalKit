@@ -3,11 +3,6 @@
     <div class="grow-wrap">
       <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
     </div>
-    <div>
-      <v-btn @click="processDetectionEvents" color="primary">
-        Process Detection Events
-      </v-btn>
-    </div>
   </div>
 </template>
 

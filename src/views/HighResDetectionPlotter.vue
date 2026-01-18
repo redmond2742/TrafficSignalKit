@@ -43,9 +43,15 @@
 
     <br />
     <ProcessDetectionEvents
+      ref="processDetectionEvents"
       @detectionEvents="storeDetectionEvents"
       @phaseEvents="storePhaseEvents"
     ></ProcessDetectionEvents>
+    <div>
+      <v-btn @click="processDetection" color="primary">
+        Process Detection Events
+      </v-btn>
+    </div>
     <PlotDetectionTimeSeries
       :plotData="detectionEvents"
       :phaseData="phaseEvents"
@@ -71,6 +77,9 @@ export default {
     };
   },
   methods: {
+    processDetection() {
+      this.$refs.processDetectionEvents?.processDetectionEvents?.();
+    },
     storeDetectionEvents(events) {
       this.detectionEvents = events;
     },

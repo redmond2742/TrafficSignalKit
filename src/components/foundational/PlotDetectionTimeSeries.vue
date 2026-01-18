@@ -462,6 +462,35 @@ export default {
         plugins: {
           legend: {
             display: true,
+            labels: {
+              generateLabels: (chart) => {
+                const baseLabels =
+                  ChartJS.defaults.plugins.legend.labels.generateLabels(chart);
+                const filteredLabels = baseLabels.filter(
+                  (label) => label.text !== "Detection Events"
+                );
+                const detectionLegendItems = [
+                  {
+                    text: "Detector On",
+                    fillStyle: "#1e88e5",
+                    strokeStyle: "#1e88e5",
+                    lineWidth: 1,
+                    hidden: false,
+                    pointStyle: "circle",
+                  },
+                  {
+                    text: "Detector Off",
+                    fillStyle: "#8e24aa",
+                    strokeStyle: "#8e24aa",
+                    lineWidth: 1,
+                    hidden: false,
+                    pointStyle: "circle",
+                  },
+                ];
+
+                return [...detectionLegendItems, ...filteredLabels];
+              },
+            },
           },
           tooltip: {
             callbacks: {

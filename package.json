@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "node --no-warnings ./node_modules/.bin/vite",
-    "build": "vite build",
+    "build": "vite-ssg build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -37,6 +37,7 @@
     "unplugin-fonts": "^1.1.0",
     "unplugin-vue-components": "^0.26.0",
     "vite": "^5.0.12",
+    "vite-ssg": "^0.23.0",
     "vite-plugin-favicon": "^1.0.8",
     "vite-plugin-vuetify": "^2.0.0"
   }

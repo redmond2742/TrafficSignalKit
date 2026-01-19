@@ -67,6 +67,15 @@ export default {
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
+          title: "Stuck Detector Finder",
+          description:
+            "Find detectors that appear to stay on in high-resolution data",
+          link: "/stuck-detectors",
+          topics: ["Controller Data", "Detection", "Diagnostics"],
+        },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
           title: "Timeseries Plot All Enumerations",
           description: "Plot preemption (101-119) enumeration events over time",
           link: "/preemption-plotter",

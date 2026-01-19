@@ -20,6 +20,7 @@ import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
 import DelayEstimator from '../views/DelayEstimator'
 import MessageSignDesigner from '../views/MessageSignDesigner'
 import Blog from '../views/Blog'
+import StuckDetectors from '../views/StuckDetectors'
 
 
 
@@ -109,6 +110,11 @@ const routes = [
         path: '/delay-estimator',
         name: 'delayEstimator',
         component: DelayEstimator,
+    },
+    {
+        path: '/stuck-detectors',
+        name: 'stuckDetectors',
+        component: StuckDetectors,
     },
     {
         path: '/practice-exam',

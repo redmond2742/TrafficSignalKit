@@ -29,7 +29,8 @@
       </v-data-table>
     </div>
     <div v-else class="empty-state">
-      <em>Paste data and click process to find stuck detectors.</em>
+      <em v-if="hasProcessed">No stuck detectors found after processing data.</em>
+      <em v-else>Paste data and click process to find stuck detectors.</em>
     </div>
   </div>
 </template>
@@ -61,6 +62,7 @@ export default {
       ],
       sortBy: [{ key: "percentOn", order: "desc" }],
       tableItems: [],
+      hasProcessed: false,
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, channel)",
       detectorDefaultText:
@@ -69,6 +71,7 @@ export default {
   },
   methods: {
     processStuckDetectors() {
+      this.hasProcessed = true;
       const events = this.parseHighResData(this.inputData);
       const { detectorToPhase } = this.parseDetectorMapping(
         this.detectorMapInput

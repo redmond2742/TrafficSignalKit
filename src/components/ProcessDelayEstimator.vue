@@ -498,6 +498,7 @@ export default {
         const detectorOffEvents = events.filter(
           (event) => event.eventCode === 81 && event.parameterCode === detector
         );
+
         const detectorTotal = detectorOffEvents.reduce(
           (count, event) =>
             count +

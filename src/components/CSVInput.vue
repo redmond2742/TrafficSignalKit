@@ -22,11 +22,6 @@
 
         <v-card-text>
           <div>
-            <input
-              type="text"
-              placeholder="Filter by timestamp, enumeration or channel/phase"
-              v-model="filter"
-            />
             <div class="table-actions">
               <v-btn
                 color="secondary"
@@ -37,6 +32,23 @@
               </v-btn>
             </div>
             <div class="virtual-table">
+              <div class="virtual-table__filters">
+                <input
+                  type="text"
+                  placeholder="Filter timestamp"
+                  v-model="filters.timestamp"
+                />
+                <input
+                  type="text"
+                  placeholder="Filter enumeration"
+                  v-model="filters.enumeration"
+                />
+                <input
+                  type="text"
+                  placeholder="Filter channel/phase"
+                  v-model="filters.channel"
+                />
+              </div>
               <div class="virtual-table__header">
                 <div class="virtual-table__cell">Timestamp</div>
                 <div class="virtual-table__cell">Enumeration</div>
@@ -51,13 +63,18 @@
                   <div class="virtual-table__row" :key="`row-${index}`">
                     <div
                       class="virtual-table__cell"
-                      v-html="highlightMatches(item.timestamp)"
+                      v-html="highlightMatches(item.timestamp, filters.timestamp)"
                     ></div>
                     <div
                       class="virtual-table__cell"
-                      v-html="item.enumeration"
+                      v-html="
+                        highlightMatches(item.enumeration, filters.enumeration)
+                      "
                     ></div>
-                    <div class="virtual-table__cell" v-html="item.channel"></div>
+                    <div
+                      class="virtual-table__cell"
+                      v-html="highlightMatches(item.channel, filters.channel)"
+                    ></div>
                   </div>
                 </template>
               </v-virtual-scroll>
@@ -82,7 +99,11 @@ export default {
   data() {
     return {
       inputData: "",
-      filter: "",
+      filters: {
+        timestamp: "",
+        enumeration: "",
+        channel: "",
+      },
       rowData: [],
       isProcessing: false,
       timezoneOffset: "America/Los_Angeles",
@@ -303,19 +324,31 @@ export default {
         }
       });
     },
-    highlightMatches(text) {
+    highlightMatches(text, filterValue) {
+      if (filterValue === "" || filterValue === null || filterValue === undefined) {
+        return text;
+      }
       if (typeof text === "string") {
         const matchExists = text
           .toLowerCase()
-          .includes(this.filter.toLowerCase());
+          .includes(filterValue.toLowerCase());
         if (!matchExists) return text;
-        const re = new RegExp(this.filter, "ig");
+        const re = new RegExp(filterValue, "ig");
         return text.replace(
           re,
           (matchedText) => `<strong>${matchedText}</strong>`
         );
       } else {
-        console.log("number, not text");
+        const stringText = text?.toString() ?? "";
+        const matchExists = stringText
+          .toLowerCase()
+          .includes(filterValue.toLowerCase());
+        if (!matchExists) return text;
+        const re = new RegExp(filterValue, "ig");
+        return stringText.replace(
+          re,
+          (matchedText) => `<strong>${matchedText}</strong>`
+        );
       }
     },
     exportToExcel() {
@@ -351,16 +384,23 @@ export default {
   },
   computed: {
     filteredRows() {
+      const timestampFilter = this.filters.timestamp.toLowerCase();
+      const enumerationFilter = this.filters.enumeration.toLowerCase();
+      const channelFilter = this.filters.channel.toLowerCase();
       return this.rowData.filter((row) => {
         const timestamp = row.timestamp.toString().toLowerCase();
         const enumeration = row.enumeration.toString().toLowerCase();
         const channel = row.channel.toString();
-        const searchTerm = this.filter.toLowerCase();
-        return (
-          timestamp.includes(searchTerm) ||
-          enumeration.includes(searchTerm) ||
-          channel.includes(searchTerm)
-        );
+        const timestampMatches = timestampFilter
+          ? timestamp.includes(timestampFilter)
+          : true;
+        const enumerationMatches = enumerationFilter
+          ? enumeration.includes(enumerationFilter)
+          : true;
+        const channelMatches = channelFilter
+          ? channel.includes(channelFilter)
+          : true;
+        return timestampMatches && enumerationMatches && channelMatches;
       });
     },
   },
@@ -419,6 +459,21 @@ export default {
   align-items: center;
   gap: 8px;
   padding: 0.5rem 0.75rem;
+}
+
+.virtual-table__filters {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr;
+  gap: 8px;
+  padding: 0.5rem 0.75rem;
+  background: #fafafa;
+  border-bottom: 1px solid #ececec;
+}
+
+.virtual-table__filters input[type="text"] {
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
 }
 
 .virtual-table__header {

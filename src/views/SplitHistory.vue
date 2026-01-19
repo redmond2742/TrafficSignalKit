@@ -97,6 +97,25 @@
       </v-expansion-panels>
     </div>
     <br />
+
+    <section class="left-justify-text faq-section">
+      <h2>FAQ</h2>
+      <div class="faq-item">
+        <h3>What does the split history report show?</h3>
+        <p>
+          It summarizes each phase run time and indicates whether phases gapped
+          out, maxed out, or were forced off.
+        </p>
+      </div>
+      <div class="faq-item">
+        <h3>How is split history calculated?</h3>
+        <p>
+          The tool derives phase durations from high-resolution event logs
+          between the start of green and end of red.
+        </p>
+      </div>
+    </section>
+
     <ProcessSplitHistory
       @phaseDurations="displayPhaseDuration"
     ></ProcessSplitHistory>

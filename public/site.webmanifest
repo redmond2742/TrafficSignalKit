@@ -1,0 +1,11 @@
+{
+  "name": "Traffic Signal Kit",
+  "short_name": "TrafficSignalKit",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#009688",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+  ]
+}

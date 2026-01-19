@@ -73,6 +73,26 @@
         </v-list>
       </v-menu>
     </div>
+    <div class="text-center">
+      <v-menu v-if="mobileViewHide">
+        <template v-slot:activator="{ props }">
+          <v-btn v-bind="props"> About</v-btn>
+        </template>
+
+        <v-list>
+          <v-list-item
+            v-for="(item, index) in AboutTools"
+            :key="index"
+            :to="item.path"
+            link
+            active-class="nav-item-active"
+            class="nav-list-item"
+          >
+            <v-list-item-title>{{ item.title }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
 
     <!--
     <router-link v-for="route in routes" :key="route.path" :to="route.path">
@@ -158,6 +178,8 @@ export default {
         },
         { title: "Reference", path: "/reference" },
         { title: "Practice Exam", path: "/practice-exam" },
+        { title: "About", path: "/about" },
+        { title: "Blog", path: "/blog" },
       ],
 
       TSdataTools: [
@@ -183,6 +205,10 @@ export default {
         },
         { title: "Reference", path: "/reference" },
         { title: "Practice Exam", path: "/practice-exam" },
+      ],
+      AboutTools: [
+        { title: "About Traffic Signal Kit", path: "/about" },
+        { title: "Blog", path: "/blog" },
       ],
 
       dialog: false,

@@ -1,16 +1,18 @@
 <template>
   <div>
-    &nbsp;
-    <h1 class="h1-center-text">Traffic Signal Kit</h1>
+    <v-card class="intro-card" variant="outlined">
+      <v-card-text class="intro-text">
+        Various experimental free & open source tools for traffic engineers.
+        These are rapid-fire, proof-of-concept creations designed to innovate,
+        inspire, and provide insights into traffic signal operations. Expect
+        raw, early-stage concepts—this is about speed, experimentation, and
+        finding what truly makes an impact. Your feedback is my roadmap! ❤️
+        Click that heart button to vote on features and shape the future of
+        these tools.
+      </v-card-text>
+    </v-card>
 
-    <h3>
-      Various experimental free & open source tools for traffic engineers. These
-      are rapid-fire, proof-of-concept creations designed to innovate, inspire,
-      and provide insights into traffic signal operations. Expect raw,
-      early-stage concepts—this is about speed, experimentation, and finding
-      what truly makes an impact. Your feedback is my roadmap! ❤️ Click that
-      heart button to vote on features and shape the future of these tools.
-    </h3>
+    <h1 class="h1-center-text">Traffic Signal Kit</h1>
 
     <v-container>
       <v-row no-gutters>
@@ -179,6 +181,17 @@ export default {
 </script>
 
 <style>
+.intro-card {
+  max-width: 960px;
+  margin: 16px auto 24px;
+  border-radius: 16px;
+  background: rgba(0, 150, 136, 0.08);
+}
+.intro-text {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  text-align: left;
+}
 .left-justify-text {
   margin: 0;
   padding: 0;

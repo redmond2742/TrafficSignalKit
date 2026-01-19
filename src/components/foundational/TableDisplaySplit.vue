@@ -70,11 +70,6 @@
           </table>
           <br /><br />
           <div class="split-history-controls">
-            <input
-              type="text"
-              placeholder="Filter by start timestamp, cycle length, phase or duration values"
-              v-model="filter"
-            />
             <v-btn
               color="primary"
               class="split-history-export"
@@ -87,6 +82,48 @@
           <br />
           <table>
             <thead>
+              <tr class="split-history-filter-row">
+                <th>
+                  <input
+                    v-model="filters.timestamp"
+                    type="text"
+                    placeholder="Filter timestamp"
+                    aria-label="Filter start timestamp"
+                  />
+                </th>
+                <th>
+                  <input
+                    v-model="filters.cycle"
+                    type="text"
+                    placeholder="Filter cycle"
+                    aria-label="Filter cycle length"
+                  />
+                </th>
+                <th>
+                  <input
+                    v-model="filters.phase"
+                    type="text"
+                    placeholder="Filter phase"
+                    aria-label="Filter phase"
+                  />
+                </th>
+                <th>
+                  <input
+                    v-model="filters.duration"
+                    type="text"
+                    placeholder="Filter duration"
+                    aria-label="Filter duration"
+                  />
+                </th>
+                <th>
+                  <input
+                    v-model="filters.termination"
+                    type="text"
+                    placeholder="Filter termination"
+                    aria-label="Filter termination reason"
+                  />
+                </th>
+              </tr>
               <tr>
                 <th>Start Timestamp</th>
                 <th>#/Cycle Length</th>
@@ -100,18 +137,21 @@
                 v-for="(row, index) in filteredRows"
                 :key="`employee-${index}`"
               >
-                <td v-html="highlightMatches(row.timestampStart)"></td>
+                <td v-html="highlightMatches(row.timestampStart, filters.timestamp)"></td>
                 <td
                   v-html="
                     highlightMatches(
                       `${String(row.cycleCount)} / ${truncateToOneDecimal(
                         row.cycleLength
-                      )}`
+                      )}`,
+                      filters.cycle
                     )
                   "
                 ></td>
                 <td
-                  v-html="highlightMatches(`Phase ${String(row.phase)}`)"
+                  v-html="
+                    highlightMatches(`Phase ${String(row.phase)}`, filters.phase)
+                  "
                 ></td>
                 <td
                   v-html="
@@ -123,10 +163,16 @@
                       )}/${truncateToOneDecimal(
                         row.yellowTime
                       )}/${truncateToOneDecimal(row.allRedTime)})`
+                      ,
+                      filters.duration
                     )
                   "
                 ></td>
-                <td v-html="highlightMatches(row.termReason)"></td>
+                <td
+                  v-html="
+                    highlightMatches(row.termReason, filters.termination)
+                  "
+                ></td>
               </tr>
             </tbody>
           </table>
@@ -154,33 +200,43 @@ export default {
   data() {
     return {
       tab: null,
-      filter: "",
+      filters: {
+        timestamp: "",
+        cycle: "",
+        phase: "",
+        duration: "",
+        termination: "",
+      },
       showTables: true,
     };
   },
   computed: {
     filteredRows() {
       return this.tableData.filter((row) => {
-        const timestamp = row.timestampStart.toLowerCase();
-        const cycleCount = row.cycleCount.toString();
-        const enumeration = "phase " + row.phase.toString().toLowerCase();
-        const duration =
-          row.duration.toString() +
-          "(" +
-          row.greenTime.toString() +
-          "/" +
-          row.yellowTime.toString() +
-          "/" +
-          row.allRedTime.toString() +
-          ")";
-        const terminationReason = row.termReason.toString().toLowerCase();
-        const searchTerm = this.filter.toLowerCase();
+        const timestamp = String(row.timestampStart).toLowerCase();
+        const cycle = `${String(row.cycleCount)} / ${this.truncateToOneDecimal(
+          row.cycleLength
+        )}`.toLowerCase();
+        const enumeration = `phase ${String(row.phase)}`.toLowerCase();
+        const duration = `${this.truncateToOneDecimal(
+          row.duration
+        )} (${this.truncateToOneDecimal(
+          row.greenTime
+        )}/${this.truncateToOneDecimal(
+          row.yellowTime
+        )}/${this.truncateToOneDecimal(row.allRedTime)})`.toLowerCase();
+        const terminationReason = String(row.termReason).toLowerCase();
+        const timestampFilter = this.filters.timestamp.toLowerCase();
+        const cycleFilter = this.filters.cycle.toLowerCase();
+        const phaseFilter = this.filters.phase.toLowerCase();
+        const durationFilter = this.filters.duration.toLowerCase();
+        const terminationFilter = this.filters.termination.toLowerCase();
         return (
-          timestamp.includes(searchTerm) ||
-          cycleCount.includes(searchTerm) ||
-          enumeration.includes(searchTerm) ||
-          duration.includes(searchTerm) ||
-          terminationReason.includes(searchTerm)
+          timestamp.includes(timestampFilter) &&
+          cycle.includes(cycleFilter) &&
+          enumeration.includes(phaseFilter) &&
+          duration.includes(durationFilter) &&
+          terminationReason.includes(terminationFilter)
         );
       });
     },
@@ -298,13 +354,15 @@ export default {
         return false;
       }
     },
-    highlightMatches(text) {
+    highlightMatches(text, filterValue) {
       if (typeof text === "string") {
-        const matchExists = text
-          .toLowerCase()
-          .includes(this.filter.toLowerCase());
+        const normalizedFilter = String(filterValue || "").toLowerCase();
+        if (!normalizedFilter) {
+          return text;
+        }
+        const matchExists = text.toLowerCase().includes(normalizedFilter);
         if (!matchExists) return text;
-        const re = new RegExp(this.filter, "ig");
+        const re = new RegExp(this.escapeRegExp(filterValue), "ig");
         return text.replace(
           re,
           (matchedText) => `<strong>${matchedText}</strong>`
@@ -312,6 +370,9 @@ export default {
       } else {
         console.log("Filter Text is number, not text");
       }
+    },
+    escapeRegExp(value) {
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     },
     truncateToOneDecimal(number) {
       // Truncate the number to one decimal place
@@ -332,5 +393,14 @@ export default {
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
+}
+
+.split-history-filter-row input {
+  width: 100%;
+  min-width: 140px;
+  padding: 6px 8px;
+  border: 1px solid #c7c7c7;
+  border-radius: 4px;
+  font-size: 0.9rem;
 }
 </style>

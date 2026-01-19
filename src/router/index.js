@@ -25,7 +25,7 @@ import StuckDetectors from '../views/StuckDetectors'
 
 
 
-const routes = [
+export const routes = [
     {
         path: '/',
         name: 'home',

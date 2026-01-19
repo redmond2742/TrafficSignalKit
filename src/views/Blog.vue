@@ -1,0 +1,35 @@
+<template>
+  <v-container class="blog-page">
+    <h1 class="h1-center-text">Traffic Signal Kit Blog</h1>
+    <v-card class="blog-card" variant="outlined">
+      <v-card-text>
+        <p>
+          Welcome to the Traffic Signal Kit blog. This space will highlight
+          experiment notes, feature deep-dives, and quick updates on new tools
+          as they ship.
+        </p>
+        <p>
+          Have a topic you want covered? Tap the heart button in the header and
+          let me know what you want to see next.
+        </p>
+      </v-card-text>
+    </v-card>
+  </v-container>
+</template>
+
+<script>
+export default {
+  name: "Blog",
+};
+</script>
+
+<style scoped>
+.blog-page {
+  max-width: 960px;
+  margin: 0 auto;
+}
+.blog-card {
+  margin-top: 24px;
+  border-radius: 16px;
+}
+</style>

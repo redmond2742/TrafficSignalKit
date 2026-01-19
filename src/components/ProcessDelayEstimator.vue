@@ -498,12 +498,18 @@ export default {
         const detectorOffEvents = events.filter(
           (event) => event.eventCode === 81 && event.parameterCode === detector
         );
-        const detectorTotal = detectorOffEvents.filter((event) =>
-          intervals.some(
-            (interval) =>
-              event.millis >= interval.start && event.millis <= interval.end
-          )
-        ).length;
+
+        const detectorTotal = detectorOffEvents.reduce(
+          (count, event) =>
+            count +
+            (intervals.some(
+              (interval) =>
+                event.millis >= interval.start && event.millis <= interval.end
+            )
+              ? 1
+              : 0),
+          0
+        );
         return total + detectorTotal;
       }, 0);
     },

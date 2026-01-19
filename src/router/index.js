@@ -19,6 +19,8 @@ import Reference from '../views/Reference'
 import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
 import DelayEstimator from '../views/DelayEstimator'
 import MessageSignDesigner from '../views/MessageSignDesigner'
+import Blog from '../views/Blog'
+
 
 
 
@@ -32,6 +34,11 @@ const routes = [
         path: '/about',
         name: 'About',
         component: About
+    },
+    {
+        path: '/blog',
+        name: 'Blog',
+        component: Blog
     },
     {  
         path: '/terms-of-service',

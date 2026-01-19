@@ -7,6 +7,7 @@
 // Plugins
 import { registerPlugins } from '@/plugins'
 import { createPinia } from 'pinia';
+import { createHead } from '@vueuse/head';
 
 // Components
 import App from './App.vue'
@@ -44,11 +45,13 @@ export default createVuetify({
 
 
 const app = createApp(App)
+const head = createHead();
 
 registerPlugins(app)
 
 app.use(router)
 app.use(createPinia());
+app.use(head);
 
 
 app.mount('#app')

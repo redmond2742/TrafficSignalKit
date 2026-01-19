@@ -1,6 +1,7 @@
 <template>
   <v-app>
     <div>
+      <HeadManager />
       <Header></Header>
       <v-row>
         <v-col md="1" xs="0"></v-col>
@@ -19,12 +20,14 @@
 <script>
 import Header from "./components/Header.vue";
 import Footer from "./components/Footer.vue";
+import HeadManager from "./seo/HeadManager.vue";
 
 export default {
   name: "App",
   components: {
     Header,
     Footer,
+    HeadManager,
   },
   data: () => ({
     tab: null,

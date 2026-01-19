@@ -1,18 +1,13 @@
 <template>
   <v-app>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div>
       <HeadManager />
-      <Header></Header>
-      <v-row>
-        <v-col md="1" xs="0"></v-col>
-      </v-row>
-      <v-col>
-        <router-view></router-view>
-      </v-col>
-      <v-row>
-        <v-col md="1" xs="0"></v-col>
-      </v-row>
-      <Footer> </Footer>
+      <Header />
+      <main id="main-content">
+        <router-view />
+      </main>
+      <Footer />
     </div>
   </v-app>
 </template>
@@ -34,4 +29,17 @@ export default {
   }),
 };
 </script>
-<style></style>
+<style>
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 8px;
+  background: #009688;
+  color: white;
+  padding: 8px 12px;
+  z-index: 9999;
+}
+.skip-link:focus {
+  left: 8px;
+}
+</style>

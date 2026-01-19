@@ -80,7 +80,7 @@ export default {
               path: "/detection-plotter",
             },
             {
-              title: "Delay Estimator",
+              title: "Delay & Count Estimator",
               description:
                 "Estimate call delay between detector actuations and phase service.",
               path: "/delay-estimator",

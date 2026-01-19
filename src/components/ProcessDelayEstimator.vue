@@ -491,20 +491,21 @@ export default {
       return intervals;
     },
     countDetectorOffsDuringGreen(events, detectorsForPhase, intervals) {
-      const detectorOffEvents = events.filter(
-        (event) =>
-          event.eventCode === 81 &&
-          detectorsForPhase.includes(event.parameterCode)
-      );
       if (!intervals.length) {
         return 0;
       }
-      return detectorOffEvents.filter((event) =>
-        intervals.some(
-          (interval) =>
-            event.millis >= interval.start && event.millis <= interval.end
-        )
-      ).length;
+      return detectorsForPhase.reduce((total, detector) => {
+        const detectorOffEvents = events.filter(
+          (event) => event.eventCode === 81 && event.parameterCode === detector
+        );
+        const detectorTotal = detectorOffEvents.filter((event) =>
+          intervals.some(
+            (interval) =>
+              event.millis >= interval.start && event.millis <= interval.end
+          )
+        ).length;
+        return total + detectorTotal;
+      }, 0);
     },
     formatMillis(millis) {
       return DateTime.fromMillis(millis).toFormat(DISPLAY_FORMAT);

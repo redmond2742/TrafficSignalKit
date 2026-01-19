@@ -59,7 +59,7 @@ export default {
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
-          title: "Delay Estimator",
+          title: "Delay & Count Estimator",
           description: "Estimate detector call delays to phase service",
           link: "/delay-estimator",
           topics: ["Controller Data", "Delay", "Enumerations"],

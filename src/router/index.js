@@ -18,6 +18,7 @@ import HighResPreemptionPlotter from '../views/HighResPreemptionPlotter'
 import Reference from '../views/Reference'
 import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
 import DelayEstimator from '../views/DelayEstimator'
+import MessageSignDesigner from '../views/MessageSignDesigner'
 
 
 
@@ -106,6 +107,11 @@ const routes = [
         path: '/practice-exam',
         name: 'practiceExam',
         component: PracticeExam,
+    },
+    {
+        path: '/message-sign-designer',
+        name: 'messageSignDesigner',
+        component: MessageSignDesigner,
     },
     {
         path: '/PracticeExam',

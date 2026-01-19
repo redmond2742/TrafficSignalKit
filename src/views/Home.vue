@@ -138,6 +138,15 @@ export default {
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-split-calculator.png",
+          title: "Message Sign Designer",
+          description:
+            "Preview changeable message sign text with realistic sizing.",
+          link: "/message-sign-designer",
+          topics: ["Message Signs", "Visualization", "Field Devices"],
+        },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-split-calculator.png",
           title: "Split Calculator",
           description: "Verify splits and cycle lengths during adjustments",
           link: "/split-calculator",

@@ -39,6 +39,18 @@
             </td>
           </tr>
           <tr>
+            <td>Estimated Vehicles</td>
+            <td
+              v-for="phase in phaseColumns"
+              :key="`summary-vehicle-count-${phase}`"
+            >
+              <span v-if="vehicleCountsByPhase[phase] !== null">
+                {{ vehicleCountsByPhase[phase] }}
+              </span>
+              <span v-else>-</span>
+            </td>
+          </tr>
+          <tr>
             <td>Pedestrian Avg Delay</td>
             <td
               v-for="phase in phaseColumns"
@@ -46,6 +58,18 @@
             >
               <span v-if="averagePedDelayByPhase[phase] !== null">
                 {{ formatDelay(averagePedDelayByPhase[phase]) }}
+              </span>
+              <span v-else>-</span>
+            </td>
+          </tr>
+          <tr>
+            <td>Pedestrian Button Presses</td>
+            <td
+              v-for="phase in phaseColumns"
+              :key="`summary-ped-presses-${phase}`"
+            >
+              <span v-if="pedPressCountsByPhase[phase] !== null">
+                {{ pedPressCountsByPhase[phase] }}
               </span>
               <span v-else>-</span>
             </td>
@@ -153,6 +177,8 @@ export default {
       phaseColumns: [],
       tableRows: [],
       pedTableRows: [],
+      pedPressCountsByPhase: {},
+      vehicleCountsByPhase: {},
     };
   },
   computed: {
@@ -204,12 +230,18 @@ export default {
       if (!events.length || !phaseColumns.length) {
         this.tableRows = [];
         this.pedTableRows = [];
+        this.pedPressCountsByPhase = {};
+        this.vehicleCountsByPhase = {};
         return;
       }
 
       const cycles = this.buildCycles(events);
       const vehicleRows = [];
       const pedRows = [];
+      const lastMillis = events[events.length - 1].millis;
+
+      const pedPressCountsByPhase = {};
+      const vehicleCountsByPhase = {};
 
       cycles.forEach((cycle) => {
         const cycleEvents = events.filter(
@@ -256,6 +288,26 @@ export default {
             ),
             cycleEvents
           );
+
+          if (pedPressCountsByPhase[phase] === undefined) {
+            pedPressCountsByPhase[phase] = detectorsForPhase.length
+              ? events.filter(
+                  (event) =>
+                    event.eventCode === 90 &&
+                    detectorsForPhase.includes(event.parameterCode)
+                ).length
+              : null;
+          }
+
+          if (vehicleCountsByPhase[phase] === undefined) {
+            vehicleCountsByPhase[phase] = detectorsForPhase.length
+              ? this.countDetectorOffsDuringGreen(
+                  events,
+                  detectorsForPhase,
+                  this.buildGreenIntervals(events, phase, lastMillis)
+                )
+              : null;
+          }
         });
 
         vehicleRows.push(vehicleRow);
@@ -264,6 +316,8 @@ export default {
 
       this.tableRows = vehicleRows;
       this.pedTableRows = pedRows;
+      this.pedPressCountsByPhase = pedPressCountsByPhase;
+      this.vehicleCountsByPhase = vehicleCountsByPhase;
     },
     parseDetectorMapping(text) {
       const detectorToPhase = {};
@@ -413,6 +467,44 @@ export default {
           event.parameterCode === phase &&
           event.millis >= minMillis
       );
+    },
+    buildGreenIntervals(events, phase, fallbackEnd) {
+      const phaseEvents = events.filter(
+        (event) => event.parameterCode === phase
+      );
+      const intervals = [];
+
+      phaseEvents
+        .filter((event) => event.eventCode === 1)
+        .forEach((startEvent) => {
+          const endEvent = phaseEvents.find(
+            (event) =>
+              event.millis > startEvent.millis &&
+              [7, 8, 12].includes(event.eventCode)
+          );
+          const end = endEvent ? endEvent.millis : fallbackEnd;
+          if (end !== undefined && end >= startEvent.millis) {
+            intervals.push({ start: startEvent.millis, end });
+          }
+        });
+
+      return intervals;
+    },
+    countDetectorOffsDuringGreen(events, detectorsForPhase, intervals) {
+      const detectorOffEvents = events.filter(
+        (event) =>
+          event.eventCode === 81 &&
+          detectorsForPhase.includes(event.parameterCode)
+      );
+      if (!intervals.length) {
+        return 0;
+      }
+      return detectorOffEvents.filter((event) =>
+        intervals.some(
+          (interval) =>
+            event.millis >= interval.start && event.millis <= interval.end
+        )
+      ).length;
     },
     formatMillis(millis) {
       return DateTime.fromMillis(millis).toFormat(DISPLAY_FORMAT);

@@ -34,6 +34,18 @@ export const routeMeta = {
     description:
       "Understand ATSPM event enumerations and how high-resolution controller logs map to signal behavior.",
     path: "/explainer",
+    faq: [
+      {
+        question: "What does high-resolution controller data capture?",
+        answer:
+          "It records controller events, signal states, and timing changes at 100 millisecond resolution for analysis.",
+      },
+      {
+        question: "What format should I paste into the explainer?",
+        answer:
+          "Paste CSV rows that include a timestamp, event enumeration, and parameter such as phase or channel number.",
+      },
+    ],
   },
   gpxPlotter: {
     title: "GPX Time-Space Diagram Visualizer | Traffic Signal Analysis",
@@ -46,6 +58,18 @@ export const routeMeta = {
     description:
       "Calculate phase durations from high-resolution controller events to evaluate split performance.",
     path: "/split-history",
+    faq: [
+      {
+        question: "What does the split history report show?",
+        answer:
+          "It summarizes each phase run time and indicates whether phases gapped out, maxed out, or were forced off.",
+      },
+      {
+        question: "How is split history calculated?",
+        answer:
+          "The tool derives phase durations from high-resolution event logs between the start of green and end of red.",
+      },
+    ],
   },
   trafficSim: {
     title: "Traffic Signal Timing Simulator | Gap Out & Max Out",
@@ -58,6 +82,18 @@ export const routeMeta = {
     description:
       "Plot phase states over time to troubleshoot timing logic and controller behavior.",
     path: "/phase-plotter",
+    faq: [
+      {
+        question: "What does the phase plotter visualize?",
+        answer:
+          "It charts the state of each phase over time using high-resolution controller event data.",
+      },
+      {
+        question: "How can I use the phase plotter results?",
+        answer:
+          "Use the plot to troubleshoot timing logic, verify phase sequences, and spot unexpected transitions.",
+      },
+    ],
   },
   gpxPhasePlotter: {
     title: "GPX + Phase Plotter | Time-Space & TSP Events",

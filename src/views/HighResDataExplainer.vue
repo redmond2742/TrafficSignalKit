@@ -94,6 +94,24 @@
     </div>
     <br />
 
+    <section class="left-justify-text faq-section">
+      <h2>FAQ</h2>
+      <div class="faq-item">
+        <h3>What does high-resolution controller data capture?</h3>
+        <p>
+          It records controller events, signal states, and timing changes at 100
+          millisecond resolution for analysis.
+        </p>
+      </div>
+      <div class="faq-item">
+        <h3>What format should I paste into the explainer?</h3>
+        <p>
+          Paste CSV rows that include a timestamp, event enumeration, and a
+          parameter such as a phase or channel number.
+        </p>
+      </div>
+    </section>
+
     <CSVInput @csvDataProcessed="handleProcessedData" />
 
     <ProcessedData v-if="processedData" :data="processedData" />

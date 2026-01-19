@@ -6,6 +6,11 @@ import { useRoute } from "vue-router";
 import { useHead } from "@vueuse/head";
 import { site, absoluteUrl } from "./site";
 import { routeMeta } from "./routes";
+import {
+  organizationJsonLd,
+  websiteJsonLd,
+  softwareApplicationJsonLd,
+} from "./jsonld";
 
 const route = useRoute();
 const meta = computed(() => routeMeta[route.name] || {});
@@ -16,6 +21,19 @@ const description = computed(
 const canonical = computed(() => absoluteUrl(meta.value.path || route.path));
 const ogImage = computed(() =>
   absoluteUrl(meta.value.ogImage || site.defaultOgImage)
+);
+const faqJsonLd = computed(() =>
+  meta.value.faq
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: meta.value.faq.map(({ question, answer }) => ({
+          "@type": "Question",
+          name: question,
+          acceptedAnswer: { "@type": "Answer", text: answer },
+        })),
+      }
+    : null
 );
 
 useHead(() => ({
@@ -33,5 +51,24 @@ useHead(() => ({
     { name: "twitter:image", content: ogImage.value },
   ],
   link: [{ rel: "canonical", href: canonical.value }],
+  script: [
+    {
+      type: "application/ld+json",
+      children: JSON.stringify(organizationJsonLd),
+    },
+    { type: "application/ld+json", children: JSON.stringify(websiteJsonLd) },
+    {
+      type: "application/ld+json",
+      children: JSON.stringify(softwareApplicationJsonLd),
+    },
+    ...(faqJsonLd.value
+      ? [
+          {
+            type: "application/ld+json",
+            children: JSON.stringify(faqJsonLd.value),
+          },
+        ]
+      : []),
+  ],
 }));
 </script>

@@ -98,6 +98,25 @@
       </v-expansion-panels>
     </div>
     <br />
+
+    <section class="left-justify-text faq-section">
+      <h2>FAQ</h2>
+      <div class="faq-item">
+        <h3>What does the phase plotter visualize?</h3>
+        <p>
+          It charts the state of each phase over time using high-resolution
+          controller event data.
+        </p>
+      </div>
+      <div class="faq-item">
+        <h3>How can I use the phase plotter results?</h3>
+        <p>
+          Use the plot to troubleshoot timing logic, verify phase sequences,
+          and spot unexpected transitions.
+        </p>
+      </div>
+    </section>
+
     <ProcessSplitHistory
       @phaseDurations="storePhaseDuration"
     ></ProcessSplitHistory>

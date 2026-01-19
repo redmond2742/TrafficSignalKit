@@ -11,7 +11,7 @@
             </div>
           </v-card-title>
           <v-card-text justify="center">
-            <h1 class="display-2">{{ yellowRunners }}</h1>
+            <div class="display-2" aria-live="polite">{{ yellowRunners }}</div>
             <p class="average-text">Average Time: {{ yAverageSeconds }}s</p>
           </v-card-text>
         </v-card>
@@ -26,7 +26,7 @@
             </div>
           </v-card-title>
           <v-card-text justify="center">
-            <h1 class="display-2">{{ redClearRunners }}</h1>
+            <div class="display-2" aria-live="polite">{{ redClearRunners }}</div>
             <p class="average-text">Average Time: {{ rcAverageSeconds }}s</p>
           </v-card-text>
         </v-card>
@@ -41,7 +41,7 @@
             </div>
           </v-card-title>
           <v-card-text justify="center">
-            <h1 class="display-2">{{ redRunners }}</h1>
+            <div class="display-2" aria-live="polite">{{ redRunners }}</div>
             <p class="average-text">Average Time: {{ rAverageSeconds }}s</p>
           </v-card-text>
         </v-card>

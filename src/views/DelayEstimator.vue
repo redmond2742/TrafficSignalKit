@@ -1,11 +1,11 @@
 <template>
   <div>
     &nbsp;
-    <h1 class="h1-center-text">Delay Estimator</h1>
+    <h1 class="h1-center-text">Delay &amp; Count Estimator</h1>
 
     <div class="left-justify-text">
       <v-expansion-panels v-model="panel" multiple>
-        <v-expansion-panel title="About: Delay Estimator" value="about">
+        <v-expansion-panel title="About: Delay &amp; Count Estimator" value="about">
           <v-expansion-panel-text>
             This tool estimates the delay between the first detector call and
             when the corresponding phase is served. The delay is calculated

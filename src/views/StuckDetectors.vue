@@ -16,8 +16,7 @@
 
         <v-expansion-panel title="Example: Using This Tool" value="example">
           <v-expansion-panel-text>
-            Paste high-resolution data in the first box and detector-to-phase
-            assignments in the second box. Click Process to see detectors that
+            Paste high-resolution data and click Process to see detectors that
             never appear to turn off during the data window.
           </v-expansion-panel-text>
         </v-expansion-panel>

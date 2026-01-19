@@ -4,12 +4,6 @@
       <div class="grow-wrap">
         <InputBox v-model="inputData" :defaultText="dataDefaultText" />
       </div>
-      <div class="grow-wrap">
-        <InputBox
-          v-model="detectorMapInput"
-          :defaultText="detectorDefaultText"
-        />
-      </div>
     </div>
     <div class="actions">
       <v-btn @click="processStuckDetectors" color="primary">Process</v-btn>
@@ -50,10 +44,8 @@ export default {
   data() {
     return {
       inputData: "",
-      detectorMapInput: "",
       headers: [
         { title: "Detector ID", key: "detectorId", sortable: true },
-        { title: "Phase #", key: "phase", sortable: true },
         {
           title: "Percent Time On",
           key: "percentOn",
@@ -65,17 +57,12 @@ export default {
       hasProcessed: false,
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, channel)",
-      detectorDefaultText:
-        "Det 1\t6\nDet 2\t2\nDet 3\t0\nDet 4\t0\nDet 5\t0",
     };
   },
   methods: {
     processStuckDetectors() {
       this.hasProcessed = true;
       const events = this.parseHighResData(this.inputData);
-      const { detectorToPhase } = this.parseDetectorMapping(
-        this.detectorMapInput
-      );
 
       if (events.length < 2) {
         this.tableItems = [];
@@ -146,35 +133,11 @@ export default {
         const percentOn = (stats.onDuration / totalDuration) * 100;
         items.push({
           detectorId: stats.detectorId,
-          phase: detectorToPhase[stats.detectorId] ?? "-",
           percentOn,
         });
       });
 
       this.tableItems = items.sort((a, b) => b.percentOn - a.percentOn);
-    },
-    parseDetectorMapping(text) {
-      const detectorToPhase = {};
-
-      text
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line)
-        .forEach((line) => {
-          const matches = line.match(/\d+/g);
-          if (!matches || matches.length < 2) {
-            return;
-          }
-          const detector = Number(matches[0]);
-          const phase = Number(matches[1]);
-          if (!Number.isNaN(detector) && phase > 0) {
-            detectorToPhase[detector] = phase;
-          }
-        });
-
-      return {
-        detectorToPhase,
-      };
     },
     parseHighResData(text) {
       return text

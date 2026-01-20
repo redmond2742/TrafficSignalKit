@@ -235,7 +235,7 @@ export default {
         return;
       }
 
-      const cycles = this.buildCycles(events);
+      const cycles = this.buildCycles(events, phaseColumns);
       const vehicleRows = [];
       const pedRows = [];
       const lastMillis = events[events.length - 1].millis;
@@ -243,10 +243,16 @@ export default {
       const pedPressCountsByPhase = {};
       const vehicleCountsByPhase = {};
 
+      const lastCycle = cycles[cycles.length - 1];
+
       cycles.forEach((cycle) => {
         const cycleEvents = events.filter(
           (event) => event.millis >= cycle.start && event.millis <= cycle.end
         );
+        const filteredCycleEvents =
+          cycle === lastCycle
+            ? cycleEvents
+            : cycleEvents.filter((event) => event.millis < cycle.end);
 
         const vehicleRow = {
           cycle: cycle.index,
@@ -271,22 +277,22 @@ export default {
             vehicleRow.phases,
             phase,
             this.findDetectorCallEvent(
-              cycleEvents,
+              filteredCycleEvents,
               detectorsForPhase,
               82
             ),
-            cycleEvents
+            filteredCycleEvents
           );
 
           this.populateDelayCell(
             pedRow.phases,
             phase,
             this.findDetectorCallEvent(
-              cycleEvents,
+              filteredCycleEvents,
               detectorsForPhase,
               90
             ),
-            cycleEvents
+            filteredCycleEvents
           );
 
           if (pedPressCountsByPhase[phase] === undefined) {
@@ -365,19 +371,43 @@ export default {
         .filter((event) => event && !Number.isNaN(event.eventCode))
         .sort((a, b) => a.millis - b.millis);
     },
-    buildCycles(events) {
+    buildCycles(events, phaseColumns) {
       if (!events.length) {
         return [];
       }
-      const barrierEvents = events
-        .filter((event) => event.eventCode === 31)
-        .map((event) => event.millis)
-        .sort((a, b) => a - b);
-
       const firstMillis = events[0].millis;
       const lastMillis = events[events.length - 1].millis;
+      const phases = new Set(phaseColumns);
 
-      if (!barrierEvents.length) {
+      const phaseServiceEvents = events
+        .filter(
+          (event) =>
+            phases.has(event.parameterCode) &&
+            [0, 1].includes(event.eventCode)
+        )
+        .sort((a, b) => a.millis - b.millis);
+
+      if (!phaseServiceEvents.length) {
+        return [
+          {
+            index: 1,
+            start: firstMillis,
+            end: lastMillis,
+          },
+        ];
+      }
+
+      const preferredEventCode = phaseServiceEvents.some(
+        (event) => event.eventCode === 1
+      )
+        ? 1
+        : 0;
+
+      const filteredServiceEvents = phaseServiceEvents.filter(
+        (event) => event.eventCode === preferredEventCode
+      );
+
+      if (!filteredServiceEvents.length) {
         return [
           {
             index: 1,
@@ -388,16 +418,21 @@ export default {
       }
 
       const cycles = [];
-      let start = firstMillis;
       let index = 1;
+      let start = filteredServiceEvents[0].millis;
+      let servedPhases = new Set([filteredServiceEvents[0].parameterCode]);
 
-      barrierEvents.forEach((boundary) => {
-        if (boundary <= start) {
+      filteredServiceEvents.slice(1).forEach((event) => {
+        if (servedPhases.has(event.parameterCode)) {
+          if (event.millis > start) {
+            cycles.push({ index, start, end: event.millis });
+            index += 1;
+            start = event.millis;
+            servedPhases = new Set([event.parameterCode]);
+          }
           return;
         }
-        cycles.push({ index, start, end: boundary });
-        start = boundary;
-        index += 1;
+        servedPhases.add(event.parameterCode);
       });
 
       if (start < lastMillis) {

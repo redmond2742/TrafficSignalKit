@@ -22,7 +22,10 @@
 
         <v-card-text>
           <div>
-            <div class="table-actions">
+            <div class="table-toolbar">
+              <div class="table-count">
+                Rows in table: {{ filteredRows.length }}
+              </div>
               <v-btn
                 color="secondary"
                 :disabled="!rowData.length"
@@ -542,10 +545,16 @@ select {
   box-sizing: border-box;
   margin-top: 25px;
 }
-.table-actions {
+.table-toolbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
+}
+.table-count {
+  font-weight: 600;
+  color: #4a4a4a;
 }
 dd {
   margin-left: 0;

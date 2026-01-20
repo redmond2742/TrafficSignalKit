@@ -13,6 +13,38 @@
     </div>
     <div class="actions">
       <v-btn @click="processDelays" color="primary">Process</v-btn>
+      <div class="vehicle-count-controls">
+        <div class="vehicle-count-toggle">
+          <span class="control-label">Vehicle count events</span>
+          <v-btn-toggle
+            v-model="vehicleCountMode"
+            color="primary"
+            mandatory
+            density="compact"
+          >
+            <v-btn value="off">Off (81)</v-btn>
+            <v-btn value="on">On (82)</v-btn>
+          </v-btn-toggle>
+        </div>
+        <div class="vehicle-count-toggle">
+          <v-switch
+            v-model="useExperimentalEstimate"
+            color="primary"
+            label="Experimental estimate (active time)"
+            density="compact"
+          ></v-switch>
+          <v-text-field
+            v-if="useExperimentalEstimate"
+            v-model.number="secondsPerVehicle"
+            label="Seconds per vehicle"
+            type="number"
+            min="0.1"
+            step="0.1"
+            hide-details
+            density="compact"
+          ></v-text-field>
+        </div>
+      </div>
     </div>
 
     <div v-if="tableRows.length" class="delay-table-wrapper">
@@ -39,7 +71,7 @@
             </td>
           </tr>
           <tr>
-            <td>Estimated Vehicles</td>
+            <td>{{ vehicleCountLabel }}</td>
             <td
               v-for="phase in phaseColumns"
               :key="`summary-vehicle-count-${phase}`"
@@ -179,9 +211,20 @@ export default {
       pedTableRows: [],
       pedPressCountsByPhase: {},
       vehicleCountsByPhase: {},
+      vehicleCountMode: "off",
+      useExperimentalEstimate: false,
+      secondsPerVehicle: 2,
     };
   },
   computed: {
+    vehicleCountLabel() {
+      const eventLabel =
+        this.vehicleCountMode === "on" ? "Detector On (82)" : "Detector Off (81)";
+      if (this.useExperimentalEstimate) {
+        return `Estimated Vehicles (Experimental, ${eventLabel})`;
+      }
+      return `Estimated Vehicles (${eventLabel})`;
+    },
     averageVehicleDelayByPhase() {
       const averages = {};
       this.phaseColumns.forEach((phase) => {
@@ -306,11 +349,15 @@ export default {
           }
 
           if (vehicleCountsByPhase[phase] === undefined) {
+            const vehicleCountEventCode =
+              this.vehicleCountMode === "on" ? 82 : 81;
             vehicleCountsByPhase[phase] = detectorsForPhase.length
-              ? this.countDetectorOffsDuringGreen(
+              ? this.calculateVehicleCounts(
                   events,
                   detectorsForPhase,
-                  this.buildGreenIntervals(events, phase, lastMillis)
+                  this.buildGreenIntervals(events, phase, lastMillis),
+                  vehicleCountEventCode,
+                  lastMillis
                 )
               : null;
           }
@@ -525,16 +572,41 @@ export default {
 
       return intervals;
     },
-    countDetectorOffsDuringGreen(events, detectorsForPhase, intervals) {
+    calculateVehicleCounts(
+      events,
+      detectorsForPhase,
+      intervals,
+      eventCode,
+      lastMillis
+    ) {
+      if (this.useExperimentalEstimate) {
+        return this.estimateVehiclesByActiveTime(
+          events,
+          detectorsForPhase,
+          intervals,
+          eventCode,
+          lastMillis,
+          this.secondsPerVehicle
+        );
+      }
+      return this.countDetectorEventsDuringGreen(
+        events,
+        detectorsForPhase,
+        intervals,
+        eventCode
+      );
+    },
+    countDetectorEventsDuringGreen(events, detectorsForPhase, intervals, eventCode) {
       if (!intervals.length) {
         return 0;
       }
       return detectorsForPhase.reduce((total, detector) => {
-        const detectorOffEvents = events.filter(
-          (event) => event.eventCode === 81 && event.parameterCode === detector
+        const detectorEvents = events.filter(
+          (event) =>
+            event.eventCode === eventCode && event.parameterCode === detector
         );
 
-        const detectorTotal = detectorOffEvents.reduce(
+        const detectorTotal = detectorEvents.reduce(
           (count, event) =>
             count +
             (intervals.some(
@@ -547,6 +619,61 @@ export default {
         );
         return total + detectorTotal;
       }, 0);
+    },
+    estimateVehiclesByActiveTime(
+      events,
+      detectorsForPhase,
+      greenIntervals,
+      startEventCode,
+      lastMillis,
+      secondsPerVehicle
+    ) {
+      if (!greenIntervals.length || !secondsPerVehicle) {
+        return 0;
+      }
+      const endEventCode = startEventCode === 82 ? 81 : 82;
+      const totalActiveMillis = detectorsForPhase.reduce((total, detector) => {
+        let activeStart = null;
+        const activeIntervals = [];
+
+        events
+          .filter(
+            (event) =>
+              event.parameterCode === detector &&
+              [startEventCode, endEventCode].includes(event.eventCode)
+          )
+          .forEach((event) => {
+            if (event.eventCode === startEventCode) {
+              activeStart = event.millis;
+              return;
+            }
+            if (activeStart !== null && event.millis >= activeStart) {
+              activeIntervals.push({ start: activeStart, end: event.millis });
+              activeStart = null;
+            }
+          });
+
+        if (activeStart !== null) {
+          activeIntervals.push({ start: activeStart, end: lastMillis });
+        }
+
+        const detectorActiveMillis = activeIntervals.reduce((sum, interval) => {
+          const overlap = greenIntervals.reduce((greenSum, greenInterval) => {
+            const overlapStart = Math.max(interval.start, greenInterval.start);
+            const overlapEnd = Math.min(interval.end, greenInterval.end);
+            return (
+              greenSum +
+              (overlapEnd > overlapStart ? overlapEnd - overlapStart : 0)
+            );
+          }, 0);
+          return sum + overlap;
+        }, 0);
+
+        return total + detectorActiveMillis;
+      }, 0);
+
+      const totalActiveSeconds = totalActiveMillis / 1000;
+      return Math.round(totalActiveSeconds / secondsPerVehicle);
     },
     formatMillis(millis) {
       return DateTime.fromMillis(millis).toFormat(DISPLAY_FORMAT);
@@ -589,6 +716,24 @@ export default {
   gap: 12px;
   align-items: center;
   margin: 16px 0;
+}
+
+.vehicle-count-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.vehicle-count-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.control-label {
+  font-weight: 600;
 }
 
 .delay-table-wrapper {

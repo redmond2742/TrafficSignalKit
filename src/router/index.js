@@ -21,6 +21,7 @@ import DelayEstimator from '../views/DelayEstimator'
 import MessageSignDesigner from '../views/MessageSignDesigner'
 import Blog from '../views/Blog'
 import StuckDetectors from '../views/StuckDetectors'
+import SignalOffsetCalculator from '../views/SignalOffsetCalculator'
 
 
 
@@ -115,6 +116,11 @@ const routes = [
         path: '/stuck-detectors',
         name: 'stuckDetectors',
         component: StuckDetectors,
+    },
+    {
+        path: '/signal-offsets',
+        name: 'signalOffsets',
+        component: SignalOffsetCalculator,
     },
     {
         path: '/practice-exam',

@@ -10,11 +10,6 @@ import { ViteFaviconsPlugin } from 'vite-plugin-favicon';
 // Utilities
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
-import { routes } from './src/router/index.js'
-
-const ssgRoutes = routes
-  .filter((route) => typeof route.path === 'string' && !route.path.includes(':') && !route.redirect)
-  .map((route) => route.path)
 
 
 
@@ -52,9 +47,6 @@ export default defineConfig({
       '.tsx',
       '.vue',
     ],
-  },
-  ssgOptions: {
-    includedRoutes: ssgRoutes,
   },
   server: {
     port: 3000,

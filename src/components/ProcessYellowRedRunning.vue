@@ -19,15 +19,200 @@
       <table class="rlr-table">
         <thead>
           <tr>
-            <th>Timestamp</th>
-            <th>Detector</th>
-            <th>Phase</th>
-            <th>Signal State</th>
-            <th>Seconds Into State</th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('phase')"
+              >
+                Phase
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "phase")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('yellowCount')"
+              >
+                Yellow Count
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "yellowCount")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('yellowMin')"
+              >
+                Yellow Min
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "yellowMin")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('yellowMax')"
+              >
+                Yellow Max
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "yellowMax")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('yellowAvg')"
+              >
+                Yellow Avg
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "yellowAvg")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('redCount')"
+              >
+                Red Count
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "redCount")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('redMin')"
+              >
+                Red Min
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "redMin")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('redMax')"
+              >
+                Red Max
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "redMax")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('redAvg')"
+              >
+                Red Avg
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "redAvg")
+                }}</span>
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in tableRows" :key="row.key">
+          <tr v-for="row in sortedSummaryRows" :key="row.phase">
+            <td>{{ row.phase }}</td>
+            <td>{{ row.yellowCount }}</td>
+            <td>{{ formatSecondsOrDash(row.yellowMin) }}</td>
+            <td>{{ formatSecondsOrDash(row.yellowMax) }}</td>
+            <td>{{ formatSecondsOrDash(row.yellowAvg) }}</td>
+            <td>{{ row.redCount }}</td>
+            <td>{{ formatSecondsOrDash(row.redMin) }}</td>
+            <td>{{ formatSecondsOrDash(row.redMax) }}</td>
+            <td>{{ formatSecondsOrDash(row.redAvg) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div v-if="tableRows.length" class="rlr-table-wrapper">
+      <table class="rlr-table">
+        <thead>
+          <tr>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setDetailSort('timestamp')"
+              >
+                Timestamp
+                <span class="sort-indicator">{{
+                  sortIndicator(detailSort, "timestamp")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setDetailSort('detector')"
+              >
+                Detector
+                <span class="sort-indicator">{{
+                  sortIndicator(detailSort, "detector")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setDetailSort('phase')"
+              >
+                Phase
+                <span class="sort-indicator">{{
+                  sortIndicator(detailSort, "phase")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setDetailSort('state')"
+              >
+                Signal State
+                <span class="sort-indicator">{{
+                  sortIndicator(detailSort, "state")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setDetailSort('elapsedSeconds')"
+              >
+                Seconds Into State
+                <span class="sort-indicator">{{
+                  sortIndicator(detailSort, "elapsedSeconds")
+                }}</span>
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in sortedTableRows" :key="row.key">
             <td>{{ row.timestamp }}</td>
             <td>{{ row.detector }}</td>
             <td>{{ row.phase }}</td>
@@ -64,7 +249,55 @@ export default {
       detectorDefaultText: "Det 1\t6\nDet 2\t2\nDet 3\t0\nDet 4\t0\nDet 5\t0",
       tableRows: [],
       hasProcessed: false,
+      mappedPhases: [],
+      detailSort: {
+        key: "timestamp",
+        direction: "asc",
+      },
+      summarySort: {
+        key: "phase",
+        direction: "asc",
+      },
     };
+  },
+  computed: {
+    sortedTableRows() {
+      return this.sortRows(
+        this.tableRows,
+        this.detailSort.key,
+        this.detailSort.direction
+      );
+    },
+    summaryRows() {
+      const summary = this.mappedPhases.map((phase) => {
+        const phaseRows = this.tableRows.filter((row) => row.phase === phase);
+        const yellowRows = phaseRows.filter((row) => row.state === "Yellow");
+        const redRows = phaseRows.filter((row) => row.state === "Red");
+        const yellowStats = this.computeStats(yellowRows);
+        const redStats = this.computeStats(redRows);
+
+        return {
+          phase,
+          yellowCount: yellowStats.count,
+          yellowMin: yellowStats.min,
+          yellowMax: yellowStats.max,
+          yellowAvg: yellowStats.avg,
+          redCount: redStats.count,
+          redMin: redStats.min,
+          redMax: redStats.max,
+          redAvg: redStats.avg,
+        };
+      });
+
+      return summary;
+    },
+    sortedSummaryRows() {
+      return this.sortRows(
+        this.summaryRows,
+        this.summarySort.key,
+        this.summarySort.direction
+      );
+    },
   },
   methods: {
     processDetectorEvents() {
@@ -75,8 +308,10 @@ export default {
       if (!events.length || !phaseColumns.length) {
         this.tableRows = [];
         this.hasProcessed = true;
+        this.mappedPhases = phaseColumns;
         return;
       }
+      this.mappedPhases = phaseColumns;
 
       const phaseIntervals = this.buildSignalIntervals(events, phaseColumns);
       const rows = events
@@ -106,6 +341,74 @@ export default {
 
       this.tableRows = rows;
       this.hasProcessed = true;
+    },
+    computeStats(rows) {
+      if (!rows.length) {
+        return {
+          count: 0,
+          min: null,
+          max: null,
+          avg: null,
+        };
+      }
+      const values = rows.map((row) => row.elapsedSeconds);
+      const total = values.reduce((sum, value) => sum + value, 0);
+      return {
+        count: values.length,
+        min: Math.min(...values),
+        max: Math.max(...values),
+        avg: total / values.length,
+      };
+    },
+    setDetailSort(key) {
+      this.detailSort = this.toggleSort(this.detailSort, key);
+    },
+    setSummarySort(key) {
+      this.summarySort = this.toggleSort(this.summarySort, key);
+    },
+    toggleSort(sortState, key) {
+      if (sortState.key === key) {
+        return {
+          key,
+          direction: sortState.direction === "asc" ? "desc" : "asc",
+        };
+      }
+      return {
+        key,
+        direction: "asc",
+      };
+    },
+    sortRows(rows, key, direction) {
+      if (!key) {
+        return [...rows];
+      }
+      const sorted = [...rows].sort((a, b) => {
+        const valueA = a[key];
+        const valueB = b[key];
+        if (valueA === valueB) {
+          return 0;
+        }
+        if (valueA === null || valueA === undefined) {
+          return 1;
+        }
+        if (valueB === null || valueB === undefined) {
+          return -1;
+        }
+        if (typeof valueA === "number" && typeof valueB === "number") {
+          return valueA - valueB;
+        }
+        return String(valueA).localeCompare(String(valueB), undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
+      return direction === "asc" ? sorted : sorted.reverse();
+    },
+    sortIndicator(sortState, key) {
+      if (sortState.key !== key) {
+        return "";
+      }
+      return sortState.direction === "asc" ? "▲" : "▼";
     },
     parseDetectorMapping(text) {
       const detectorToPhase = {};
@@ -225,6 +528,12 @@ export default {
       const rounded = Math.round(seconds * 10) / 10;
       return `${rounded.toFixed(1)} sec`;
     },
+    formatSecondsOrDash(seconds) {
+      if (seconds === null || seconds === undefined) {
+        return "—";
+      }
+      return this.formatSeconds(seconds);
+    },
   },
 };
 </script>
@@ -259,6 +568,26 @@ export default {
   padding: 8px;
   text-align: left;
   vertical-align: top;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sort-button:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+.sort-indicator {
+  font-size: 0.75em;
 }
 
 .no-results {

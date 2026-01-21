@@ -62,6 +62,12 @@ export default {
               path: "/detectorRLR",
             },
             {
+              title: "Yellow & Red Light Running Tool",
+              description:
+                "Match detector-off events to yellow/red intervals by phase.",
+              path: "/yellow-red-running",
+            },
+            {
               title: "Timeseries Plot All Enumerations",
               description:
                 "Plot preemption and event enumerations over time for diagnostics.",

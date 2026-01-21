@@ -80,6 +80,42 @@
                 }}</span>
               </button>
             </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('detectorOffCount')"
+              >
+                Detector Off Count
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "detectorOffCount")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('yellowPerDetector')"
+              >
+                Yellow/Det Off
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "yellowPerDetector")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('redPerDetector')"
+              >
+                Red/Det Off
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "redPerDetector")
+                }}</span>
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -89,6 +125,9 @@
             <td>{{ formatSecondsOrDash(row.yellowAvg) }}</td>
             <td>{{ row.redCount }}</td>
             <td>{{ formatSecondsOrDash(row.redAvg) }}</td>
+            <td>{{ row.detectorOffCount }}</td>
+            <td>{{ formatRatioOrDash(row.yellowPerDetector) }}</td>
+            <td>{{ formatRatioOrDash(row.redPerDetector) }}</td>
           </tr>
         </tbody>
       </table>
@@ -159,6 +198,18 @@
                 }}</span>
               </button>
             </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setDetailSort('termination')"
+              >
+                Phase Termination
+                <span class="sort-indicator">{{
+                  sortIndicator(detailSort, "termination")
+                }}</span>
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -168,6 +219,7 @@
             <td>{{ row.phase }}</td>
             <td>{{ row.state }}</td>
             <td>{{ formatSeconds(row.elapsedSeconds) }}</td>
+            <td>{{ row.termination }}</td>
           </tr>
         </tbody>
       </table>
@@ -208,6 +260,7 @@ export default {
         key: "phase",
         direction: "asc",
       },
+      detectorOffCounts: {},
     };
   },
   computed: {
@@ -225,6 +278,11 @@ export default {
         const redRows = phaseRows.filter((row) => row.state === "Red");
         const yellowStats = this.computeStats(yellowRows);
         const redStats = this.computeStats(redRows);
+        const detectorOffCount = this.detectorOffCounts[phase] || 0;
+        const yellowPerDetector =
+          detectorOffCount > 0 ? yellowStats.count / detectorOffCount : null;
+        const redPerDetector =
+          detectorOffCount > 0 ? redStats.count / detectorOffCount : null;
 
         return {
           phase,
@@ -232,11 +290,15 @@ export default {
           yellowAvg: yellowStats.avg,
           redCount: redStats.count,
           redAvg: redStats.avg,
+          detectorOffCount,
+          yellowPerDetector,
+          redPerDetector,
         };
       });
 
       return summary.filter(
-        (row) => row.yellowCount > 0 || row.redCount > 0
+        (row) =>
+          row.yellowCount > 0 || row.redCount > 0 || row.detectorOffCount > 0
       );
     },
     sortedSummaryRows() {
@@ -257,11 +319,20 @@ export default {
         this.tableRows = [];
         this.hasProcessed = true;
         this.mappedPhases = phaseColumns;
+        this.detectorOffCounts = {};
         return;
       }
       this.mappedPhases = phaseColumns;
 
       const phaseIntervals = this.buildSignalIntervals(events, phaseColumns);
+      const terminationEvents = this.collectTerminationEvents(
+        events,
+        phaseColumns
+      );
+      this.detectorOffCounts = this.countDetectorOffEvents(
+        events,
+        detectorToPhase
+      );
       const rows = events
         .filter(
           (event) =>
@@ -276,6 +347,10 @@ export default {
           if (!interval) {
             return null;
           }
+          const termination = this.findLatestTermination(
+            terminationEvents[phase] || [],
+            event.millis
+          );
           return {
             key: `${event.millis}-${event.parameterCode}`,
             timestamp: this.formatMillis(event.millis),
@@ -283,6 +358,7 @@ export default {
             phase,
             state: interval.state,
             elapsedSeconds: (event.millis - interval.start) / 1000,
+            termination,
           };
         })
         .filter((row) => row !== null);
@@ -404,6 +480,53 @@ export default {
         .filter((event) => event && !Number.isNaN(event.eventCode))
         .sort((a, b) => a.millis - b.millis);
     },
+    countDetectorOffEvents(events, detectorToPhase) {
+      return events
+        .filter(
+          (event) =>
+            event.eventCode === 81 && detectorToPhase[event.parameterCode]
+        )
+        .reduce((counts, event) => {
+          const phase = detectorToPhase[event.parameterCode];
+          counts[phase] = (counts[phase] || 0) + 1;
+          return counts;
+        }, {});
+    },
+    collectTerminationEvents(events, phaseColumns) {
+      const terminationByPhase = {};
+      const terminationMap = {
+        4: "Gap Out",
+        5: "Max Out",
+        6: "Force Off",
+      };
+
+      phaseColumns.forEach((phase) => {
+        terminationByPhase[phase] = [];
+      });
+
+      events.forEach((event) => {
+        const phase = event.parameterCode;
+        const termination = terminationMap[event.eventCode];
+        if (!termination || !phaseColumns.includes(phase)) {
+          return;
+        }
+        terminationByPhase[phase].push({
+          millis: event.millis,
+          termination,
+        });
+      });
+
+      return terminationByPhase;
+    },
+    findLatestTermination(terminations, millis) {
+      let latest = null;
+      terminations.forEach((termination) => {
+        if (termination.millis <= millis) {
+          latest = termination.termination;
+        }
+      });
+      return latest || "Unknown";
+    },
     buildSignalIntervals(events, phaseColumns) {
       const phaseState = {};
       const intervalsByPhase = {};
@@ -481,6 +604,12 @@ export default {
         return "—";
       }
       return this.formatSeconds(seconds);
+    },
+    formatRatioOrDash(value) {
+      if (value === null || value === undefined) {
+        return "—";
+      }
+      return value.toFixed(2);
     },
   },
 };

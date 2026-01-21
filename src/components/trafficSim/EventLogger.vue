@@ -29,7 +29,8 @@ export default {
 .log-window {
   border: 1px solid #ccc;
   padding: 10px;
-  width: 600px;
+  width: 100%;
+  max-width: 520px;
   height: 200px;
   overflow-y: auto;
   position: relative;
@@ -38,7 +39,8 @@ export default {
   margin-right: auto;
 
   background-color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
 }
 
 .log-messages {

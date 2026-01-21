@@ -43,6 +43,10 @@
           <span class="metric-value">{{ formatFeet(metrics.maxElevationFeet) }}</span>
         </div>
         <div class="metric">
+          <span class="metric-label">Max Grade Ascended</span>
+          <span class="metric-value">{{ formatPercent(metrics.maxUphillGradePercent) }}</span>
+        </div>
+        <div class="metric">
           <span class="metric-label">Elapsed Time</span>
           <span class="metric-value">{{ formatDuration(metrics.totalTimeSeconds) }}</span>
         </div>
@@ -122,6 +126,12 @@ export default {
         return "—";
       }
       return `${value.toFixed(1)} mph`;
+    },
+    formatPercent(value) {
+      if (value === null || value === undefined) {
+        return "—";
+      }
+      return `${value.toFixed(1)}%`;
     },
     formatDuration(totalSeconds) {
       if (!totalSeconds) {

@@ -14,7 +14,7 @@
       <v-card class="ma-2 pa-4" elevation="2">
         <v-card-title class="section-title">Tool Directory</v-card-title>
         <v-card-text>
-          <v-list density="compact" class="tool-scroll-list">
+          <v-list density="compact">
             <template v-for="section in sections" :key="section.title">
               <v-list-subheader class="section-title">
                 {{ section.title }}
@@ -173,11 +173,6 @@ export default {
 }
 .section-description {
   margin-bottom: 16px;
-}
-.tool-scroll-list {
-  max-height: 70vh;
-  overflow-y: auto;
-  padding-right: 8px;
 }
 .tool-list-item :deep(.v-list-item-title) {
   font-weight: 500;

@@ -43,8 +43,8 @@
           <span class="metric-value">{{ formatFeet(metrics.maxElevationFeet) }}</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Max Grade Ascended</span>
-          <span class="metric-value">{{ formatPercent(metrics.maxUphillGradePercent) }}</span>
+          <span class="metric-label">Max Slope (Segment)</span>
+          <span class="metric-value">{{ formatPercent(metrics.maxSegmentGradePercent) }}</span>
         </div>
         <div class="metric">
           <span class="metric-label">Elapsed Time</span>

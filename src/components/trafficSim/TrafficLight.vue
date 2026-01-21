@@ -1,5 +1,8 @@
 <template>
-  <div class="traffic-light" :style="childStyle"></div>
+  <div class="traffic-light" :style="childStyle">
+    <div class="light red" :class="{ active: state === 'red' }"></div>
+    <div class="light green" :class="{ active: state === 'green' }"></div>
+  </div>
 </template>
 
 <script>
@@ -33,7 +36,6 @@ export default {
   computed: {
     childStyle() {
       return {
-        backgroundColor: this.state,
         transform: this.rotate,
         left: this.adjustL,
         position: this.position,
@@ -48,21 +50,40 @@ export default {
 .traffic-light {
   display: flex;
   flex-direction: column;
-  width: 50px;
-  height: 50px;
-  padding: 10px;
-  border-radius: 50%;
+  align-items: center;
+  justify-content: space-between;
+  width: 54px;
+  height: 120px;
+  padding: 10px 8px;
+  border-radius: 28px;
+  background-color: #1f2328;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.08),
+    0 6px 12px rgba(15, 23, 42, 0.2);
   z-index: 91;
 }
 
 .light {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #2f343b;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.08);
   z-index: 91;
 }
 
 .light.active {
-  background-color: inherit; /* This ensures the active light takes its background color from inline styles */
+  box-shadow:
+    0 0 12px rgba(255, 255, 255, 0.4),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.2);
   z-index: 91;
+}
+
+.light.red.active {
+  background-color: #e11d48;
+}
+
+.light.green.active {
+  background-color: #22c55e;
 }
 </style>

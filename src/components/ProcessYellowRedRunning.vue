@@ -134,6 +134,87 @@
     </div>
 
     <div v-if="tableRows.length" class="rlr-table-wrapper">
+      <h2 class="section-title">Time-of-Day / Calendar Heat Map</h2>
+      <div class="rlr-heatmap-controls">
+        <div class="heatmap-control-group">
+          <span class="heatmap-control-label">Event Type</span>
+          <div class="heatmap-button-group" role="group">
+            <button
+              type="button"
+              class="heatmap-toggle"
+              :class="{ active: heatmapState === 'Yellow' }"
+              @click="heatmapState = 'Yellow'"
+            >
+              Yellow Events
+            </button>
+            <button
+              type="button"
+              class="heatmap-toggle"
+              :class="{ active: heatmapState === 'Red' }"
+              @click="heatmapState = 'Red'"
+            >
+              Red Events
+            </button>
+          </div>
+        </div>
+        <div class="heatmap-control-group">
+          <v-select
+            label="Phase"
+            variant="outlined"
+            density="compact"
+            :items="heatmapPhaseItems"
+            v-model="selectedHeatmapPhase"
+          ></v-select>
+        </div>
+      </div>
+      <p class="heatmap-subtitle" v-if="heatmapConfig.rangeLabel">
+        {{ heatmapConfig.modeLabel }} • {{ heatmapState }} events •
+        {{ heatmapConfig.rangeLabel }}
+      </p>
+      <div v-if="heatmapConfig.rows.length" class="heatmap-grid">
+        <div class="heatmap-header">
+          <div class="heatmap-corner"></div>
+          <div
+            v-for="hour in heatmapConfig.hours"
+            :key="`hour-${hour}`"
+            class="heatmap-hour"
+          >
+            {{ hourLabel(hour) }}
+          </div>
+        </div>
+        <div
+          v-for="row in heatmapConfig.rows"
+          :key="row.key"
+          class="heatmap-row"
+        >
+          <div class="heatmap-row-label">{{ row.label }}</div>
+          <div
+            v-for="hour in heatmapConfig.hours"
+            :key="`${row.key}-${hour}`"
+            class="heatmap-cell"
+            :style="{ backgroundColor: heatmapCellColor(row.key, hour) }"
+            :title="heatmapCellTitle(row, hour)"
+          ></div>
+        </div>
+      </div>
+      <div v-else class="no-results">
+        No {{ heatmapState.toLowerCase() }} events found for the selected phase.
+      </div>
+      <div class="heatmap-legend" v-if="heatmapConfig.maxCount > 0">
+        <span class="heatmap-legend-label">Less</span>
+        <div class="heatmap-legend-bar">
+          <span
+            v-for="step in heatmapLegendSteps"
+            :key="`legend-${step}`"
+            class="heatmap-legend-swatch"
+            :style="{ backgroundColor: heatmapLegendColor(step) }"
+          ></span>
+        </div>
+        <span class="heatmap-legend-label">More</span>
+      </div>
+    </div>
+
+    <div v-if="tableRows.length" class="rlr-table-wrapper">
       <h2 class="section-title">All Yellow and Red Running Events Table</h2>
       <table class="rlr-table">
         <thead>
@@ -261,6 +342,8 @@ export default {
         direction: "asc",
       },
       detectorOffCounts: {},
+      heatmapState: "Yellow",
+      selectedHeatmapPhase: "All",
     };
   },
   computed: {
@@ -308,6 +391,98 @@ export default {
         this.summarySort.direction
       );
     },
+    heatmapPhaseItems() {
+      return [
+        { title: "All phases", value: "All" },
+        ...this.mappedPhases.map((phase) => ({
+          title: `Phase ${phase}`,
+          value: phase,
+        })),
+      ];
+    },
+    heatmapEvents() {
+      return this.tableRows.filter((row) => {
+        const matchesState = row.state === this.heatmapState;
+        const matchesPhase =
+          this.selectedHeatmapPhase === "All" ||
+          row.phase === this.selectedHeatmapPhase;
+        return matchesState && matchesPhase;
+      });
+    },
+    heatmapConfig() {
+      const events = this.heatmapEvents;
+      if (!events.length) {
+        return {
+          mode: null,
+          modeLabel: "",
+          rows: [],
+          hours: [],
+          counts: new Map(),
+          maxCount: 0,
+          rangeLabel: "",
+        };
+      }
+
+      const millisList = events.map((row) => row.millis);
+      const minMillis = Math.min(...millisList);
+      const maxMillis = Math.max(...millisList);
+      const start = DateTime.fromMillis(minMillis).startOf("day");
+      const end = DateTime.fromMillis(maxMillis).startOf("day");
+      const spanDays = Math.floor(end.diff(start, "days").days) + 1;
+      const mode = spanDays > 31 ? "dayOfMonth" : "date";
+      const modeLabel =
+        mode === "date" ? "Daily × Hourly" : "Day of Month × Hourly";
+      const counts = new Map();
+      let maxCount = 0;
+
+      events.forEach((row) => {
+        const dateTime = DateTime.fromMillis(row.millis);
+        const rowKey =
+          mode === "date" ? dateTime.toFormat("yyyy-LL-dd") : `${dateTime.day}`;
+        const hour = dateTime.hour;
+        const key = `${rowKey}-${hour}`;
+        const nextCount = (counts.get(key) || 0) + 1;
+        counts.set(key, nextCount);
+        if (nextCount > maxCount) {
+          maxCount = nextCount;
+        }
+      });
+
+      const rows = [];
+      if (mode === "date") {
+        let cursor = start;
+        while (cursor <= end) {
+          rows.push({
+            key: cursor.toFormat("yyyy-LL-dd"),
+            label: cursor.toFormat("ccc, MMM d"),
+          });
+          cursor = cursor.plus({ days: 1 });
+        }
+      } else {
+        const dayNumbers = Array.from(
+          new Set(events.map((row) => DateTime.fromMillis(row.millis).day))
+        ).sort((a, b) => a - b);
+        dayNumbers.forEach((day) => {
+          rows.push({ key: `${day}`, label: `Day ${day}` });
+        });
+      }
+
+      return {
+        mode,
+        modeLabel,
+        rows,
+        hours: Array.from({ length: 24 }, (_, index) => index),
+        counts,
+        maxCount,
+        rangeLabel: `${start.toFormat("MMM d, yyyy")} - ${end.toFormat(
+          "MMM d, yyyy"
+        )}`,
+      };
+    },
+    heatmapLegendSteps() {
+      const steps = 5;
+      return Array.from({ length: steps }, (_, index) => index);
+    },
   },
   methods: {
     processDetectorEvents() {
@@ -320,9 +495,16 @@ export default {
         this.hasProcessed = true;
         this.mappedPhases = phaseColumns;
         this.detectorOffCounts = {};
+        this.selectedHeatmapPhase = "All";
         return;
       }
       this.mappedPhases = phaseColumns;
+      if (
+        this.selectedHeatmapPhase !== "All" &&
+        !this.mappedPhases.includes(this.selectedHeatmapPhase)
+      ) {
+        this.selectedHeatmapPhase = "All";
+      }
 
       const phaseIntervals = this.buildSignalIntervals(events, phaseColumns);
       const terminationEvents = this.collectTerminationEvents(
@@ -354,6 +536,7 @@ export default {
           return {
             key: `${event.millis}-${event.parameterCode}`,
             timestamp: this.formatMillis(event.millis),
+            millis: event.millis,
             detector: event.parameterCode,
             phase,
             state: interval.state,
@@ -611,6 +794,46 @@ export default {
       }
       return value.toFixed(2);
     },
+    heatmapCount(rowKey, hour) {
+      return this.heatmapConfig.counts.get(`${rowKey}-${hour}`) || 0;
+    },
+    heatmapCellColor(rowKey, hour) {
+      const count = this.heatmapCount(rowKey, hour);
+      const maxCount = this.heatmapConfig.maxCount;
+      if (!count || maxCount === 0) {
+        return "#f1f3f5";
+      }
+      const intensity = count / maxCount;
+      const lightness = 95 - intensity * 45;
+      if (this.heatmapState === "Red") {
+        return `hsl(3, 78%, ${lightness}%)`;
+      }
+      return `hsl(45, 90%, ${lightness}%)`;
+    },
+    heatmapLegendColor(step) {
+      const maxStep = this.heatmapLegendSteps.length - 1;
+      if (maxStep <= 0) {
+        return "#f1f3f5";
+      }
+      const intensity = step / maxStep;
+      const lightness = 95 - intensity * 45;
+      if (this.heatmapState === "Red") {
+        return `hsl(3, 78%, ${lightness}%)`;
+      }
+      return `hsl(45, 90%, ${lightness}%)`;
+    },
+    hourLabel(hour) {
+      return hour % 2 === 0
+        ? DateTime.fromObject({ hour }).toFormat("ha")
+        : "";
+    },
+    heatmapCellTitle(row, hour) {
+      const count = this.heatmapCount(row.key, hour);
+      const hourLabel = DateTime.fromObject({ hour }).toFormat("h a");
+      return `${row.label} • ${hourLabel} — ${count} event${
+        count === 1 ? "" : "s"
+      }`;
+    },
   },
 };
 </script>
@@ -632,6 +855,111 @@ export default {
 
 .rlr-table-wrapper {
   overflow-x: auto;
+}
+
+.rlr-heatmap-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.heatmap-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.heatmap-control-label {
+  font-weight: 600;
+}
+
+.heatmap-button-group {
+  display: flex;
+  gap: 8px;
+}
+
+.heatmap-toggle {
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.heatmap-toggle.active {
+  border-color: #1a73e8;
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.heatmap-subtitle {
+  margin: 0 0 12px;
+  color: #4f4f4f;
+}
+
+.heatmap-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.heatmap-header,
+.heatmap-row {
+  display: grid;
+  grid-template-columns: 140px repeat(24, minmax(16px, 1fr));
+  gap: 4px;
+  align-items: center;
+}
+
+.heatmap-corner {
+  height: 20px;
+}
+
+.heatmap-hour {
+  font-size: 0.7rem;
+  text-align: center;
+  color: #555;
+}
+
+.heatmap-row-label {
+  font-size: 0.78rem;
+  color: #333;
+  padding-right: 4px;
+}
+
+.heatmap-cell {
+  width: 100%;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid #e0e0e0;
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.heatmap-legend-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 14px);
+  gap: 4px;
+}
+
+.heatmap-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid #e0e0e0;
+}
+
+.heatmap-legend-label {
+  font-size: 0.75rem;
+  color: #555;
 }
 
 .rlr-table {

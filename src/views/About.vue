@@ -11,35 +11,29 @@
     </p>
 
     <v-container>
-      <v-row>
-        <v-col
-          v-for="section in sections"
-          :key="section.title"
-          cols="12"
-          md="6"
-        >
-          <v-card class="ma-2 pa-4" elevation="2">
-            <v-card-title class="section-title">
-              {{ section.title }}
-            </v-card-title>
-            <v-card-text>
+      <v-card class="ma-2 pa-4" elevation="2">
+        <v-card-title class="section-title">Tool Directory</v-card-title>
+        <v-card-text>
+          <v-list density="compact" class="tool-scroll-list">
+            <template v-for="section in sections" :key="section.title">
+              <v-list-subheader class="section-title">
+                {{ section.title }}
+              </v-list-subheader>
               <p class="section-description">{{ section.description }}</p>
-              <v-list density="compact">
-                <v-list-item
-                  v-for="tool in section.tools"
-                  :key="tool.title"
-                  :to="tool.path"
-                  link
-                  class="tool-list-item"
-                >
-                  <v-list-item-title>{{ tool.title }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ tool.description }}</v-list-item-subtitle>
-                </v-list-item>
-              </v-list>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+              <v-list-item
+                v-for="tool in section.tools"
+                :key="tool.title"
+                :to="tool.path"
+                link
+                class="tool-list-item"
+              >
+                <v-list-item-title>{{ tool.title }}</v-list-item-title>
+                <v-list-item-subtitle>{{ tool.description }}</v-list-item-subtitle>
+              </v-list-item>
+            </template>
+          </v-list>
+        </v-card-text>
+      </v-card>
     </v-container>
   </div>
 </template>
@@ -173,6 +167,11 @@ export default {
 }
 .section-description {
   margin-bottom: 16px;
+}
+.tool-scroll-list {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 8px;
 }
 .tool-list-item :deep(.v-list-item-title) {
   font-weight: 500;

@@ -1,136 +1,76 @@
 <template>
-  <div class="simulator">
-    <v-card class="control-card" elevation="3">
-      <v-card-title>Signal Controls</v-card-title>
-      <v-card-text>
+  <div>
+    <div>
+      <EventLogger ref="eventLogger" />
+
+      <v-container>
         <v-row>
-          <v-col cols="12" md="6">
+          <v-col cols="12" md="6" sm="4">
             <h5>Minimum Green Time (Seconds)</h5>
+
             <v-number-input
               control-variant="stacked"
               :min="1"
               v-model.number="minGreen"
-            />
+            >
+            </v-number-input>
           </v-col>
 
-          <v-col cols="12" md="6">
+          <v-col cols="12" md="6" sm="4">
             <h5>Maximum Green Time (Seconds)</h5>
+
             <v-number-input
               control-variant="stacked"
               :min="1"
               v-model.number="maxGreen"
-            />
+            >
+            </v-number-input>
           </v-col>
         </v-row>
-        <v-row class="sim-actions" align="center">
-          <v-col cols="12" md="8">
-            <div class="button-row">
-              <v-btn
-                @click="addVehicleEB"
-                color="light-blue-lighten-3"
-                variant="elevated"
-              >
-                Add Vehicle EB
-              </v-btn>
-              <v-btn
-                @click="addVehicleSB"
-                color="brown-lighten-3"
-                variant="elevated"
-              >
-                Add Vehicle SB
-              </v-btn>
-              <v-btn
-                @click="toggleLights(true)"
-                color="light-green-lighten-3"
-                variant="elevated"
-              >
-                Toggle Lights
-              </v-btn>
-            </div>
+        <v-row>
+          <v-col cols="12" md="6" sm="4">
+            <h5>Phase Clock:</h5>
+            <h2>
+              <div v-if="isRunning">{{ phClock }}s</div>
+            </h2>
           </v-col>
-          <v-col cols="12" md="4">
-            <div class="chip-row">
-              <v-chip color="primary" variant="tonal">
-                Active Phase: {{ getActive("phaseDir") }}
-              </v-chip>
-              <v-chip color="secondary" variant="tonal">
-                Cycle {{ cycleCount }}
-              </v-chip>
-            </div>
+          <v-col cols="12" md="4" sm="4">
+            <h5>Cycle Clock:</h5>
+            <h2>
+              <div v-if="isRunning">{{ cycleClock }}s</div>
+            </h2>
           </v-col>
         </v-row>
-      </v-card-text>
-    </v-card>
-
-    <v-row class="stats-row" dense>
-      <v-col cols="12" md="4">
-        <v-card class="stat-card" elevation="2">
-          <v-card-title>Phase Clock</v-card-title>
-          <v-card-text class="stat-card__value">
-            <span v-if="isRunning">{{ phClock }}s</span>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="4">
-        <v-card class="stat-card" elevation="2">
-          <v-card-title>Cycle Clock</v-card-title>
-          <v-card-text class="stat-card__value">
-            <span v-if="isRunning">{{ cycleClock }}s</span>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="4">
-        <v-card class="stat-card" elevation="2">
-          <v-card-title>Extension Gap</v-card-title>
-          <v-card-text class="stat-card__value">
-            <span>{{ phGap }}s</span>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <v-row class="sim-layout" dense>
-      <v-col cols="12" md="7">
-        <v-card class="stage-card" elevation="3">
-          <v-card-title>Intersection View</v-card-title>
-          <v-card-text>
-            <div class="intersection-stage">
-              <div class="road road--horizontal"></div>
-              <div class="road road--vertical"></div>
-              <div class="crosswalk crosswalk--horizontal"></div>
-              <div class="crosswalk crosswalk--vertical"></div>
-              <div class="intersection">
-                <TrafficLight
-                  :adjustL="shift350px"
-                  :adjustT="shift270px"
-                  :position="posAbsolute"
-                  :state="sbLightState"
-                />
-                <VehicleLane :vehicles="vehiclesEB" />
-
-                <TrafficLight
-                  :rotate="rotate90"
-                  :adjustL="shift410px"
-                  :adjustT="shift211px"
-                  :position="posAbsolute"
-                  :state="ebLightState"
-                />
-                <VehicleLaneVert :vehicles="vehiclesSB" />
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="5">
-        <v-card class="log-card" elevation="3">
-          <v-card-title>Event History</v-card-title>
-          <v-card-text>
-            <EventLogger ref="eventLogger" />
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+      </v-container>
+    </div>
   </div>
+  <v-btn @click="addVehicleEB" color="light-blue-lighten-3"
+    >Add Vehicle EB</v-btn
+  >&nbsp;
+  <v-btn @click="addVehicleSB" color="brown-lighten-3">Add Vehicle SB</v-btn
+  >&nbsp;
+  <v-btn @click="toggleLights(true)" color="light-green-lighten-3"
+    >Toggle Lights</v-btn
+  >
+  <div class="intersection">
+    <TrafficLight
+      :adjustL="shift350px"
+      :adjustT="shift270px"
+      :position="posAbsolute"
+      :state="sbLightState"
+    />
+    <VehicleLane :vehicles="vehiclesEB" />
+
+    <TrafficLight
+      :rotate="rotate90"
+      :adjustL="shift410px"
+      :adjustT="shift211px"
+      :position="posAbsolute"
+      :state="ebLightState"
+    />
+    <VehicleLaneVert :vehicles="vehiclesSB" />
+  </div>
+  <div class="large-gap"></div>
 </template>
 
 <script>
@@ -386,105 +326,5 @@ export default {
 }
 .large-gap {
   margin-top: 500px; /* Adjust the value as needed */
-}
-
-.simulator {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.control-card,
-.stage-card,
-.log-card,
-.stat-card {
-  border-radius: 18px;
-}
-
-.sim-actions {
-  margin-top: 8px;
-}
-
-.button-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.chip-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.stats-row {
-  margin-top: 4px;
-}
-
-.stat-card__value {
-  font-size: 1.6rem;
-  font-weight: 600;
-}
-
-.intersection-stage {
-  position: relative;
-  background: linear-gradient(180deg, #f4f7fb 0%, #e7edf5 100%);
-  border-radius: 16px;
-  padding: 24px;
-  overflow: hidden;
-  min-height: 320px;
-}
-
-.road {
-  position: absolute;
-  background: #3b3f46;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.05);
-}
-
-.road--horizontal {
-  top: 50%;
-  left: -10%;
-  width: 120%;
-  height: 90px;
-  transform: translateY(-50%);
-  border-radius: 8px;
-}
-
-.road--vertical {
-  left: 50%;
-  top: -10%;
-  width: 90px;
-  height: 120%;
-  transform: translateX(-50%);
-  border-radius: 8px;
-}
-
-.crosswalk {
-  position: absolute;
-  background: repeating-linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.8),
-    rgba(255, 255, 255, 0.8) 10px,
-    transparent 10px,
-    transparent 18px
-  );
-  opacity: 0.6;
-}
-
-.crosswalk--horizontal {
-  width: 120px;
-  height: 16px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -60px);
-}
-
-.crosswalk--vertical {
-  width: 16px;
-  height: 120px;
-  top: 50%;
-  left: 50%;
-  transform: translate(45px, -50%);
 }
 </style>

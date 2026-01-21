@@ -17,6 +17,9 @@
         <br />
       </v-row>
       <br />
+      <div v-if="summaryLine" class="summary-line">
+        {{ summaryLine }}
+      </div>
       <GPXMapper
         :mapData="mapJSONData"
         :inputLocation="selectedPoint"
@@ -72,6 +75,7 @@ export default {
       gpxBoxXY: [],
       selectedPoint: [],
       dataTableItems: [],
+      summaryMetrics: null,
       headers: [
         { title: "Timestamp", align: "start", key: "Timestamp" },
         { title: "Latitude, Longitude", align: "end", key: "Coordinates" },
@@ -89,6 +93,15 @@ export default {
       snackbar: false,
       snackbarMessage: "",
     };
+  },
+  computed: {
+    summaryLine() {
+      if (!this.summaryMetrics) {
+        return "";
+      }
+
+      return `Summary: Duration ${this.summaryMetrics.duration} • Total Distance ${this.summaryMetrics.distance} • Avg Speed ${this.summaryMetrics.avgSpeed} • Points ${this.summaryMetrics.pointCount}`;
+    },
   },
   methods: {
     all() {
@@ -114,7 +127,48 @@ export default {
       if (this.inputData.length > 0) {
         console.log("this shouldn't run unless inputbox");
         this.dataTableItems = this.convertGPXToArray();
+        this.summaryMetrics = this.calculateSummaryMetrics();
       }
+    },
+    calculateSummaryMetrics() {
+      if (!this.gpxPointList || this.gpxPointList.length < 2) {
+        return null;
+      }
+
+      let totalDistanceFt = 0;
+      for (let i = 0; i < this.gpxPointList.length - 1; i++) {
+        const currentPoint = this.gpxPointList[i];
+        const nextPoint = this.gpxPointList[i + 1];
+        totalDistanceFt += this.earthDistance(
+          [currentPoint.lat, currentPoint.lon],
+          [nextPoint.lat, nextPoint.lon],
+          false
+        );
+      }
+
+      const startTime = this.gpxPointList[0].time?.getTime?.();
+      const endTime =
+        this.gpxPointList[this.gpxPointList.length - 1].time?.getTime?.();
+      const totalSeconds =
+        startTime && endTime ? (endTime - startTime) / 1000 : 0;
+
+      let distanceDisplay = `${totalDistanceFt.toFixed(2)} ft`;
+      if (totalDistanceFt >= 5280) {
+        distanceDisplay = `${(totalDistanceFt / 5280).toFixed(2)} miles`;
+      }
+
+      const avgSpeed =
+        totalSeconds > 0
+          ? `${((totalDistanceFt / totalSeconds) * 0.681818).toFixed(1)} MPH`
+          : "N/A";
+
+      return {
+        duration:
+          totalSeconds > 0 ? this.formatDuration(totalSeconds) : "N/A",
+        distance: distanceDisplay,
+        avgSpeed,
+        pointCount: this.gpxPointList.length,
+      };
     },
     convertGPXToArray() {
       const dataArray = [];
@@ -261,5 +315,11 @@ export default {
   justify-content: center; /* Center horizontally */
   align-items: center; /* Center vertically */
   height: 100%; /* Optional: Adjust this if you need to vertically center within a certain height */
+}
+
+.summary-line {
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-align: center;
 }
 </style>

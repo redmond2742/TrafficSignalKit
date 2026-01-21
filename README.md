@@ -4,7 +4,7 @@ Welcome to the Traffic Signal Kit! This project is a learning journey into Vue.j
 
 ## Purpose
 
-The purpose of the Traffic Signal Kit is to provide simple tools for traffic engineers while I learn Vue.js. By focusing on traffic signal-related tools, we aim to make the learning process engaging and relatable to practical scenarios.
+The purpose of the Traffic Signal Kit is to provide simple tools for traffic engineers. By focusing on simple and small traffic signal-related tools, we aim to make the learning process engaging and relatable to practical scenarios.
 
 ## Goals
 
@@ -15,7 +15,7 @@ The purpose of the Traffic Signal Kit is to provide simple tools for traffic eng
 
 ## Using Traffic Signal Kit
 
-Visit the website where this website is deployed: https://trafficsignalkit.onrender.com/
+Visit the website where this website is deployed: https://trafficsignalkit.com/
 
 ## Disclaimer
 

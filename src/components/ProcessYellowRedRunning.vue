@@ -16,6 +16,7 @@
     </div>
 
     <div v-if="tableRows.length" class="rlr-table-wrapper">
+      <h2 class="section-title">Phase Summary Table</h2>
       <table class="rlr-table">
         <thead>
           <tr>
@@ -47,30 +48,6 @@
               <button
                 class="sort-button"
                 type="button"
-                @click="setSummarySort('yellowMin')"
-              >
-                Yellow Min
-                <span class="sort-indicator">{{
-                  sortIndicator(summarySort, "yellowMin")
-                }}</span>
-              </button>
-            </th>
-            <th>
-              <button
-                class="sort-button"
-                type="button"
-                @click="setSummarySort('yellowMax')"
-              >
-                Yellow Max
-                <span class="sort-indicator">{{
-                  sortIndicator(summarySort, "yellowMax")
-                }}</span>
-              </button>
-            </th>
-            <th>
-              <button
-                class="sort-button"
-                type="button"
                 @click="setSummarySort('yellowAvg')"
               >
                 Yellow Avg
@@ -95,30 +72,6 @@
               <button
                 class="sort-button"
                 type="button"
-                @click="setSummarySort('redMin')"
-              >
-                Red Min
-                <span class="sort-indicator">{{
-                  sortIndicator(summarySort, "redMin")
-                }}</span>
-              </button>
-            </th>
-            <th>
-              <button
-                class="sort-button"
-                type="button"
-                @click="setSummarySort('redMax')"
-              >
-                Red Max
-                <span class="sort-indicator">{{
-                  sortIndicator(summarySort, "redMax")
-                }}</span>
-              </button>
-            </th>
-            <th>
-              <button
-                class="sort-button"
-                type="button"
                 @click="setSummarySort('redAvg')"
               >
                 Red Avg
@@ -133,12 +86,8 @@
           <tr v-for="row in sortedSummaryRows" :key="row.phase">
             <td>{{ row.phase }}</td>
             <td>{{ row.yellowCount }}</td>
-            <td>{{ formatSecondsOrDash(row.yellowMin) }}</td>
-            <td>{{ formatSecondsOrDash(row.yellowMax) }}</td>
             <td>{{ formatSecondsOrDash(row.yellowAvg) }}</td>
             <td>{{ row.redCount }}</td>
-            <td>{{ formatSecondsOrDash(row.redMin) }}</td>
-            <td>{{ formatSecondsOrDash(row.redMax) }}</td>
             <td>{{ formatSecondsOrDash(row.redAvg) }}</td>
           </tr>
         </tbody>
@@ -146,6 +95,7 @@
     </div>
 
     <div v-if="tableRows.length" class="rlr-table-wrapper">
+      <h2 class="section-title">All Yellow and Red Running Events Table</h2>
       <table class="rlr-table">
         <thead>
           <tr>
@@ -279,17 +229,15 @@ export default {
         return {
           phase,
           yellowCount: yellowStats.count,
-          yellowMin: yellowStats.min,
-          yellowMax: yellowStats.max,
           yellowAvg: yellowStats.avg,
           redCount: redStats.count,
-          redMin: redStats.min,
-          redMax: redStats.max,
           redAvg: redStats.avg,
         };
       });
 
-      return summary;
+      return summary.filter(
+        (row) => row.yellowCount > 0 || row.redCount > 0
+      );
     },
     sortedSummaryRows() {
       return this.sortRows(
@@ -506,7 +454,7 @@ export default {
             intervalsByPhase[phase].push({
               state: "Red",
               start: redStart,
-              end: event.millis,
+              end: event.millis + 6000,
             });
             state.redStart = null;
             state.redCandidate = null;

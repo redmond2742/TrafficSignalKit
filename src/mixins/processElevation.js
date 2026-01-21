@@ -52,6 +52,7 @@ export default {
       let downhillDistance = 0
       let uphillTime = 0
       let downhillTime = 0
+      let maxUphillGradePercent = null
       let minElevation = Number.POSITIVE_INFINITY
       let maxElevation = Number.NEGATIVE_INFINITY
       let previousElevation = null
@@ -77,6 +78,15 @@ export default {
               totalGain += deltaElevation
             } else if (deltaElevation < 0) {
               totalLoss += Math.abs(deltaElevation)
+            }
+            if (deltaElevation > 0 && segmentDistance > 0) {
+              const gradePercent = (deltaElevation / segmentDistance) * 100
+              if (
+                maxUphillGradePercent === null ||
+                gradePercent > maxUphillGradePercent
+              ) {
+                maxUphillGradePercent = gradePercent
+              }
             }
 
             if (pts[i].time && pts[i - 1].time) {
@@ -131,7 +141,8 @@ export default {
           averageUphillSpeedMph,
           averageDownhillSpeedMph,
           minElevationFeet: Number.isFinite(minElevation) ? minElevation : null,
-          maxElevationFeet: Number.isFinite(maxElevation) ? maxElevation : null
+          maxElevationFeet: Number.isFinite(maxElevation) ? maxElevation : null,
+          maxUphillGradePercent
         }
       }
     },

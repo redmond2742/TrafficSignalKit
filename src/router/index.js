@@ -22,6 +22,7 @@ import MessageSignDesigner from '../views/MessageSignDesigner'
 import Blog from '../views/Blog'
 import StuckDetectors from '../views/StuckDetectors'
 import SignalOffsetCalculator from '../views/SignalOffsetCalculator'
+import YellowRedRunning from '../views/YellowRedRunning'
 
 
 
@@ -111,6 +112,11 @@ const routes = [
         path: '/delay-estimator',
         name: 'delayEstimator',
         component: DelayEstimator,
+    },
+    {
+        path: '/yellow-red-running',
+        name: 'yellowRedRunning',
+        component: YellowRedRunning,
     },
     {
         path: '/stuck-detectors',

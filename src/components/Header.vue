@@ -163,6 +163,10 @@ export default {
       tools: [
         { title: "Split History", path: "/split-history" },
         { title: "Red Light Runners", path: "/detectorRLR" },
+        {
+          title: "Yellow & Red Light Running Tool",
+          path: "/yellow-red-running",
+        },
         { title: "Timeseries Plot All Enumerations", path: "/preemption-plotter" },
         { title: "Detection Channel Plotter", path: "/detection-plotter" },
         { title: "Delay & Count Estimator", path: "/delay-estimator" },
@@ -188,6 +192,10 @@ export default {
       TSdataTools: [
         { title: "Split History", path: "/split-history" },
         { title: "Red Light Runners", path: "/detectorRLR" },
+        {
+          title: "Yellow & Red Light Running Tool",
+          path: "/yellow-red-running",
+        },
         { title: "Timeseries Plot All Enumerations", path: "/preemption-plotter" },
         { title: "Detection Channel Plotter", path: "/detection-plotter" },
         { title: "Delay & Count Estimator", path: "/delay-estimator" },

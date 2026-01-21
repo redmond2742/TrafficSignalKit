@@ -119,6 +119,12 @@ export const routeMeta = {
       "Analyze yellow/red light running events from controller and detection data.",
     path: "/detectorRLR",
   },
+  yellowRedRunning: {
+    title: "Yellow & Red Light Running Tool | Detector Off Events",
+    description:
+      "Identify detector-off events that occur during yellow or red intervals for mapped phases.",
+    path: "/yellow-red-running",
+  },
   preemptionPlotter: {
     title: "Preemption Timeseries Plotter | Enumeration Diagnostics",
     description:

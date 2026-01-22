@@ -490,6 +490,9 @@ export default {
           const yellowStats = this.computeStats(yellowRows);
           const redStats = this.computeStats(redRows);
           const detectorOffCount = signal.detectorOffCounts[phase] || 0;
+          if (detectorOffCount === 0) {
+            return;
+          }
           const yellowPerDetector =
             detectorOffCount > 0 ? yellowStats.count / detectorOffCount : null;
           const redPerDetector =

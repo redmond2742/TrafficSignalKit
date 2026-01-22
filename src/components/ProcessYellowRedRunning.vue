@@ -1,25 +1,92 @@
 <template>
   <div>
-    <div class="rlr-inputs">
-      <div class="grow-wrap">
-        <InputBox v-model="inputData" :defaultText="dataDefaultText" />
+    <div
+      v-for="(signal, index) in signals"
+      :key="signal.id"
+      class="signal-group"
+    >
+      <div class="signal-header">
+        <div>
+          <h2 class="section-title">
+            Signal {{ index + 1 }}
+          </h2>
+          <p class="signal-subtitle">
+            Enter a signal name and number, then paste the data sets for this
+            signal.
+          </p>
+        </div>
+        <div class="signal-header-actions" v-if="signals.length > 1">
+          <v-btn
+            variant="outlined"
+            color="error"
+            @click="removeSignal(signal.id)"
+          >
+            Remove Signal
+          </v-btn>
+        </div>
       </div>
-      <div class="grow-wrap">
-        <InputBox
-          v-model="detectorMapInput"
-          :defaultText="detectorDefaultText"
-        />
+      <div class="signal-meta">
+        <v-text-field
+          v-model="signal.name"
+          label="Signal Name"
+          variant="outlined"
+          density="compact"
+          hide-details
+        ></v-text-field>
+        <v-text-field
+          v-model="signal.number"
+          label="Signal Number"
+          variant="outlined"
+          density="compact"
+          hide-details
+        ></v-text-field>
+      </div>
+      <div class="rlr-inputs">
+        <div class="grow-wrap">
+          <InputBox v-model="signal.inputData" :defaultText="dataDefaultText" />
+        </div>
+        <div class="grow-wrap">
+          <InputBox
+            v-model="signal.detectorMapInput"
+            :defaultText="detectorDefaultText"
+          />
+        </div>
       </div>
     </div>
     <div class="actions">
       <v-btn color="primary" @click="processDetectorEvents">Process</v-btn>
+      <v-btn variant="outlined" @click="addSignal">Add Another Signal</v-btn>
     </div>
 
-    <div v-if="tableRows.length" class="rlr-table-wrapper">
+    <div v-if="sortedSummaryRows.length" class="rlr-table-wrapper">
       <h2 class="section-title">Phase Summary Table</h2>
       <table class="rlr-table">
         <thead>
           <tr>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('signalNumber')"
+              >
+                Signal Number
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "signalNumber")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('signalName')"
+              >
+                Signal Name
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "signalName")
+                }}</span>
+              </button>
+            </th>
             <th>
               <button
                 class="sort-button"
@@ -119,7 +186,12 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in sortedSummaryRows" :key="row.phase">
+          <tr
+            v-for="row in sortedSummaryRows"
+            :key="`${row.signalId}-${row.phase}`"
+          >
+            <td>{{ row.signalNumber || "—" }}</td>
+            <td>{{ row.signalName || "—" }}</td>
             <td>{{ row.phase }}</td>
             <td>{{ row.yellowCount }}</td>
             <td>{{ formatSecondsOrDash(row.yellowAvg) }}</td>
@@ -156,6 +228,15 @@
               Red Events
             </button>
           </div>
+        </div>
+        <div class="heatmap-control-group">
+          <v-select
+            label="Signal"
+            variant="outlined"
+            density="compact"
+            :items="heatmapSignalItems"
+            v-model="selectedHeatmapSignal"
+          ></v-select>
         </div>
         <div class="heatmap-control-group">
           <v-select
@@ -227,6 +308,30 @@
       <table class="rlr-table">
         <thead>
           <tr>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setDetailSort('signalNumber')"
+              >
+                Signal Number
+                <span class="sort-indicator">{{
+                  sortIndicator(detailSort, "signalNumber")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setDetailSort('signalName')"
+              >
+                Signal Name
+                <span class="sort-indicator">{{
+                  sortIndicator(detailSort, "signalName")
+                }}</span>
+              </button>
+            </th>
             <th>
               <button
                 class="sort-button"
@@ -303,6 +408,8 @@
         </thead>
         <tbody>
           <tr v-for="row in sortedTableRows" :key="row.key">
+            <td>{{ row.signalNumber || "—" }}</td>
+            <td>{{ row.signalName || "—" }}</td>
             <td>{{ row.timestamp }}</td>
             <td>{{ row.detector }}</td>
             <td>{{ row.phase }}</td>
@@ -333,24 +440,32 @@ export default {
   },
   data() {
     return {
-      inputData: "",
-      detectorMapInput: "",
+      signals: [
+        {
+          id: 1,
+          name: "",
+          number: "",
+          inputData: "",
+          detectorMapInput: "",
+        },
+      ],
+      nextSignalId: 2,
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, channel)",
       detectorDefaultText: "Det 1\t6\nDet 2\t2\nDet 3\t0\nDet 4\t0\nDet 5\t0",
       tableRows: [],
       hasProcessed: false,
-      mappedPhases: [],
+      signalResults: [],
       detailSort: {
         key: "timestamp",
         direction: "asc",
       },
       summarySort: {
-        key: "phase",
+        key: "signalNumber",
         direction: "asc",
       },
-      detectorOffCounts: {},
       heatmapState: "Yellow",
+      selectedHeatmapSignal: "All",
       selectedHeatmapPhase: "All",
     };
   },
@@ -363,34 +478,40 @@ export default {
       );
     },
     summaryRows() {
-      const summary = this.mappedPhases.map((phase) => {
-        const phaseRows = this.tableRows.filter((row) => row.phase === phase);
-        const yellowRows = phaseRows.filter((row) => row.state === "Yellow");
-        const redRows = phaseRows.filter((row) => row.state === "Red");
-        const yellowStats = this.computeStats(yellowRows);
-        const redStats = this.computeStats(redRows);
-        const detectorOffCount = this.detectorOffCounts[phase] || 0;
-        const yellowPerDetector =
-          detectorOffCount > 0 ? yellowStats.count / detectorOffCount : null;
-        const redPerDetector =
-          detectorOffCount > 0 ? redStats.count / detectorOffCount : null;
+      const summary = [];
 
-        return {
-          phase,
-          yellowCount: yellowStats.count,
-          yellowAvg: yellowStats.avg,
-          redCount: redStats.count,
-          redAvg: redStats.avg,
-          detectorOffCount,
-          yellowPerDetector,
-          redPerDetector,
-        };
+      this.signalResults.forEach((signal) => {
+        signal.mappedPhases.forEach((phase) => {
+          const phaseRows = this.tableRows.filter(
+            (row) => row.signalId === signal.id && row.phase === phase
+          );
+          const yellowRows = phaseRows.filter((row) => row.state === "Yellow");
+          const redRows = phaseRows.filter((row) => row.state === "Red");
+          const yellowStats = this.computeStats(yellowRows);
+          const redStats = this.computeStats(redRows);
+          const detectorOffCount = signal.detectorOffCounts[phase] || 0;
+          const yellowPerDetector =
+            detectorOffCount > 0 ? yellowStats.count / detectorOffCount : null;
+          const redPerDetector =
+            detectorOffCount > 0 ? redStats.count / detectorOffCount : null;
+
+          summary.push({
+            signalId: signal.id,
+            signalName: signal.name,
+            signalNumber: signal.number,
+            phase,
+            yellowCount: yellowStats.count,
+            yellowAvg: yellowStats.avg,
+            redCount: redStats.count,
+            redAvg: redStats.avg,
+            detectorOffCount,
+            yellowPerDetector,
+            redPerDetector,
+          });
+        });
       });
 
-      return summary.filter(
-        (row) =>
-          row.yellowCount > 0 || row.redCount > 0 || row.detectorOffCount > 0
-      );
+      return summary;
     },
     sortedSummaryRows() {
       return this.sortRows(
@@ -400,11 +521,35 @@ export default {
       );
     },
     heatmapPhaseItems() {
+      const phases = new Set();
+      if (this.selectedHeatmapSignal === "All") {
+        this.signalResults.forEach((signal) => {
+          signal.mappedPhases.forEach((phase) => phases.add(phase));
+        });
+      } else {
+        const signal = this.signalResults.find(
+          (entry) => entry.id === this.selectedHeatmapSignal
+        );
+        if (signal) {
+          signal.mappedPhases.forEach((phase) => phases.add(phase));
+        }
+      }
       return [
         { title: "All phases", value: "All" },
-        ...this.mappedPhases.map((phase) => ({
-          title: `Phase ${phase}`,
-          value: phase,
+        ...Array.from(phases)
+          .sort((a, b) => a - b)
+          .map((phase) => ({
+            title: `Phase ${phase}`,
+            value: phase,
+          })),
+      ];
+    },
+    heatmapSignalItems() {
+      return [
+        { title: "All signals", value: "All" },
+        ...this.signalResults.map((signal) => ({
+          title: this.signalLabel(signal),
+          value: signal.id,
         })),
       ];
     },
@@ -414,7 +559,10 @@ export default {
         const matchesPhase =
           this.selectedHeatmapPhase === "All" ||
           row.phase === this.selectedHeatmapPhase;
-        return matchesState && matchesPhase;
+        const matchesSignal =
+          this.selectedHeatmapSignal === "All" ||
+          row.signalId === this.selectedHeatmapSignal;
+        return matchesState && matchesPhase && matchesSignal;
       });
     },
     heatmapConfig() {
@@ -581,68 +729,117 @@ export default {
   },
   methods: {
     processDetectorEvents() {
-      const { detectorToPhase, phaseColumns } = this.parseDetectorMapping(
-        this.detectorMapInput
-      );
-      const events = this.parseHighResData(this.inputData);
-      if (!events.length || !phaseColumns.length) {
-        this.tableRows = [];
-        this.hasProcessed = true;
-        this.mappedPhases = phaseColumns;
-        this.detectorOffCounts = {};
-        this.selectedHeatmapPhase = "All";
-        return;
+      const rows = [];
+      const results = this.signals.map((signal) => {
+        const { detectorToPhase, phaseColumns } = this.parseDetectorMapping(
+          signal.detectorMapInput
+        );
+        const events = this.parseHighResData(signal.inputData);
+        const signalResult = {
+          id: signal.id,
+          name: signal.name?.trim() || "",
+          number: signal.number?.trim() || "",
+          mappedPhases: phaseColumns,
+          detectorOffCounts: {},
+        };
+
+        if (!events.length || !phaseColumns.length) {
+          return signalResult;
+        }
+
+        const phaseIntervals = this.buildSignalIntervals(
+          events,
+          phaseColumns
+        );
+        const terminationEvents = this.collectTerminationEvents(
+          events,
+          phaseColumns
+        );
+        signalResult.detectorOffCounts = this.countDetectorOffEvents(
+          events,
+          detectorToPhase
+        );
+
+        const signalRows = events
+          .filter(
+            (event) =>
+              event.eventCode === 81 && detectorToPhase[event.parameterCode]
+          )
+          .map((event) => {
+            const phase = detectorToPhase[event.parameterCode];
+            const interval = this.findInterval(
+              phaseIntervals[phase] || [],
+              event.millis
+            );
+            if (!interval) {
+              return null;
+            }
+            const termination = this.findLatestTermination(
+              terminationEvents[phase] || [],
+              event.millis
+            );
+            return {
+              key: `${signal.id}-${event.millis}-${event.parameterCode}`,
+              signalId: signal.id,
+              signalName: signalResult.name,
+              signalNumber: signalResult.number,
+              timestamp: this.formatMillis(event.millis),
+              millis: event.millis,
+              detector: event.parameterCode,
+              phase,
+              state: interval.state,
+              elapsedSeconds: (event.millis - interval.start) / 1000,
+              termination,
+            };
+          })
+          .filter((row) => row !== null);
+
+        rows.push(...signalRows);
+        return signalResult;
+      });
+
+      this.signalResults = results;
+      this.tableRows = rows;
+      this.hasProcessed = true;
+
+      if (
+        this.selectedHeatmapSignal !== "All" &&
+        !this.signalResults.some(
+          (signal) => signal.id === this.selectedHeatmapSignal
+        )
+      ) {
+        this.selectedHeatmapSignal = "All";
       }
-      this.mappedPhases = phaseColumns;
+
       if (
         this.selectedHeatmapPhase !== "All" &&
-        !this.mappedPhases.includes(this.selectedHeatmapPhase)
+        !this.heatmapPhaseItems.some(
+          (phase) => phase.value === this.selectedHeatmapPhase
+        )
       ) {
         this.selectedHeatmapPhase = "All";
       }
-
-      const phaseIntervals = this.buildSignalIntervals(events, phaseColumns);
-      const terminationEvents = this.collectTerminationEvents(
-        events,
-        phaseColumns
-      );
-      this.detectorOffCounts = this.countDetectorOffEvents(
-        events,
-        detectorToPhase
-      );
-      const rows = events
-        .filter(
-          (event) =>
-            event.eventCode === 81 && detectorToPhase[event.parameterCode]
-        )
-        .map((event) => {
-          const phase = detectorToPhase[event.parameterCode];
-          const interval = this.findInterval(
-            phaseIntervals[phase] || [],
-            event.millis
-          );
-          if (!interval) {
-            return null;
-          }
-          const termination = this.findLatestTermination(
-            terminationEvents[phase] || [],
-            event.millis
-          );
-          return {
-            key: `${event.millis}-${event.parameterCode}`,
-            timestamp: this.formatMillis(event.millis),
-            millis: event.millis,
-            detector: event.parameterCode,
-            phase,
-            state: interval.state,
-            elapsedSeconds: (event.millis - interval.start) / 1000,
-            termination,
-          };
-        })
-        .filter((row) => row !== null);
-
-      this.tableRows = rows;
-      this.hasProcessed = true;
+    },
+    addSignal() {
+      this.signals.push({
+        id: this.nextSignalId,
+        name: "",
+        number: "",
+        inputData: "",
+        detectorMapInput: "",
+      });
+      this.nextSignalId += 1;
+    },
+    removeSignal(signalId) {
+      this.signals = this.signals.filter((signal) => signal.id !== signalId);
+      if (this.signals.length === 0) {
+        this.addSignal();
+      }
+    },
+    signalLabel(signal) {
+      const number = signal.number || "Unnamed";
+      const name = signal.name ? ` — ${signal.name}` : "";
+      return `Signal ${number}${name}`;
     },
     computeStats(rows) {
       if (!rows.length) {
@@ -932,6 +1129,39 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
+}
+
+.signal-group {
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #fff;
+}
+
+.signal-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.signal-subtitle {
+  margin: 4px 0 0;
+  color: #5f6368;
+}
+
+.signal-header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.signal-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .actions {

@@ -82,30 +82,6 @@
               <span v-else>-</span>
             </td>
           </tr>
-          <tr>
-            <td>Pedestrian Avg Delay</td>
-            <td
-              v-for="phase in phaseColumns"
-              :key="`summary-ped-average-${phase}`"
-            >
-              <span v-if="averagePedDelayByPhase[phase] !== null">
-                {{ formatDelay(averagePedDelayByPhase[phase]) }}
-              </span>
-              <span v-else>-</span>
-            </td>
-          </tr>
-          <tr>
-            <td>Pedestrian Button Presses</td>
-            <td
-              v-for="phase in phaseColumns"
-              :key="`summary-ped-presses-${phase}`"
-            >
-              <span v-if="pedPressCountsByPhase[phase] !== null">
-                {{ pedPressCountsByPhase[phase] }}
-              </span>
-              <span v-else>-</span>
-            </td>
-          </tr>
         </tbody>
       </table>
 
@@ -209,7 +185,6 @@ export default {
       phaseColumns: [],
       tableRows: [],
       pedTableRows: [],
-      pedPressCountsByPhase: {},
       vehicleCountsByPhase: {},
       vehicleCountMode: "off",
       useExperimentalEstimate: false,
@@ -241,22 +216,6 @@ export default {
       });
       return averages;
     },
-    averagePedDelayByPhase() {
-      const averages = {};
-      this.phaseColumns.forEach((phase) => {
-        const delays = this.pedTableRows
-          .map((row) => row.phases[phase])
-          .filter((cell) => cell && !cell.skipped && cell.delaySeconds !== null)
-          .map((cell) => cell.delaySeconds);
-        if (!delays.length) {
-          averages[phase] = null;
-          return;
-        }
-        const sum = delays.reduce((total, value) => total + value, 0);
-        averages[phase] = sum / delays.length;
-      });
-      return averages;
-    },
     hasPedestrianData() {
       return this.pedTableRows.some((row) =>
         Object.values(row.phases).some((cell) => cell)
@@ -273,7 +232,6 @@ export default {
       if (!events.length || !phaseColumns.length) {
         this.tableRows = [];
         this.pedTableRows = [];
-        this.pedPressCountsByPhase = {};
         this.vehicleCountsByPhase = {};
         return;
       }
@@ -283,7 +241,6 @@ export default {
       const pedRows = [];
       const lastMillis = events[events.length - 1].millis;
 
-      const pedPressCountsByPhase = {};
       const vehicleCountsByPhase = {};
 
       const lastCycle = cycles[cycles.length - 1];
@@ -338,16 +295,6 @@ export default {
             filteredCycleEvents
           );
 
-          if (pedPressCountsByPhase[phase] === undefined) {
-            pedPressCountsByPhase[phase] = detectorsForPhase.length
-              ? events.filter(
-                  (event) =>
-                    event.eventCode === 90 &&
-                    detectorsForPhase.includes(event.parameterCode)
-                ).length
-              : null;
-          }
-
           if (vehicleCountsByPhase[phase] === undefined) {
             const vehicleCountEventCode =
               this.vehicleCountMode === "on" ? 82 : 81;
@@ -369,7 +316,6 @@ export default {
 
       this.tableRows = vehicleRows;
       this.pedTableRows = pedRows;
-      this.pedPressCountsByPhase = pedPressCountsByPhase;
       this.vehicleCountsByPhase = vehicleCountsByPhase;
     },
     parseDetectorMapping(text) {

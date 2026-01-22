@@ -489,11 +489,15 @@ export default {
         }
       } else {
         mode = "time";
+        const totalMinutes = (maxMillis - minMillis) / (1000 * 60);
         let binMinutes = 60;
-        if (spanHours <= 1) {
+        if (spanHours <= 2) {
           binMinutes = 5;
-        } else if (spanHours <= 2) {
-          binMinutes = 10;
+        } else if (spanHours <= 5) {
+          const targetBins = 24;
+          const rawMinutes = Math.ceil(totalMinutes / targetBins);
+          const rounded = Math.ceil(rawMinutes / 5) * 5;
+          binMinutes = Math.max(10, rounded);
         } else if (spanHours <= 6) {
           binMinutes = 15;
         } else if (spanHours <= 12) {
@@ -551,6 +555,15 @@ export default {
         });
       }
 
+      const rangeLabel =
+        mode === "time"
+          ? `${DateTime.fromMillis(minMillis).toFormat(
+              "MMM d, yyyy h:mm a"
+            )} - ${DateTime.fromMillis(maxMillis).toFormat(
+              "MMM d, yyyy h:mm a"
+            )}`
+          : `${start.toFormat("MMM d, yyyy")} - ${end.toFormat("MMM d, yyyy")}`;
+
       return {
         mode,
         modeLabel,
@@ -558,9 +571,7 @@ export default {
         columns,
         counts,
         maxCount,
-        rangeLabel: `${start.toFormat("MMM d, yyyy")} - ${end.toFormat(
-          "MMM d, yyyy"
-        )}`,
+        rangeLabel,
       };
     },
     heatmapLegendSteps() {

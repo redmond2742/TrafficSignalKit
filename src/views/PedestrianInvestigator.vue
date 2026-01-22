@@ -53,7 +53,6 @@
             <th>Avg Walk Time (s)</th>
             <th>Avg Walk Change Interval (s)</th>
             <th>Avg Call-to-Walk Delay (s)</th>
-            <th>Risk Score</th>
             <th>Estimated Crossing Distance (ft)</th>
             <th>Estimated Lanes</th>
           </tr>
@@ -68,7 +67,6 @@
             <td>{{ formatSeconds(row.averageWalkTime) }}</td>
             <td>{{ formatSeconds(row.averageChangeInterval) }}</td>
             <td>{{ formatSeconds(row.averageCallToWalkDelay) }}</td>
-            <td>{{ formatRisk(row.riskScore) }}</td>
             <td>{{ formatDistance(row.estimatedDistance) }}</td>
             <td>{{ formatLanes(row.estimatedLanes) }}</td>
           </tr>
@@ -78,8 +76,8 @@
         Walk and change interval averages use the controller event timestamps
         (0.1-second resolution). Estimated distance uses 3.5 ft/sec multiplied
         by the average walk change interval. Estimated lanes use a 12-foot lane
-        width. Risk score multiplies the average walk change interval, pedestrian
-        calls per hour, and average call-to-walk delay.
+        width. Full-service cycles count unique walk cycles in which every
+        phase with a pedestrian call is served without repeats.
       </p>
     </div>
   </div>
@@ -315,11 +313,9 @@ export default {
             durationHours && durationHours > 0
               ? stats.callCount / durationHours
               : null;
-          const riskScore = this.calculateRiskScore({
-            averageChangeInterval,
-            averageCallToWalkDelay,
-            pedCallsPerHour,
-          });
+          const fullServiceCallPercent = stats.callCount
+            ? (stats.fullServiceCallCount / stats.callCount) * 100
+            : null;
           const estimatedDistance = averageChangeInterval
             ? averageChangeInterval * FEET_PER_SECOND
             : null;
@@ -336,7 +332,6 @@ export default {
             averageWalkTime,
             averageChangeInterval,
             averageCallToWalkDelay,
-            riskScore,
             estimatedDistance,
             estimatedLanes,
           };
@@ -419,24 +414,11 @@ export default {
       }
       return value.toFixed(2);
     },
-    formatRisk(value) {
+    formatPercent(value) {
       if (value === null || value === undefined) {
         return "-";
       }
-      return value.toFixed(2);
-    },
-    calculateRiskScore({ averageChangeInterval, averageCallToWalkDelay, pedCallsPerHour }) {
-      if (
-        averageChangeInterval === null ||
-        averageChangeInterval === undefined ||
-        averageCallToWalkDelay === null ||
-        averageCallToWalkDelay === undefined ||
-        pedCallsPerHour === null ||
-        pedCallsPerHour === undefined
-      ) {
-        return null;
-      }
-      return averageChangeInterval * pedCallsPerHour * averageCallToWalkDelay;
+      return value.toFixed(1);
     },
   },
 };

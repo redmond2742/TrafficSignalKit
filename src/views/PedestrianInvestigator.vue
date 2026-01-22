@@ -24,6 +24,22 @@
       </span>
     </div>
 
+    <v-card v-if="metadataRows.length" class="metadata-card" variant="outlined">
+      <v-card-title>Data Log Details</v-card-title>
+      <v-card-text>
+        <dl class="metadata-grid">
+          <div
+            v-for="detail in metadataRows"
+            :key="`meta-${detail.label}`"
+            class="metadata-item"
+          >
+            <dt>{{ detail.label }}</dt>
+            <dd>{{ detail.value }}</dd>
+          </div>
+        </dl>
+      </v-card-text>
+    </v-card>
+
     <div v-if="summaryRows.length" class="summary-wrapper">
       <h2>Walk Phase Summary</h2>
       <table class="summary-table">
@@ -31,25 +47,30 @@
           <tr>
             <th>Phase</th>
             <th>Walk Indications</th>
+            <th>Ped Phase Uses</th>
             <th>Avg Walk Time (s)</th>
             <th>Avg Walk Change Interval (s)</th>
             <th>Estimated Crossing Distance (ft)</th>
+            <th>Estimated Lanes</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="row in summaryRows" :key="`summary-${row.phase}`">
             <td>{{ row.phase }}</td>
             <td>{{ row.walkCount }}</td>
+            <td>{{ row.pedEventCount }}</td>
             <td>{{ formatSeconds(row.averageWalkTime) }}</td>
             <td>{{ formatSeconds(row.averageChangeInterval) }}</td>
             <td>{{ formatDistance(row.estimatedDistance) }}</td>
+            <td>{{ formatLanes(row.estimatedLanes) }}</td>
           </tr>
         </tbody>
       </table>
       <p class="note-text">
         Walk and change interval averages use the controller event timestamps
         (0.1-second resolution). Estimated distance uses 3.5 ft/sec multiplied
-        by the average walk change interval.
+        by the average walk change interval. Estimated lanes use a 12-foot lane
+        width.
       </p>
     </div>
   </div>
@@ -63,6 +84,8 @@ const WALK_EVENT = 21;
 const CHANGE_START_EVENT = 22;
 const SOLID_DONT_WALK_EVENT = 23;
 const FEET_PER_SECOND = 3.5;
+const LANE_WIDTH_FEET = 12;
+const HEADER_SCAN_LIMIT = 12;
 
 export default {
   components: {
@@ -75,12 +98,14 @@ export default {
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, phase)",
       invalidRows: 0,
+      metadataRows: [],
       summaryRows: [],
     };
   },
   methods: {
     processData() {
       const lines = this.inputData.split(/\r?\n/).filter(Boolean);
+      const metadataRows = this.extractMetadata(lines);
       const events = [];
       let invalidRows = 0;
 
@@ -136,6 +161,7 @@ export default {
         if (!phaseStats[event.phase]) {
           phaseStats[event.phase] = {
             walkCount: 0,
+            pedEventCount: 0,
             walkDurations: [],
             changeIntervals: [],
             lastWalkStart: null,
@@ -147,6 +173,7 @@ export default {
 
         if (event.enumeration === WALK_EVENT) {
           stats.walkCount += 1;
+          stats.pedEventCount += 1;
           stats.lastWalkStart = event.timestampMs;
         }
 
@@ -172,6 +199,7 @@ export default {
             stats.lastChangeStart = null;
           }
         }
+
       });
 
       const summaryRows = Object.keys(phaseStats)
@@ -184,19 +212,66 @@ export default {
           const estimatedDistance = averageChangeInterval
             ? averageChangeInterval * FEET_PER_SECOND
             : null;
+          const estimatedLanes = estimatedDistance
+            ? Math.max(1, Math.round(estimatedDistance / LANE_WIDTH_FEET))
+            : null;
 
           return {
             phase: Number(phase),
             walkCount: stats.walkCount,
+            pedEventCount: stats.pedEventCount,
             averageWalkTime,
             averageChangeInterval,
             estimatedDistance,
+            estimatedLanes,
           };
         })
         .sort((a, b) => a.phase - b.phase);
 
       this.invalidRows = invalidRows;
+      this.metadataRows = metadataRows;
       this.summaryRows = summaryRows;
+    },
+    extractMetadata(lines) {
+      const details = [];
+      const scanLines = lines.slice(0, HEADER_SCAN_LIMIT);
+      scanLines.forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return;
+        }
+        const parts = trimmed.split(",").map((part) => part.trim());
+        if (parts.length < 2) {
+          return;
+        }
+        const label = parts[0];
+        const value = parts.slice(1).join(", ").trim();
+        if (!value) {
+          return;
+        }
+        const normalized = label.toLowerCase();
+        if (normalized.includes("intersection") && normalized.includes("number")) {
+          details.push({
+            label: "Intersection Number",
+            value,
+          });
+          return;
+        }
+        if (normalized.includes("controller data log beginning")) {
+          details.push({
+            label: "Controller Data Log Beginning",
+            value,
+          });
+          return;
+        }
+        if (normalized.includes("controller data log ending")) {
+          details.push({
+            label: "Controller Data Log Ending",
+            value,
+          });
+        }
+      });
+      return details;
     },
     averageSeconds(values) {
       if (!values.length) {
@@ -216,6 +291,12 @@ export default {
         return "-";
       }
       return value.toFixed(1);
+    },
+    formatLanes(value) {
+      if (value === null || value === undefined) {
+        return "-";
+      }
+      return value.toString();
     },
   },
 };
@@ -238,6 +319,31 @@ export default {
 .warning-text {
   color: #b00020;
   font-size: 0.9rem;
+}
+
+.metadata-card {
+  margin-top: 16px;
+}
+
+.metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+
+.metadata-item {
+  margin: 0;
+}
+
+.metadata-item dt {
+  font-weight: 600;
+  color: #222;
+}
+
+.metadata-item dd {
+  margin: 4px 0 0;
+  color: #444;
 }
 
 .summary-wrapper {

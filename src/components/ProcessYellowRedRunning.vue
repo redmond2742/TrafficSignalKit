@@ -259,7 +259,7 @@
             v-model="selectedHeatmapSignal"
           ></v-select>
         </div>
-        <div class="heatmap-control-group">
+        <div class="heatmap-control-group" v-if="!heatmapPhaseRowMode">
           <v-select
             label="Phase"
             variant="outlined"
@@ -309,7 +309,8 @@
           </div>
         </div>
         <div v-else class="no-results">
-          No {{ heatmapState.toLowerCase() }} events found for the selected phase.
+          No {{ heatmapState.toLowerCase() }} events found for
+          {{ heatmapNoResultsDetail }}.
         </div>
         <div class="heatmap-legend" v-if="heatmapConfig.maxCount > 0">
           <span class="heatmap-legend-label">Less</span>
@@ -594,10 +595,37 @@ export default {
         })),
       ];
     },
+    heatmapPhaseRowMode() {
+      if (this.selectedHeatmapSignal === "All") {
+        return false;
+      }
+      const events = this.tableRows.filter(
+        (row) =>
+          row.state === this.heatmapState &&
+          row.signalId === this.selectedHeatmapSignal
+      );
+      if (!events.length) {
+        return false;
+      }
+      const millisList = events.map((row) => row.millis);
+      const minMillis = Math.min(...millisList);
+      const maxMillis = Math.max(...millisList);
+      const start = DateTime.fromMillis(minMillis).startOf("day");
+      const end = DateTime.fromMillis(maxMillis).startOf("day");
+      const spanDays = Math.floor(end.diff(start, "days").days) + 1;
+      return spanDays < 2;
+    },
+    heatmapNoResultsDetail() {
+      if (this.heatmapPhaseRowMode) {
+        return "the selected signal/day";
+      }
+      return "the selected phase";
+    },
     heatmapEvents() {
       return this.tableRows.filter((row) => {
         const matchesState = row.state === this.heatmapState;
         const matchesPhase =
+          this.heatmapPhaseRowMode ||
           this.selectedHeatmapPhase === "All" ||
           row.phase === this.selectedHeatmapPhase;
         const matchesSignal =
@@ -692,7 +720,8 @@ export default {
         } else if (spanHours <= 12) {
           binMinutes = 30;
         }
-        modeLabel = `Time × ${binMinutes}-Minute`;
+        const usePhaseRows = this.heatmapPhaseRowMode;
+        modeLabel = `${usePhaseRows ? "Phase" : "Time"} × ${binMinutes}-Minute`;
         const startTime = DateTime.fromMillis(minMillis).startOf("minute");
         const alignedStartMinute =
           Math.floor(startTime.minute / binMinutes) * binMinutes;
@@ -719,16 +748,33 @@ export default {
           cursor = cursor.plus({ minutes: binMinutes });
         }
 
-        rows = [
-          {
-            key: start.toFormat("yyyy-LL-dd"),
-            label: start.toFormat("ccc, MMM d"),
-          },
-        ];
+        if (usePhaseRows) {
+          const signal = this.signalResults.find(
+            (entry) => entry.id === this.selectedHeatmapSignal
+          );
+          const phases = signal?.mappedPhases?.length
+            ? [...signal.mappedPhases]
+            : Array.from(new Set(events.map((row) => row.phase)));
+          rows = phases
+            .sort((a, b) => a - b)
+            .map((phase) => ({
+              key: `${phase}`,
+              label: `Phase ${phase}`,
+            }));
+        } else {
+          rows = [
+            {
+              key: start.toFormat("yyyy-LL-dd"),
+              label: start.toFormat("ccc, MMM d"),
+            },
+          ];
+        }
 
         events.forEach((row) => {
           const dateTime = DateTime.fromMillis(row.millis);
-          const rowKey = start.toFormat("yyyy-LL-dd");
+          const rowKey = usePhaseRows
+            ? `${row.phase}`
+            : start.toFormat("yyyy-LL-dd");
           const minutesOffset = dateTime.diff(alignedStart, "minutes").minutes;
           const binIndex = Math.floor(minutesOffset / binMinutes);
           const column = columns[binIndex];

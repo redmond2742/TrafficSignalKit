@@ -39,11 +39,19 @@
     </div>
 
     <br />
+    <div class="matrix-controls">
+      <v-switch
+        v-model="showAllEnumerations"
+        label="Show all enumerations"
+        inset
+      ></v-switch>
+    </div>
     <ProcessPreemptionEvents
       @preemptionEvents="storePreemptionEvents"
     ></ProcessPreemptionEvents>
     <PlotPreemptionMatrix
       :plotData="preemptionEvents"
+      :showAllEnumerations="showAllEnumerations"
     ></PlotPreemptionMatrix>
   </div>
 </template>
@@ -62,6 +70,7 @@ export default {
     return {
       panel: [],
       preemptionEvents: [],
+      showAllEnumerations: true,
     };
   },
   methods: {
@@ -72,4 +81,10 @@ export default {
 };
 </script>
 
-<style scoped></style>
+<style scoped>
+.matrix-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+</style>

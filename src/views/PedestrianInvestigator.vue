@@ -46,10 +46,11 @@
         <thead>
           <tr>
             <th>Phase</th>
-            <th>Walk Indications</th>
             <th>Ped Phase Uses</th>
+            <th>Ped Calls / Hr</th>
             <th>Avg Walk Time (s)</th>
             <th>Avg Walk Change Interval (s)</th>
+            <th>Avg Call-to-Walk Delay (s)</th>
             <th>Estimated Crossing Distance (ft)</th>
             <th>Estimated Lanes</th>
           </tr>
@@ -57,10 +58,11 @@
         <tbody>
           <tr v-for="row in summaryRows" :key="`summary-${row.phase}`">
             <td>{{ row.phase }}</td>
-            <td>{{ row.walkCount }}</td>
             <td>{{ row.pedEventCount }}</td>
+            <td>{{ formatRate(row.pedCallsPerHour) }}</td>
             <td>{{ formatSeconds(row.averageWalkTime) }}</td>
             <td>{{ formatSeconds(row.averageChangeInterval) }}</td>
+            <td>{{ formatSeconds(row.averageCallToWalkDelay) }}</td>
             <td>{{ formatDistance(row.estimatedDistance) }}</td>
             <td>{{ formatLanes(row.estimatedLanes) }}</td>
           </tr>
@@ -83,6 +85,7 @@ import convertTime from "../mixins/convertTime";
 const WALK_EVENT = 21;
 const CHANGE_START_EVENT = 22;
 const SOLID_DONT_WALK_EVENT = 23;
+const PED_CALL_EVENT = 45;
 const FEET_PER_SECOND = 3.5;
 const LANE_WIDTH_FEET = 12;
 const HEADER_SCAN_LIMIT = 12;
@@ -107,6 +110,8 @@ export default {
       const lines = this.inputData.split(/\r?\n/).filter(Boolean);
       const metadataRows = this.extractMetadata(lines);
       const events = [];
+      let minTimestamp = null;
+      let maxTimestamp = null;
       let invalidRows = 0;
 
       lines.forEach((line) => {
@@ -142,7 +147,14 @@ export default {
           return;
         }
 
-        if (![WALK_EVENT, CHANGE_START_EVENT, SOLID_DONT_WALK_EVENT].includes(enumeration)) {
+        if (
+          ![
+            WALK_EVENT,
+            CHANGE_START_EVENT,
+            SOLID_DONT_WALK_EVENT,
+            PED_CALL_EVENT,
+          ].includes(enumeration)
+        ) {
           return;
         }
 
@@ -151,30 +163,49 @@ export default {
           phase,
           timestampMs,
         });
+
+        if (minTimestamp === null || timestampMs < minTimestamp) {
+          minTimestamp = timestampMs;
+        }
+        if (maxTimestamp === null || timestampMs > maxTimestamp) {
+          maxTimestamp = timestampMs;
+        }
       });
 
       events.sort((a, b) => a.timestampMs - b.timestampMs);
 
+      const durationHours =
+        minTimestamp !== null && maxTimestamp !== null && maxTimestamp > minTimestamp
+          ? (maxTimestamp - minTimestamp) / 3600000
+          : null;
       const phaseStats = {};
 
       events.forEach((event) => {
         if (!phaseStats[event.phase]) {
           phaseStats[event.phase] = {
-            walkCount: 0,
             pedEventCount: 0,
+            callCount: 0,
             walkDurations: [],
             changeIntervals: [],
+            callToWalkDelays: [],
             lastWalkStart: null,
             lastChangeStart: null,
+            lastCallTime: null,
           };
         }
 
         const stats = phaseStats[event.phase];
 
         if (event.enumeration === WALK_EVENT) {
-          stats.walkCount += 1;
           stats.pedEventCount += 1;
           stats.lastWalkStart = event.timestampMs;
+          if (stats.lastCallTime !== null) {
+            const callDelaySeconds = (event.timestampMs - stats.lastCallTime) / 1000;
+            if (callDelaySeconds >= 0) {
+              stats.callToWalkDelays.push(callDelaySeconds);
+            }
+            stats.lastCallTime = null;
+          }
         }
 
         if (event.enumeration === CHANGE_START_EVENT) {
@@ -200,6 +231,11 @@ export default {
           }
         }
 
+        if (event.enumeration === PED_CALL_EVENT) {
+          stats.callCount += 1;
+          stats.lastCallTime = event.timestampMs;
+        }
+
       });
 
       const summaryRows = Object.keys(phaseStats)
@@ -209,6 +245,13 @@ export default {
           const averageChangeInterval = this.averageSeconds(
             stats.changeIntervals
           );
+          const averageCallToWalkDelay = this.averageSeconds(
+            stats.callToWalkDelays
+          );
+          const pedCallsPerHour =
+            durationHours && durationHours > 0
+              ? stats.callCount / durationHours
+              : null;
           const estimatedDistance = averageChangeInterval
             ? averageChangeInterval * FEET_PER_SECOND
             : null;
@@ -218,10 +261,11 @@ export default {
 
           return {
             phase: Number(phase),
-            walkCount: stats.walkCount,
             pedEventCount: stats.pedEventCount,
+            pedCallsPerHour,
             averageWalkTime,
             averageChangeInterval,
+            averageCallToWalkDelay,
             estimatedDistance,
             estimatedLanes,
           };
@@ -297,6 +341,12 @@ export default {
         return "-";
       }
       return value.toString();
+    },
+    formatRate(value) {
+      if (value === null || value === undefined) {
+        return "-";
+      }
+      return value.toFixed(2);
     },
   },
 };

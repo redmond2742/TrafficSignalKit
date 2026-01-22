@@ -26,6 +26,9 @@
       <em v-if="hasProcessed">No stuck detectors found after processing data.</em>
       <em v-else>Paste data and click process to find stuck detectors.</em>
     </div>
+    <div v-if="hasProcessed" class="analysis-summary">
+      <p>{{ analysisSummary }}</p>
+    </div>
   </div>
 </template>
 
@@ -55,6 +58,7 @@ export default {
       sortBy: [{ key: "percentOn", order: "desc" }],
       tableItems: [],
       hasProcessed: false,
+      analysisSummary: "",
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, channel)",
     };
@@ -66,6 +70,8 @@ export default {
 
       if (events.length < 2) {
         this.tableItems = [];
+        this.analysisSummary =
+          "Methodology: parsed high-resolution events and searched for detectors that stayed ON without a matching OFF. There was not enough data to evaluate, so nothing stands out yet.";
         return;
       }
 
@@ -74,6 +80,8 @@ export default {
       const totalDuration = lastMillis - firstMillis;
       if (totalDuration <= 0) {
         this.tableItems = [];
+        this.analysisSummary =
+          "Methodology: parsed high-resolution events and searched for detectors that stayed ON without a matching OFF. The time span was too short or invalid, so there is nothing to investigate.";
         return;
       }
 
@@ -138,6 +146,16 @@ export default {
       });
 
       this.tableItems = items.sort((a, b) => b.percentOn - a.percentOn);
+      const detectorCount = detectorStats.size;
+      const flaggedCount = this.tableItems.length;
+      if (flaggedCount > 0) {
+        const topDetector = this.tableItems[0];
+        this.analysisSummary = `Methodology: parsed ${events.length} events and compared ON/OFF pairs for ${detectorCount} detector(s), flagging any detector that stayed ON without a matching OFF. Found ${flaggedCount} detector(s) to investigate, with detector ${topDetector.detectorId} at ${topDetector.percentOn.toFixed(
+          1,
+        )}% ON time as the highest priority.`;
+      } else {
+        this.analysisSummary = `Methodology: parsed ${events.length} events and compared ON/OFF pairs for ${detectorCount} detector(s), flagging any detector that stayed ON without a matching OFF. No stuck detectors were identified, so there is nothing specific to investigate right now.`;
+      }
     },
     parseHighResData(text) {
       return text
@@ -185,6 +203,15 @@ export default {
 .empty-state {
   margin-top: 12px;
   color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.analysis-summary {
+  margin-top: 16px;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.analysis-summary p {
+  margin: 0;
 }
 
 .grow-wrap {

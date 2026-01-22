@@ -173,6 +173,7 @@ export default {
 
         if (event.enumeration === WALK_EVENT) {
           stats.walkCount += 1;
+          stats.pedEventCount += 1;
           stats.lastWalkStart = event.timestampMs;
         }
 
@@ -199,7 +200,6 @@ export default {
           }
         }
 
-        stats.pedEventCount += 1;
       });
 
       const summaryRows = Object.keys(phaseStats)

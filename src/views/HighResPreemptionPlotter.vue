@@ -5,22 +5,19 @@
 
     <div class="left-justify-text">
       <v-expansion-panels v-model="panel" multiple>
-        <v-expansion-panel title="About: Preemption Events" value="about">
+        <v-expansion-panel title="About: All Enumerations" value="about">
           <v-expansion-panel-text>
-            Preemption events (enumerations 101-119) capture the sequence of
-            controller actions when an emergency vehicle, railroad, or other
-            priority request forces the signal out of its normal operation. This
-            tool filters the preemption-related enumerations from high
-            resolution controller data and plots them on a time series so you
-            can see when each stage of the preemption occurred.
+            This tool plots the enumeration values from high resolution
+            controller data on a time series so you can see when each event
+            occurred.
           </v-expansion-panel-text>
         </v-expansion-panel>
 
         <v-expansion-panel title="What This Tool Shows" value="details">
           <v-expansion-panel-text>
             <ul>
-              <li>Timeline of preemption event codes 101-119</li>
-              <li>Event labels for each preemption stage</li>
+              <li>Timeline of enumeration event codes</li>
+              <li>Event labels for each enumeration</li>
               <li>Channel values captured with each event</li>
             </ul>
           </v-expansion-panel-text>
@@ -35,8 +32,7 @@
 16764339645, 105, 1
 16764339705, 111, 1
             </pre>
-            Click <b>Process Preemption Events</b> to plot the preemption event
-            timeline.
+            Click <b>Process All Enumerations</b> to plot the event timeline.
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>

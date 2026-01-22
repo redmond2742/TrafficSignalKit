@@ -48,6 +48,8 @@
             <th>Phase</th>
             <th>Ped Phase Uses</th>
             <th>Ped Calls / Hr</th>
+            <th>Full-Service Cycles</th>
+            <th>Calls in Full-Service Cycles (%)</th>
             <th>Avg Walk Time (s)</th>
             <th>Avg Walk Change Interval (s)</th>
             <th>Avg Call-to-Walk Delay (s)</th>
@@ -60,6 +62,8 @@
             <td>{{ row.phase }}</td>
             <td>{{ row.pedEventCount }}</td>
             <td>{{ formatRate(row.pedCallsPerHour) }}</td>
+            <td>{{ row.fullServiceCycleCount }}</td>
+            <td>{{ formatPercent(row.fullServiceCallPercent) }}</td>
             <td>{{ formatSeconds(row.averageWalkTime) }}</td>
             <td>{{ formatSeconds(row.averageChangeInterval) }}</td>
             <td>{{ formatSeconds(row.averageCallToWalkDelay) }}</td>
@@ -72,7 +76,8 @@
         Walk and change interval averages use the controller event timestamps
         (0.1-second resolution). Estimated distance uses 3.5 ft/sec multiplied
         by the average walk change interval. Estimated lanes use a 12-foot lane
-        width.
+        width. Full-service cycles count unique walk cycles in which every
+        phase with a pedestrian call is served without repeats.
       </p>
     </div>
   </div>
@@ -179,8 +184,39 @@ export default {
           ? (maxTimestamp - minTimestamp) / 3600000
           : null;
       const phaseStats = {};
+      const cycles = [];
+      let currentCycle = null;
+
+      const startCycle = (timestampMs) => ({
+        start: timestampMs,
+        end: timestampMs,
+        servedPhases: new Set(),
+        callPhases: new Set(),
+        callCounts: {},
+      });
 
       events.forEach((event) => {
+        if (!currentCycle) {
+          currentCycle = startCycle(event.timestampMs);
+        }
+
+        if (event.enumeration === WALK_EVENT) {
+          if (currentCycle.servedPhases.has(event.phase)) {
+            currentCycle.end = event.timestampMs;
+            cycles.push(currentCycle);
+            currentCycle = startCycle(event.timestampMs);
+          }
+          currentCycle.servedPhases.add(event.phase);
+        }
+
+        if (event.enumeration === PED_CALL_EVENT) {
+          currentCycle.callPhases.add(event.phase);
+          currentCycle.callCounts[event.phase] =
+            (currentCycle.callCounts[event.phase] || 0) + 1;
+        }
+
+        currentCycle.end = event.timestampMs;
+
         if (!phaseStats[event.phase]) {
           phaseStats[event.phase] = {
             pedEventCount: 0,
@@ -191,6 +227,8 @@ export default {
             lastWalkStart: null,
             lastChangeStart: null,
             lastCallTime: null,
+            fullServiceCycleCount: 0,
+            fullServiceCallCount: 0,
           };
         }
 
@@ -238,6 +276,29 @@ export default {
 
       });
 
+      if (currentCycle) {
+        cycles.push(currentCycle);
+      }
+
+      const fullServiceCycles = cycles.filter((cycle) => {
+        if (cycle.callPhases.size === 0) {
+          return false;
+        }
+        return Array.from(cycle.callPhases).every((phase) =>
+          cycle.servedPhases.has(phase)
+        );
+      });
+
+      fullServiceCycles.forEach((cycle) => {
+        Object.entries(cycle.callCounts).forEach(([phase, count]) => {
+          if (!phaseStats[phase]) {
+            return;
+          }
+          phaseStats[phase].fullServiceCycleCount += 1;
+          phaseStats[phase].fullServiceCallCount += count;
+        });
+      });
+
       const summaryRows = Object.keys(phaseStats)
         .map((phase) => {
           const stats = phaseStats[phase];
@@ -252,6 +313,9 @@ export default {
             durationHours && durationHours > 0
               ? stats.callCount / durationHours
               : null;
+          const fullServiceCallPercent = stats.callCount
+            ? (stats.fullServiceCallCount / stats.callCount) * 100
+            : null;
           const estimatedDistance = averageChangeInterval
             ? averageChangeInterval * FEET_PER_SECOND
             : null;
@@ -263,6 +327,8 @@ export default {
             phase: Number(phase),
             pedEventCount: stats.pedEventCount,
             pedCallsPerHour,
+            fullServiceCycleCount: stats.fullServiceCycleCount,
+            fullServiceCallPercent,
             averageWalkTime,
             averageChangeInterval,
             averageCallToWalkDelay,
@@ -347,6 +413,12 @@ export default {
         return "-";
       }
       return value.toFixed(2);
+    },
+    formatPercent(value) {
+      if (value === null || value === undefined) {
+        return "-";
+      }
+      return value.toFixed(1);
     },
   },
 };

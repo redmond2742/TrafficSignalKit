@@ -54,7 +54,7 @@ export default {
         return {
           datasets: [
             {
-              label: "Preemption Events",
+              label: "All Enumerations",
               data: [],
               borderColor: "#009688",
               backgroundColor: "#009688",
@@ -66,7 +66,7 @@ export default {
       return {
         datasets: [
           {
-            label: "Preemption Events",
+            label: "All Enumerations",
             data: this.plotData.map((event) => ({
               x: event.timestampMs,
               y: this.eventLookup[event.eventCode] ?? `Event ${event.eventCode}`,

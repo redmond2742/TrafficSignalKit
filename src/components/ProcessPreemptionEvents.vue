@@ -5,7 +5,7 @@
     </div>
     <div>
       <v-btn @click="processPreemptionEvents" color="primary">
-        Process Preemption Events
+        Process All Enumerations
       </v-btn>
     </div>
   </div>

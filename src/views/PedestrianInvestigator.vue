@@ -10,12 +10,41 @@
       distances.
     </p>
 
-    <div class="grow-wrap">
-      <InputBox v-model="inputData" :defaultText="dataDefaultText" />
+    <div class="signal-inputs">
+      <div
+        v-for="(signal, index) in signals"
+        :key="`signal-${index}`"
+        class="signal-card"
+      >
+        <div class="signal-card-header">
+          <h2 class="signal-title">Signal {{ index + 1 }}</h2>
+          <v-btn
+            v-if="signals.length > 1"
+            color="error"
+            variant="text"
+            @click="removeSignal(index)"
+          >
+            Remove
+          </v-btn>
+        </div>
+        <v-text-field
+          v-model="signal.signalId"
+          label="Signal ID"
+          density="compact"
+          hide-details
+          class="signal-id-input"
+        ></v-text-field>
+        <div class="grow-wrap">
+          <InputBox v-model="signal.data" :defaultText="dataDefaultText" />
+        </div>
+      </div>
     </div>
 
     <div class="actions">
-      <v-btn color="primary" :disabled="!inputData.trim()" @click="processData">
+      <v-btn color="secondary" variant="outlined" @click="addSignal">
+        Add Another Signal
+      </v-btn>
+      <v-btn color="primary" :disabled="!hasInputData" @click="processData">
         Process Pedestrian Data
       </v-btn>
       <span v-if="invalidRows" class="warning-text">
@@ -27,16 +56,25 @@
     <v-card v-if="metadataRows.length" class="metadata-card" variant="outlined">
       <v-card-title>Data Log Details</v-card-title>
       <v-card-text>
-        <dl class="metadata-grid">
-          <div
-            v-for="detail in metadataRows"
-            :key="`meta-${detail.label}`"
-            class="metadata-item"
-          >
-            <dt>{{ detail.label }}</dt>
-            <dd>{{ detail.value }}</dd>
-          </div>
-        </dl>
+        <table class="metadata-table">
+          <thead>
+            <tr>
+              <th>Signal ID</th>
+              <th>Detail</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(detail, index) in metadataRows"
+              :key="`meta-${index}`"
+            >
+              <td>{{ detail.signalId }}</td>
+              <td>{{ detail.label }}</td>
+              <td>{{ detail.value }}</td>
+            </tr>
+          </tbody>
+        </table>
       </v-card-text>
     </v-card>
 
@@ -45,6 +83,7 @@
       <table class="summary-table">
         <thead>
           <tr>
+            <th>Signal ID</th>
             <th>Phase</th>
             <th>Ped Phase Uses</th>
             <th>Ped Calls / Hr</th>
@@ -59,7 +98,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in summaryRows" :key="`summary-${row.phase}`">
+          <tr
+            v-for="(row, index) in summaryRows"
+            :key="`summary-${row.signalId}-${row.phase}-${index}`"
+          >
+            <td>{{ row.signalId }}</td>
             <td>{{ row.phase }}</td>
             <td>{{ row.pedEventCount }}</td>
             <td>{{ formatRate(row.pedCallsPerHour) }}</td>
@@ -106,7 +149,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
-      inputData: "",
+      signals: [{ signalId: "", data: "" }],
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, phase)",
       invalidRows: 0,
@@ -114,10 +157,48 @@ export default {
       summaryRows: [],
     };
   },
+  computed: {
+    hasInputData() {
+      return this.signals.some((signal) => signal.data.trim());
+    },
+  },
   methods: {
     processData() {
-      const lines = this.inputData.split(/\r?\n/).filter(Boolean);
-      const metadataRows = this.extractMetadata(lines);
+      const invalidRows = [];
+      const metadataRows = [];
+      const summaryRows = [];
+
+      this.signals.forEach((signal, index) => {
+        if (!signal.data.trim()) {
+          return;
+        }
+        const signalId = this.normalizeSignalId(signal.signalId, index);
+        const result = this.processSignalData(signal.data, signalId);
+        invalidRows.push(result.invalidRows);
+        metadataRows.push(...result.metadataRows);
+        summaryRows.push(...result.summaryRows);
+      });
+
+      summaryRows.sort((a, b) => {
+        if (a.signalId < b.signalId) {
+          return -1;
+        }
+        if (a.signalId > b.signalId) {
+          return 1;
+        }
+        return a.phase - b.phase;
+      });
+
+      this.invalidRows = invalidRows.reduce((sum, value) => sum + value, 0);
+      this.metadataRows = metadataRows;
+      this.summaryRows = summaryRows;
+    },
+    processSignalData(signalData, signalId) {
+      const lines = signalData.split(/\r?\n/).filter(Boolean);
+      const metadataRows = this.extractMetadata(lines).map((detail) => ({
+        ...detail,
+        signalId,
+      }));
       const events = [];
       let minTimestamp = null;
       let maxTimestamp = null;
@@ -277,7 +358,6 @@ export default {
           stats.callCount += 1;
           stats.lastCallTime = event.timestampMs;
         }
-
       });
 
       if (currentCycle) {
@@ -303,54 +383,60 @@ export default {
         });
       });
 
-      const summaryRows = Object.keys(phaseStats)
-        .map((phase) => {
-          const stats = phaseStats[phase];
-          const averageWalkTime = this.averageSeconds(stats.walkDurations);
-          const averageChangeInterval = this.averageSeconds(
-            stats.changeIntervals
-          );
-          const averageCallToWalkDelay = this.averageSeconds(
-            stats.callToWalkDelays
-          );
-          const pedCallsPerHour =
-            durationHours && durationHours > 0
-              ? stats.callCount / durationHours
-              : null;
-          const riskScore = this.calculateRiskScore({
-            averageChangeInterval,
-            averageCallToWalkDelay,
-            pedCallsPerHour,
-          });
-          const fullServiceCallPercent = stats.callCount
-            ? (stats.fullServiceCallCount / stats.callCount) * 100
+      const summaryRows = Object.keys(phaseStats).map((phase) => {
+        const stats = phaseStats[phase];
+        const averageWalkTime = this.averageSeconds(stats.walkDurations);
+        const averageChangeInterval = this.averageSeconds(stats.changeIntervals);
+        const averageCallToWalkDelay = this.averageSeconds(stats.callToWalkDelays);
+        const pedCallsPerHour =
+          durationHours && durationHours > 0
+            ? stats.callCount / durationHours
             : null;
-          const estimatedDistance = averageChangeInterval
-            ? averageChangeInterval * FEET_PER_SECOND
-            : null;
-          const estimatedLanes = estimatedDistance
-            ? Math.max(1, Math.round(estimatedDistance / LANE_WIDTH_FEET))
-            : null;
+        const riskScore = this.calculateRiskScore({
+          averageChangeInterval,
+          averageCallToWalkDelay,
+          pedCallsPerHour,
+        });
+        const fullServiceCallPercent = stats.callCount
+          ? (stats.fullServiceCallCount / stats.callCount) * 100
+          : null;
+        const estimatedDistance = averageChangeInterval
+          ? averageChangeInterval * FEET_PER_SECOND
+          : null;
+        const estimatedLanes = estimatedDistance
+          ? Math.max(1, Math.round(estimatedDistance / LANE_WIDTH_FEET))
+          : null;
 
-          return {
-            phase: Number(phase),
-            pedEventCount: stats.pedEventCount,
-            pedCallsPerHour,
-            fullServiceCycleCount: stats.fullServiceCycleCount,
-            fullServiceCallPercent,
-            averageWalkTime,
-            averageChangeInterval,
-            averageCallToWalkDelay,
-            riskScore,
-            estimatedDistance,
-            estimatedLanes,
-          };
-        })
-        .sort((a, b) => a.phase - b.phase);
+        return {
+          signalId,
+          phase: Number(phase),
+          pedEventCount: stats.pedEventCount,
+          pedCallsPerHour,
+          fullServiceCycleCount: stats.fullServiceCycleCount,
+          fullServiceCallPercent,
+          averageWalkTime,
+          averageChangeInterval,
+          averageCallToWalkDelay,
+          riskScore,
+          estimatedDistance,
+          estimatedLanes,
+        };
+      });
 
-      this.invalidRows = invalidRows;
-      this.metadataRows = metadataRows;
-      this.summaryRows = summaryRows;
+      return { invalidRows, metadataRows, summaryRows };
+    },
+    addSignal() {
+      this.signals.push({ signalId: "", data: "" });
+    },
+    removeSignal(index) {
+      this.signals.splice(index, 1);
+    },
+    normalizeSignalId(signalId, index) {
+      const trimmed = signalId?.trim();
+      if (trimmed) {
+        return trimmed;
+      }
+      return `Signal ${index + 1}`;
     },
     extractMetadata(lines) {
       const details = [];
@@ -473,6 +559,34 @@ export default {
   margin: 16px 0;
 }
 
+.signal-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.signal-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.signal-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.signal-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.signal-id-input {
+  max-width: 320px;
+}
+
 .warning-text {
   color: #b00020;
   font-size: 0.9rem;
@@ -482,25 +596,20 @@ export default {
   margin-top: 16px;
 }
 
-.metadata-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px 24px;
-  margin: 0;
+.metadata-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.metadata-item {
-  margin: 0;
+.metadata-table th,
+.metadata-table td {
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  text-align: left;
 }
 
-.metadata-item dt {
-  font-weight: 600;
-  color: #222;
-}
-
-.metadata-item dd {
-  margin: 4px 0 0;
-  color: #444;
+.metadata-table th {
+  background-color: #f6f6f6;
 }
 
 .summary-wrapper {

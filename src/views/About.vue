@@ -74,6 +74,12 @@ export default {
               path: "/preemption-plotter",
             },
             {
+              title: "Enumeration Matrix",
+              description:
+                "Compare enumeration events against phase/channel values with hover timestamps.",
+              path: "/enumeration-matrix",
+            },
+            {
               title: "Detection Channel Plotter",
               description:
                 "Visualize detection events by channel to validate detector health.",

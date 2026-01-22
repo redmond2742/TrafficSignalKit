@@ -56,6 +56,14 @@
     <div class="actions">
       <v-btn color="primary" @click="processDetectorEvents">Process</v-btn>
       <v-btn variant="outlined" @click="addSignal">Add Another Signal</v-btn>
+      <v-btn
+        variant="outlined"
+        color="primary"
+        :disabled="!summaryRows.length"
+        @click="downloadPdfReport"
+      >
+        Download PDF Report
+      </v-btn>
     </div>
 
     <div v-if="sortedSummaryRows.length" class="rlr-table-wrapper">
@@ -261,58 +269,60 @@
           ></v-select>
         </div>
       </div>
-      <p class="heatmap-subtitle" v-if="heatmapConfig.rangeLabel">
-        {{ heatmapConfig.modeLabel }} • {{ heatmapState }} events •
-        {{ heatmapConfig.rangeLabel }}
-      </p>
-      <div v-if="heatmapConfig.rows.length" class="heatmap-grid">
-        <div
-          class="heatmap-header"
-          :style="{
-            '--heatmap-columns': heatmapConfig.columns.length,
-          }"
-        >
-          <div class="heatmap-corner"></div>
+      <div ref="heatmapCapture">
+        <p class="heatmap-subtitle" v-if="heatmapConfig.rangeLabel">
+          {{ heatmapConfig.modeLabel }} • {{ heatmapState }} events •
+          {{ heatmapConfig.rangeLabel }}
+        </p>
+        <div v-if="heatmapConfig.rows.length" class="heatmap-grid">
           <div
-            v-for="column in heatmapConfig.columns"
-            :key="`hour-${column.key}`"
-            class="heatmap-hour"
+            class="heatmap-header"
+            :style="{
+              '--heatmap-columns': heatmapConfig.columns.length,
+            }"
           >
-            {{ column.displayLabel }}
+            <div class="heatmap-corner"></div>
+            <div
+              v-for="column in heatmapConfig.columns"
+              :key="`hour-${column.key}`"
+              class="heatmap-hour"
+            >
+              {{ column.displayLabel }}
+            </div>
+          </div>
+          <div
+            v-for="row in heatmapConfig.rows"
+            :key="row.key"
+            class="heatmap-row"
+            :style="{
+              '--heatmap-columns': heatmapConfig.columns.length,
+            }"
+          >
+            <div class="heatmap-row-label">{{ row.label }}</div>
+            <div
+              v-for="column in heatmapConfig.columns"
+              :key="`${row.key}-${column.key}`"
+              class="heatmap-cell"
+              :style="{ backgroundColor: heatmapCellColor(row.key, column.key) }"
+              :title="heatmapCellTitle(row, column)"
+            ></div>
           </div>
         </div>
-        <div
-          v-for="row in heatmapConfig.rows"
-          :key="row.key"
-          class="heatmap-row"
-          :style="{
-            '--heatmap-columns': heatmapConfig.columns.length,
-          }"
-        >
-          <div class="heatmap-row-label">{{ row.label }}</div>
-          <div
-            v-for="column in heatmapConfig.columns"
-            :key="`${row.key}-${column.key}`"
-            class="heatmap-cell"
-            :style="{ backgroundColor: heatmapCellColor(row.key, column.key) }"
-            :title="heatmapCellTitle(row, column)"
-          ></div>
+        <div v-else class="no-results">
+          No {{ heatmapState.toLowerCase() }} events found for the selected phase.
         </div>
-      </div>
-      <div v-else class="no-results">
-        No {{ heatmapState.toLowerCase() }} events found for the selected phase.
-      </div>
-      <div class="heatmap-legend" v-if="heatmapConfig.maxCount > 0">
-        <span class="heatmap-legend-label">Less</span>
-        <div class="heatmap-legend-bar">
-          <span
-            v-for="step in heatmapLegendSteps"
-            :key="`legend-${step}`"
-            class="heatmap-legend-swatch"
-            :style="{ backgroundColor: heatmapLegendColor(step) }"
-          ></span>
+        <div class="heatmap-legend" v-if="heatmapConfig.maxCount > 0">
+          <span class="heatmap-legend-label">Less</span>
+          <div class="heatmap-legend-bar">
+            <span
+              v-for="step in heatmapLegendSteps"
+              :key="`legend-${step}`"
+              class="heatmap-legend-swatch"
+              :style="{ backgroundColor: heatmapLegendColor(step) }"
+            ></span>
+          </div>
+          <span class="heatmap-legend-label">More</span>
         </div>
-        <span class="heatmap-legend-label">More</span>
       </div>
     </div>
 
@@ -441,6 +451,10 @@
 
 <script>
 import { DateTime } from "luxon";
+import { Chart } from "chart.js/auto";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import convertTime from "../mixins/convertTime";
 import InputBox from "./foundational/InputBox.vue";
 
@@ -540,6 +554,9 @@ export default {
         this.summarySort.key,
         this.summarySort.direction
       );
+    },
+    reportSummaryRows() {
+      return this.sortRows(this.summaryRows, "severityScore", "desc");
     },
     heatmapPhaseItems() {
       const phases = new Set();
@@ -749,6 +766,140 @@ export default {
     },
   },
   methods: {
+    async downloadPdfReport() {
+      if (!this.reportSummaryRows.length) {
+        return;
+      }
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "letter",
+      });
+      const margin = 40;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      doc.setFontSize(16);
+      doc.text("Yellow & Red Light Running Report", margin, margin);
+      doc.setFontSize(10);
+      doc.text(
+        `Generated ${DateTime.now().toFormat("MMM d, yyyy h:mm a")}`,
+        margin,
+        margin + 18
+      );
+
+      autoTable(doc, {
+        startY: margin + 30,
+        head: [
+          [
+            "Signal Number",
+            "Signal Name",
+            "Phase",
+            "Yellow Count",
+            "Yellow Avg (sec)",
+            "Red Count",
+            "Red Avg (sec)",
+            "Detector Off Count",
+            "Yellow/Det %",
+            "Red/Det %",
+            "Priority Score",
+          ],
+        ],
+        body: this.reportSummaryRows.map((row) => [
+          row.signalNumber || "—",
+          row.signalName || "—",
+          row.phase,
+          row.yellowCount,
+          row.yellowAvg !== null ? row.yellowAvg.toFixed(1) : "—",
+          row.redCount,
+          row.redAvg !== null ? row.redAvg.toFixed(1) : "—",
+          row.detectorOffCount,
+          row.yellowPerDetector !== null ? `${row.yellowPerDetector.toFixed(1)}%` : "—",
+          row.redPerDetector !== null ? `${row.redPerDetector.toFixed(1)}%` : "—",
+          row.severityScore !== null ? row.severityScore.toFixed(1) : "—",
+        ]),
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: [26, 115, 232] },
+      });
+
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.text("Calendar Heatmap", margin, margin);
+      const heatmapElement = this.$refs.heatmapCapture;
+      if (heatmapElement) {
+        const heatmapImage = await this.captureElementImage(heatmapElement);
+        const imgProps = doc.getImageProperties(heatmapImage);
+        const targetWidth = pageWidth - margin * 2;
+        const targetHeight = (imgProps.height * targetWidth) / imgProps.width;
+        doc.addImage(
+          heatmapImage,
+          "PNG",
+          margin,
+          margin + 16,
+          targetWidth,
+          targetHeight
+        );
+      } else {
+        doc.setFontSize(10);
+        doc.text("Heatmap unavailable.", margin, margin + 20);
+      }
+
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.text("Event Share", margin, margin);
+      const pieChartImage = await this.buildPieChartImage();
+      const pieProps = doc.getImageProperties(pieChartImage);
+      const pieWidth = Math.min(320, pageWidth - margin * 2);
+      const pieHeight = (pieProps.height * pieWidth) / pieProps.width;
+      doc.addImage(
+        pieChartImage,
+        "PNG",
+        margin,
+        margin + 16,
+        pieWidth,
+        pieHeight
+      );
+
+      doc.save("yellow-red-running-report.pdf");
+    },
+    async captureElementImage(element) {
+      const canvas = await html2canvas(element, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+      });
+      return canvas.toDataURL("image/png");
+    },
+    async buildPieChartImage() {
+      const yellowCount = this.tableRows.filter(
+        (row) => row.state === "Yellow"
+      ).length;
+      const redCount = this.tableRows.filter((row) => row.state === "Red").length;
+      const canvas = document.createElement("canvas");
+      canvas.width = 600;
+      canvas.height = 600;
+      const chart = new Chart(canvas.getContext("2d"), {
+        type: "pie",
+        data: {
+          labels: ["Yellow Events", "Red Events"],
+          datasets: [
+            {
+              data: [yellowCount, redCount],
+              backgroundColor: ["#f7b731", "#eb3b5a"],
+            },
+          ],
+        },
+        options: {
+          responsive: false,
+          plugins: {
+            legend: {
+              position: "bottom",
+            },
+          },
+        },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const dataUrl = canvas.toDataURL("image/png");
+      chart.destroy();
+      return dataUrl;
+    },
     processDetectorEvents() {
       const rows = [];
       const results = this.signals.map((signal) => {
@@ -902,7 +1053,8 @@ export default {
       if (!key) {
         return [...rows];
       }
-      const sorted = [...rows].sort((a, b) => {
+      const factor = direction === "desc" ? -1 : 1;
+      return [...rows].sort((a, b) => {
         const valueA = a[key];
         const valueB = b[key];
         if (valueA === valueB) {
@@ -915,14 +1067,15 @@ export default {
           return -1;
         }
         if (typeof valueA === "number" && typeof valueB === "number") {
-          return valueA - valueB;
+          return (valueA - valueB) * factor;
         }
-        return String(valueA).localeCompare(String(valueB), undefined, {
-          numeric: true,
-          sensitivity: "base",
-        });
+        return (
+          String(valueA).localeCompare(String(valueB), undefined, {
+            numeric: true,
+            sensitivity: "base",
+          }) * factor
+        );
       });
-      return direction === "asc" ? sorted : sorted.reverse();
     },
     sortIndicator(sortState, key) {
       if (sortState.key !== key) {

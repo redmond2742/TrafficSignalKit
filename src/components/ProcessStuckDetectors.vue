@@ -26,7 +26,10 @@
       <em v-if="hasProcessed">No stuck detectors found after processing data.</em>
       <em v-else>Paste data and click process to find stuck detectors.</em>
     </div>
-    <div v-if="hasProcessed" class="analysis-summary">
+    <div
+      v-if="hasProcessed"
+      :class="['analysis-summary', { 'analysis-summary--clear': !tableItems.length }]"
+    >
       <p>{{ analysisSummary }}</p>
     </div>
   </div>
@@ -208,6 +211,13 @@ export default {
 .analysis-summary {
   margin-top: 16px;
   color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.analysis-summary--clear {
+  border: 2px solid #2e7d32;
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(46, 125, 50, 0.08);
 }
 
 .analysis-summary p {

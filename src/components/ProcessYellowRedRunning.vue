@@ -165,7 +165,7 @@
                 type="button"
                 @click="setSummarySort('yellowPerDetector')"
               >
-                Yellow/Det Off
+                Yellow/Det Off %
                 <span class="sort-indicator">{{
                   sortIndicator(summarySort, "yellowPerDetector")
                 }}</span>
@@ -177,9 +177,21 @@
                 type="button"
                 @click="setSummarySort('redPerDetector')"
               >
-                Red/Det Off
+                Red/Det Off %
                 <span class="sort-indicator">{{
                   sortIndicator(summarySort, "redPerDetector")
+                }}</span>
+              </button>
+            </th>
+            <th>
+              <button
+                class="sort-button"
+                type="button"
+                @click="setSummarySort('severityScore')"
+              >
+                Severity Score
+                <span class="sort-indicator">{{
+                  sortIndicator(summarySort, "severityScore")
                 }}</span>
               </button>
             </th>
@@ -198,8 +210,9 @@
             <td>{{ row.redCount }}</td>
             <td>{{ formatSecondsOrDash(row.redAvg) }}</td>
             <td>{{ row.detectorOffCount }}</td>
-            <td>{{ formatRatioOrDash(row.yellowPerDetector) }}</td>
-            <td>{{ formatRatioOrDash(row.redPerDetector) }}</td>
+            <td>{{ formatPercentOrDash(row.yellowPerDetector) }}</td>
+            <td>{{ formatPercentOrDash(row.redPerDetector) }}</td>
+            <td>{{ formatScoreOrDash(row.severityScore) }}</td>
           </tr>
         </tbody>
       </table>
@@ -494,9 +507,13 @@ export default {
             return;
           }
           const yellowPerDetector =
-            detectorOffCount > 0 ? yellowStats.count / detectorOffCount : null;
+            detectorOffCount > 0
+              ? (yellowStats.count / detectorOffCount) * 100
+              : null;
           const redPerDetector =
-            detectorOffCount > 0 ? redStats.count / detectorOffCount : null;
+            detectorOffCount > 0 ? (redStats.count / detectorOffCount) * 100 : null;
+          const severityScore =
+            redStats.avg !== null ? redStats.avg * redStats.count : null;
 
           summary.push({
             signalId: signal.id,
@@ -510,6 +527,7 @@ export default {
             detectorOffCount,
             yellowPerDetector,
             redPerDetector,
+            severityScore,
           });
         });
       });
@@ -1083,11 +1101,17 @@ export default {
       }
       return this.formatSeconds(seconds);
     },
-    formatRatioOrDash(value) {
+    formatPercentOrDash(value) {
       if (value === null || value === undefined) {
         return "—";
       }
-      return value.toFixed(2);
+      return `${value.toFixed(1)}%`;
+    },
+    formatScoreOrDash(value) {
+      if (value === null || value === undefined) {
+        return "—";
+      }
+      return value.toFixed(1);
     },
     heatmapCount(rowKey, columnKey) {
       return this.heatmapConfig.counts.get(`${rowKey}-${columnKey}`) || 0;

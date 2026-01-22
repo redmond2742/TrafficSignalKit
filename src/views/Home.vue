@@ -67,6 +67,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Vehicle+and+Pedestrian+Delay.png",
+          title: "Pedestrian Investigator",
+          description:
+            "Summarize pedestrian walk, clearance, and crossing distance estimates.",
+          link: "/pedestrian-investigator",
+          topics: ["Controller Data", "Pedestrians", "Diagnostics"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
           title: "Stuck Detector Finder",
           description:

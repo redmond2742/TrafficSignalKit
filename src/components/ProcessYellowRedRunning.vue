@@ -506,6 +506,9 @@ export default {
           if (detectorOffCount === 0) {
             return;
           }
+          if (yellowStats.count === 0 && redStats.count === 0) {
+            return;
+          }
           const yellowPerDetector =
             detectorOffCount > 0
               ? (yellowStats.count / detectorOffCount) * 100

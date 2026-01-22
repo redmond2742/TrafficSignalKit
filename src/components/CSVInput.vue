@@ -30,7 +30,13 @@
           />
         </div>
         <div class="file-list">
-          <p v-if="!selectedFileNames.length" class="file-placeholder">
+          <p v-if="isLoadingFiles" class="file-placeholder">
+            Loading files...
+          </p>
+          <p
+            v-else-if="!selectedFileNames.length"
+            class="file-placeholder"
+          >
             No files selected yet.
           </p>
           <ul v-else>
@@ -360,6 +366,7 @@ export default {
       this.selectedFileNames = files.map((file) => file.name);
       const combinedLines = [];
       let headerLine = null;
+      let normalizedHeader = null;
 
       try {
         for (const file of files) {
@@ -373,10 +380,12 @@ export default {
           }
           if (!headerLine) {
             headerLine = lines[0];
+            normalizedHeader = this.normalizeHeader(headerLine);
             combinedLines.push(...lines);
             continue;
           }
-          if (lines[0] === headerLine) {
+          const currentHeader = this.normalizeHeader(lines[0]);
+          if (currentHeader === normalizedHeader) {
             combinedLines.push(...lines.slice(1));
           } else {
             combinedLines.push(...lines);
@@ -387,6 +396,12 @@ export default {
         this.filesLoaded = combinedLines.length > 0;
         this.isLoadingFiles = false;
       }
+    },
+    normalizeHeader(line) {
+      if (!line) {
+        return "";
+      }
+      return line.replace(/^\uFEFF/, "").trim().toLowerCase();
     },
     async processCSV() {
       this.isProcessing = true;

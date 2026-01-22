@@ -172,28 +172,36 @@
         {{ heatmapConfig.rangeLabel }}
       </p>
       <div v-if="heatmapConfig.rows.length" class="heatmap-grid">
-        <div class="heatmap-header">
+        <div
+          class="heatmap-header"
+          :style="{
+            '--heatmap-columns': heatmapConfig.columns.length,
+          }"
+        >
           <div class="heatmap-corner"></div>
           <div
-            v-for="hour in heatmapConfig.hours"
-            :key="`hour-${hour}`"
+            v-for="column in heatmapConfig.columns"
+            :key="`hour-${column.key}`"
             class="heatmap-hour"
           >
-            {{ hourLabel(hour) }}
+            {{ column.displayLabel }}
           </div>
         </div>
         <div
           v-for="row in heatmapConfig.rows"
           :key="row.key"
           class="heatmap-row"
+          :style="{
+            '--heatmap-columns': heatmapConfig.columns.length,
+          }"
         >
           <div class="heatmap-row-label">{{ row.label }}</div>
           <div
-            v-for="hour in heatmapConfig.hours"
-            :key="`${row.key}-${hour}`"
+            v-for="column in heatmapConfig.columns"
+            :key="`${row.key}-${column.key}`"
             class="heatmap-cell"
-            :style="{ backgroundColor: heatmapCellColor(row.key, hour) }"
-            :title="heatmapCellTitle(row, hour)"
+            :style="{ backgroundColor: heatmapCellColor(row.key, column.key) }"
+            :title="heatmapCellTitle(row, column)"
           ></div>
         </div>
       </div>
@@ -416,7 +424,7 @@ export default {
           mode: null,
           modeLabel: "",
           rows: [],
-          hours: [],
+          columns: [],
           counts: new Map(),
           maxCount: 0,
           rangeLabel: "",
@@ -429,41 +437,117 @@ export default {
       const start = DateTime.fromMillis(minMillis).startOf("day");
       const end = DateTime.fromMillis(maxMillis).startOf("day");
       const spanDays = Math.floor(end.diff(start, "days").days) + 1;
-      const mode = spanDays > 31 ? "dayOfMonth" : "date";
-      const modeLabel =
-        mode === "date" ? "Daily × Hourly" : "Day of Month × Hourly";
+      const spanHours = (maxMillis - minMillis) / (1000 * 60 * 60);
       const counts = new Map();
       let maxCount = 0;
+      let mode = "date";
+      let modeLabel = "";
+      let rows = [];
+      let columns = [];
 
-      events.forEach((row) => {
-        const dateTime = DateTime.fromMillis(row.millis);
-        const rowKey =
-          mode === "date" ? dateTime.toFormat("yyyy-LL-dd") : `${dateTime.day}`;
-        const hour = dateTime.hour;
-        const key = `${rowKey}-${hour}`;
-        const nextCount = (counts.get(key) || 0) + 1;
-        counts.set(key, nextCount);
-        if (nextCount > maxCount) {
-          maxCount = nextCount;
-        }
-      });
+      if (spanDays >= 2) {
+        mode = spanDays > 31 ? "dayOfMonth" : "date";
+        modeLabel =
+          mode === "date" ? "Daily × Hourly" : "Day of Month × Hourly";
+        columns = Array.from({ length: 24 }, (_, hour) => ({
+          key: hour,
+          label: DateTime.fromObject({ hour }).toFormat("h a"),
+          displayLabel: hour % 2 === 0 ? DateTime.fromObject({ hour }).toFormat("ha") : "",
+        }));
 
-      const rows = [];
-      if (mode === "date") {
-        let cursor = start;
-        while (cursor <= end) {
-          rows.push({
-            key: cursor.toFormat("yyyy-LL-dd"),
-            label: cursor.toFormat("ccc, MMM d"),
+        events.forEach((row) => {
+          const dateTime = DateTime.fromMillis(row.millis);
+          const rowKey =
+            mode === "date"
+              ? dateTime.toFormat("yyyy-LL-dd")
+              : `${dateTime.day}`;
+          const hour = dateTime.hour;
+          const key = `${rowKey}-${hour}`;
+          const nextCount = (counts.get(key) || 0) + 1;
+          counts.set(key, nextCount);
+          if (nextCount > maxCount) {
+            maxCount = nextCount;
+          }
+        });
+
+        if (mode === "date") {
+          let cursor = start;
+          while (cursor <= end) {
+            rows.push({
+              key: cursor.toFormat("yyyy-LL-dd"),
+              label: cursor.toFormat("ccc, MMM d"),
+            });
+            cursor = cursor.plus({ days: 1 });
+          }
+        } else {
+          const dayNumbers = Array.from(
+            new Set(events.map((row) => DateTime.fromMillis(row.millis).day))
+          ).sort((a, b) => a - b);
+          dayNumbers.forEach((day) => {
+            rows.push({ key: `${day}`, label: `Day ${day}` });
           });
-          cursor = cursor.plus({ days: 1 });
         }
       } else {
-        const dayNumbers = Array.from(
-          new Set(events.map((row) => DateTime.fromMillis(row.millis).day))
-        ).sort((a, b) => a - b);
-        dayNumbers.forEach((day) => {
-          rows.push({ key: `${day}`, label: `Day ${day}` });
+        mode = "time";
+        let binMinutes = 60;
+        if (spanHours <= 1) {
+          binMinutes = 5;
+        } else if (spanHours <= 2) {
+          binMinutes = 10;
+        } else if (spanHours <= 6) {
+          binMinutes = 15;
+        } else if (spanHours <= 12) {
+          binMinutes = 30;
+        }
+        modeLabel = `Time × ${binMinutes}-Minute`;
+        const startTime = DateTime.fromMillis(minMillis).startOf("minute");
+        const alignedStartMinute =
+          Math.floor(startTime.minute / binMinutes) * binMinutes;
+        const alignedStart = startTime.set({
+          minute: alignedStartMinute,
+          second: 0,
+          millisecond: 0,
+        });
+        const endTime = DateTime.fromMillis(maxMillis).startOf("minute");
+        const labelIntervalMinutes = Math.max(
+          binMinutes,
+          binMinutes <= 10 ? 30 : binMinutes <= 30 ? 60 : 120
+        );
+        let cursor = alignedStart;
+        while (cursor <= endTime) {
+          const minutesFromStart = cursor.diff(alignedStart, "minutes").minutes;
+          const shouldLabel =
+            minutesFromStart % labelIntervalMinutes === 0;
+          columns.push({
+            key: cursor.toMillis(),
+            label: cursor.toFormat("h:mm a"),
+            displayLabel: shouldLabel ? cursor.toFormat("h:mm a") : "",
+          });
+          cursor = cursor.plus({ minutes: binMinutes });
+        }
+
+        rows = [
+          {
+            key: start.toFormat("yyyy-LL-dd"),
+            label: start.toFormat("ccc, MMM d"),
+          },
+        ];
+
+        events.forEach((row) => {
+          const dateTime = DateTime.fromMillis(row.millis);
+          const rowKey = start.toFormat("yyyy-LL-dd");
+          const minutesOffset = dateTime.diff(alignedStart, "minutes").minutes;
+          const binIndex = Math.floor(minutesOffset / binMinutes);
+          const column = columns[binIndex];
+          if (!column) {
+            return;
+          }
+          const key = `${rowKey}-${column.key}`;
+          const nextCount = (counts.get(key) || 0) + 1;
+          counts.set(key, nextCount);
+          if (nextCount > maxCount) {
+            maxCount = nextCount;
+          }
         });
       }
 
@@ -471,7 +555,7 @@ export default {
         mode,
         modeLabel,
         rows,
-        hours: Array.from({ length: 24 }, (_, index) => index),
+        columns,
         counts,
         maxCount,
         rangeLabel: `${start.toFormat("MMM d, yyyy")} - ${end.toFormat(
@@ -794,11 +878,11 @@ export default {
       }
       return value.toFixed(2);
     },
-    heatmapCount(rowKey, hour) {
-      return this.heatmapConfig.counts.get(`${rowKey}-${hour}`) || 0;
+    heatmapCount(rowKey, columnKey) {
+      return this.heatmapConfig.counts.get(`${rowKey}-${columnKey}`) || 0;
     },
-    heatmapCellColor(rowKey, hour) {
-      const count = this.heatmapCount(rowKey, hour);
+    heatmapCellColor(rowKey, columnKey) {
+      const count = this.heatmapCount(rowKey, columnKey);
       const maxCount = this.heatmapConfig.maxCount;
       if (!count || maxCount === 0) {
         return "#f1f3f5";
@@ -822,15 +906,9 @@ export default {
       }
       return `hsl(45, 90%, ${lightness}%)`;
     },
-    hourLabel(hour) {
-      return hour % 2 === 0
-        ? DateTime.fromObject({ hour }).toFormat("ha")
-        : "";
-    },
-    heatmapCellTitle(row, hour) {
-      const count = this.heatmapCount(row.key, hour);
-      const hourLabel = DateTime.fromObject({ hour }).toFormat("h a");
-      return `${row.label} • ${hourLabel} — ${count} event${
+    heatmapCellTitle(row, column) {
+      const count = this.heatmapCount(row.key, column.key);
+      return `${row.label} • ${column.label} — ${count} event${
         count === 1 ? "" : "s"
       }`;
     },
@@ -909,7 +987,7 @@ export default {
 .heatmap-header,
 .heatmap-row {
   display: grid;
-  grid-template-columns: 140px repeat(24, minmax(16px, 1fr));
+  grid-template-columns: 140px repeat(var(--heatmap-columns, 24), minmax(16px, 1fr));
   gap: 4px;
   align-items: center;
 }

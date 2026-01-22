@@ -86,6 +86,12 @@ export default {
               path: "/delay-estimator",
             },
             {
+              title: "Pedestrian Investigator",
+              description:
+                "Summarize pedestrian walk, clearance, and crossing distance estimates.",
+              path: "/pedestrian-investigator",
+            },
+            {
               title: "Phase Plotter",
               description:
                 "Plot phase state changes across time to troubleshoot timing logic.",

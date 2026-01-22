@@ -23,6 +23,7 @@ import Blog from '../views/Blog'
 import StuckDetectors from '../views/StuckDetectors'
 import SignalOffsetCalculator from '../views/SignalOffsetCalculator'
 import YellowRedRunning from '../views/YellowRedRunning'
+import PedestrianInvestigator from '../views/PedestrianInvestigator'
 
 
 
@@ -127,6 +128,11 @@ const routes = [
         path: '/signal-offsets',
         name: 'signalOffsets',
         component: SignalOffsetCalculator,
+    },
+    {
+        path: '/pedestrian-investigator',
+        name: 'pedestrianInvestigator',
+        component: PedestrianInvestigator,
     },
     {
         path: '/practice-exam',

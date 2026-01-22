@@ -825,18 +825,28 @@ export default {
         format: "letter",
       });
       const margin = 40;
+      const pageHeight = doc.internal.pageSize.getHeight();
       const pageWidth = doc.internal.pageSize.getWidth();
+      const reportSignals = this.reportSignals();
+      const titleText = this.reportTitle(reportSignals);
+      const titleLines = doc.splitTextToSize(titleText, pageWidth - margin * 2);
+      const titleLineHeight = 18;
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
-      doc.text("Yellow & Red Light Running Report", margin, margin);
+      doc.text(titleLines, margin, margin);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      const subtitleY = margin + titleLines.length * titleLineHeight;
+      doc.text("Yellow & Red Light Running Report", margin, subtitleY + 4);
       doc.setFontSize(10);
       doc.text(
         `Generated ${DateTime.now().toFormat("MMM d, yyyy h:mm a")}`,
         margin,
-        margin + 18
+        subtitleY + 20
       );
 
       autoTable(doc, {
-        startY: margin + 30,
+        startY: subtitleY + 32,
         head: [
           [
             "Signal Number",
@@ -869,43 +879,110 @@ export default {
         headStyles: { fillColor: [26, 115, 232] },
       });
 
-      doc.addPage();
-      doc.setFontSize(14);
-      doc.text("Calendar Heatmap", margin, margin);
-      const heatmapElement = this.$refs.heatmapCapture;
-      if (heatmapElement) {
-        const heatmapImage = await this.captureElementImage(heatmapElement);
-        const imgProps = doc.getImageProperties(heatmapImage);
-        const targetWidth = pageWidth - margin * 2;
-        const targetHeight = (imgProps.height * targetWidth) / imgProps.width;
-        doc.addImage(
-          heatmapImage,
-          "PNG",
-          margin,
-          margin + 16,
-          targetWidth,
-          targetHeight
-        );
-      } else {
-        doc.setFontSize(10);
-        doc.text("Heatmap unavailable.", margin, margin + 20);
-      }
-
-      doc.addPage();
-      doc.setFontSize(14);
-      doc.text("Event Share", margin, margin);
+      let cursorY = doc.lastAutoTable.finalY + 20;
       const pieChartImage = await this.buildPieChartImage();
       const pieProps = doc.getImageProperties(pieChartImage);
-      const pieWidth = Math.min(320, pageWidth - margin * 2);
+      const pieWidth = Math.min(220, pageWidth - margin * 2);
       const pieHeight = (pieProps.height * pieWidth) / pieProps.width;
+      if (cursorY + pieHeight + 32 > pageHeight - margin) {
+        doc.addPage();
+        cursorY = margin;
+      }
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Event Share", margin, cursorY);
+      doc.setFont("helvetica", "normal");
       doc.addImage(
         pieChartImage,
         "PNG",
         margin,
-        margin + 16,
+        cursorY + 12,
         pieWidth,
         pieHeight
       );
+      cursorY = cursorY + pieHeight + 28;
+
+      const originalHeatmapState = this.heatmapState;
+      const originalHeatmapSignal = this.selectedHeatmapSignal;
+      const originalHeatmapPhase = this.selectedHeatmapPhase;
+      try {
+        if (reportSignals.length === 1) {
+          const signal = reportSignals[0];
+          const phases = [...signal.mappedPhases].sort((a, b) => a - b);
+          for (const phase of phases) {
+            this.selectedHeatmapSignal = signal.id;
+            this.selectedHeatmapPhase = phase;
+            await this.$nextTick();
+            const heatmapImage = await this.captureHeatmapImage();
+            if (!heatmapImage) {
+              doc.setFontSize(10);
+              doc.text("Heatmap unavailable.", margin, cursorY + 20);
+              cursorY += 36;
+              continue;
+            }
+            const imgProps = doc.getImageProperties(heatmapImage);
+            const targetWidth = pageWidth - margin * 2;
+            const targetHeight =
+              (imgProps.height * targetWidth) / imgProps.width;
+            const label = `Phase ${phase} • ${this.heatmapState} events${
+              this.heatmapConfig.rangeLabel
+                ? ` • ${this.heatmapConfig.rangeLabel}`
+                : ""
+            }`;
+            const labelHeight = 18;
+            if (cursorY + targetHeight + labelHeight > pageHeight - margin) {
+              doc.addPage();
+              cursorY = margin;
+            }
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("Calendar Heatmap", margin, cursorY);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.text(label, margin, cursorY + 14);
+            doc.addImage(
+              heatmapImage,
+              "PNG",
+              margin,
+              cursorY + 24,
+              targetWidth,
+              targetHeight
+            );
+            cursorY = cursorY + targetHeight + 40;
+          }
+        } else {
+          const heatmapImage = await this.captureHeatmapImage();
+          if (!heatmapImage) {
+            doc.setFontSize(10);
+            doc.text("Heatmap unavailable.", margin, cursorY + 20);
+          } else {
+            const imgProps = doc.getImageProperties(heatmapImage);
+            const targetWidth = pageWidth - margin * 2;
+            const targetHeight =
+              (imgProps.height * targetWidth) / imgProps.width;
+            if (cursorY + targetHeight + 32 > pageHeight - margin) {
+              doc.addPage();
+              cursorY = margin;
+            }
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("Calendar Heatmap", margin, cursorY);
+            doc.setFont("helvetica", "normal");
+            doc.addImage(
+              heatmapImage,
+              "PNG",
+              margin,
+              cursorY + 12,
+              targetWidth,
+              targetHeight
+            );
+          }
+        }
+      } finally {
+        this.heatmapState = originalHeatmapState;
+        this.selectedHeatmapSignal = originalHeatmapSignal;
+        this.selectedHeatmapPhase = originalHeatmapPhase;
+      }
 
       doc.save("yellow-red-running-report.pdf");
     },
@@ -916,22 +993,40 @@ export default {
       });
       return canvas.toDataURL("image/png");
     },
+    async captureHeatmapImage() {
+      const heatmapElement = this.$refs.heatmapCapture;
+      if (!heatmapElement) {
+        return null;
+      }
+      await this.$nextTick();
+      return this.captureElementImage(heatmapElement);
+    },
     async buildPieChartImage() {
       const yellowCount = this.tableRows.filter(
         (row) => row.state === "Yellow"
       ).length;
       const redCount = this.tableRows.filter((row) => row.state === "Red").length;
+      const detectorOffTotal = this.signalResults.reduce((sum, signal) => {
+        const detectorCounts = Object.values(signal.detectorOffCounts || {});
+        return sum + detectorCounts.reduce((total, count) => total + count, 0);
+      }, 0);
+      const regularCount = Math.max(
+        detectorOffTotal - yellowCount - redCount,
+        0
+      );
       const canvas = document.createElement("canvas");
       canvas.width = 600;
       canvas.height = 600;
       const chart = new Chart(canvas.getContext("2d"), {
         type: "pie",
         data: {
-          labels: ["Yellow Events", "Red Events"],
+          labels: ["Yellow Events", "Red Events", "Regular Detection Events"],
           datasets: [
             {
-              data: [yellowCount, redCount],
-              backgroundColor: ["#f7b731", "#eb3b5a"],
+              data: [yellowCount, redCount, regularCount],
+              backgroundColor: ["#f7b731", "#eb3b5a", "rgba(100, 116, 139, 0.4)"],
+              borderColor: ["#f7b731", "#eb3b5a", "#64748b"],
+              borderWidth: 1,
             },
           ],
         },
@@ -948,6 +1043,34 @@ export default {
       const dataUrl = canvas.toDataURL("image/png");
       chart.destroy();
       return dataUrl;
+    },
+    reportTitle(signals) {
+      if (!signals.length) {
+        return "Yellow & Red Light Running Report";
+      }
+      if (signals.length === 1) {
+        const signal = signals[0];
+        const number = signal.number || "—";
+        const name = signal.name || "Unnamed";
+        return `Signal ${number} — ${name}`;
+      }
+      const signalList = signals
+        .map((signal) => {
+          const number = signal.number || "—";
+          const name = signal.name || "Unnamed";
+          return `${number} ${name}`.trim();
+        })
+        .join(", ");
+      return `Signals: ${signalList}`;
+    },
+    reportSignals() {
+      const signalIds = new Set(
+        this.reportSummaryRows.map((row) => row.signalId)
+      );
+      const reportSignals = this.signalResults.filter((signal) =>
+        signalIds.has(signal.id)
+      );
+      return reportSignals.length ? reportSignals : this.signalResults;
     },
     processDetectorEvents() {
       const rows = [];

@@ -131,6 +131,12 @@ export const routeMeta = {
       "Plot preemption enumerations (101-119) over time for diagnostics.",
     path: "/preemption-plotter",
   },
+  enumerationMatrix: {
+    title: "Enumeration Matrix | Phase/Channel Event Diagnostics",
+    description:
+      "Compare enumeration events against phase/channel values with hoverable timestamps.",
+    path: "/enumeration-matrix",
+  },
   detectionPlotter: {
     title: "Detection Channel Plotter | Detector Health & Events",
     description:

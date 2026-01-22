@@ -84,6 +84,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+All+Enumerations+Plot.png",
+          title: "Enumeration Matrix",
+          description:
+            "Plot enumeration events by phase/channel with timestamp tooltips",
+          link: "/enumeration-matrix",
+          topics: ["Controller Data", "Enumerations", "Diagnostics"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
           title: "Detection Channel Plotter",
           description:

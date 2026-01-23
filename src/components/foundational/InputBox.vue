@@ -1,5 +1,30 @@
 <template>
+  <div class="input-toggle">
+    <button
+      type="button"
+      class="toggle-button"
+      :class="{ active: inputMode === 'text' }"
+      @click="setInputMode('text')"
+    >
+      Text
+    </button>
+    <button
+      type="button"
+      class="toggle-button"
+      :class="{ active: inputMode === 'file' }"
+      @click="setInputMode('file')"
+    >
+      File
+    </button>
+  </div>
+  <input
+    v-if="inputMode === 'file'"
+    type="file"
+    class="input-box input-file"
+    @change="handleFileChange"
+  />
   <textarea
+    v-else
     type="text"
     rows="10"
     v-model="inputData"
@@ -19,7 +44,9 @@ export default {
   },
   data() {
     return {
+      inputMode: "text",
       inputData: this.defaultText,
+      textData: this.defaultText,
       hasFocused: false,
     };
   },
@@ -28,10 +55,42 @@ export default {
       this.$emit("update:inputData", this.inputData);
     },
     clearText() {
+      if (this.inputMode !== "text") {
+        return;
+      }
       if (!this.hasFocused) {
         this.inputData = "";
         this.hasFocused = true;
       }
+    },
+    setInputMode(mode) {
+      if (this.inputMode === mode) {
+        return;
+      }
+      if (mode === "file") {
+        this.textData = this.inputData;
+        this.inputData = "";
+        this.hasFocused = true;
+      } else {
+        this.inputData = this.textData || this.defaultText;
+        this.hasFocused = this.inputData !== this.defaultText;
+      }
+      this.inputMode = mode;
+      this.emitInput();
+    },
+    handleFileChange(event) {
+      const [file] = event.target.files;
+      if (!file) {
+        this.inputData = "";
+        this.emitInput();
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.inputData = reader.result || "";
+        this.emitInput();
+      };
+      reader.readAsText(file);
     },
   },
   onChange() {
@@ -78,6 +137,30 @@ export default {
   overflow-y: auto;
   max-height: 220px;
   min-height: 140px;
+}
+
+.input-toggle {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.toggle-button {
+  border: 1px solid #ccc;
+  background: #f7f7f7;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.toggle-button.active {
+  background: #e0e0e0;
+  font-weight: 600;
+}
+
+.input-file {
+  min-height: auto;
+  padding: 8px;
 }
 
 input[type="text"],

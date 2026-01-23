@@ -1,26 +1,22 @@
 <template>
-  <div class="input-toggle">
-    <button
-      type="button"
-      class="toggle-button"
-      :class="{ active: inputMode === 'text' }"
-      @click="setInputMode('text')"
-    >
-      Text
-    </button>
-    <button
-      type="button"
-      class="toggle-button"
-      :class="{ active: inputMode === 'file' }"
-      @click="setInputMode('file')"
-    >
-      File
-    </button>
+  <div class="input-toggle" role="group" aria-label="Input mode">
+    <span class="toggle-label" :class="{ active: inputMode === 'text' }">Text</span>
+    <label class="switch">
+      <input
+        type="checkbox"
+        :checked="inputMode === 'file'"
+        @change="setInputMode($event.target.checked ? 'file' : 'text')"
+        aria-label="Toggle between text and file input"
+      />
+      <span class="slider"></span>
+    </label>
+    <span class="toggle-label" :class="{ active: inputMode === 'file' }">Files</span>
   </div>
   <input
     v-if="inputMode === 'file'"
     type="file"
     class="input-box input-file"
+    multiple
     @change="handleFileChange"
   />
   <textarea
@@ -79,18 +75,31 @@ export default {
       this.emitInput();
     },
     handleFileChange(event) {
-      const [file] = event.target.files;
-      if (!file) {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) {
         this.inputData = "";
         this.emitInput();
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.inputData = reader.result || "";
-        this.emitInput();
-      };
-      reader.readAsText(file);
+      Promise.all(
+        files.map(
+          (file) =>
+            new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result || "");
+              reader.onerror = () => reject(reader.error || new Error("Failed to read file"));
+              reader.readAsText(file);
+            }),
+        ),
+      )
+        .then((contents) => {
+          this.inputData = contents.filter(Boolean).join("\n");
+          this.emitInput();
+        })
+        .catch(() => {
+          this.inputData = "";
+          this.emitInput();
+        });
     },
   },
   onChange() {
@@ -141,21 +150,61 @@ export default {
 
 .input-toggle {
   display: inline-flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 8px;
 }
 
-.toggle-button {
-  border: 1px solid #ccc;
-  background: #f7f7f7;
-  border-radius: 4px;
-  padding: 6px 12px;
-  cursor: pointer;
+.toggle-label {
+  color: #666;
+  font-weight: 500;
 }
 
-.toggle-button.active {
-  background: #e0e0e0;
+.toggle-label.active {
+  color: #222;
   font-weight: 600;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #cfcfcf;
+  border-radius: 999px;
+  transition: background-color 0.2s ease;
+}
+
+.slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.switch input:checked + .slider {
+  background-color: #4caf50;
+}
+
+.switch input:checked + .slider::before {
+  transform: translateX(20px);
 }
 
 .input-file {

@@ -83,37 +83,41 @@
       <table class="summary-table">
         <thead>
           <tr>
-            <th>Signal ID</th>
-            <th>Phase</th>
-            <th>Ped Phase Uses</th>
-            <th>Ped Calls / Hr</th>
-            <th>Full-Service Cycles</th>
-            <th>Calls in Full-Service Cycles (%)</th>
-            <th>Avg Walk Time (s)</th>
-            <th>Avg Walk Change Interval (s)</th>
-            <th>Avg Call-to-Walk Delay (s)</th>
-            <th>Risk Score</th>
-            <th>Estimated Crossing Distance (ft)</th>
-            <th>Estimated Lanes</th>
+            <th
+              v-for="column in summaryColumns"
+              :key="`summary-header-${column.key}`"
+              class="sortable-header"
+              @click="sortBy(column.key)"
+            >
+              <span>{{ column.label }}</span>
+              <span class="sort-indicator">{{ sortIndicator(column.key) }}</span>
+            </th>
+          </tr>
+          <tr class="summary-filter-row">
+            <th
+              v-for="column in summaryColumns"
+              :key="`summary-filter-${column.key}`"
+            >
+              <input
+                v-model="filters[column.key]"
+                type="text"
+                class="summary-filter-input"
+                :placeholder="`Filter ${column.label}`"
+              />
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr
-            v-for="(row, index) in summaryRows"
+            v-for="(row, index) in filteredSummaryRows"
             :key="`summary-${row.signalId}-${row.phase}-${index}`"
           >
-            <td>{{ row.signalId }}</td>
-            <td>{{ row.phase }}</td>
-            <td>{{ row.pedEventCount }}</td>
-            <td>{{ formatRate(row.pedCallsPerHour) }}</td>
-            <td>{{ row.fullServiceCycleCount }}</td>
-            <td>{{ formatPercent(row.fullServiceCallPercent) }}</td>
-            <td>{{ formatSeconds(row.averageWalkTime) }}</td>
-            <td>{{ formatSeconds(row.averageChangeInterval) }}</td>
-            <td>{{ formatSeconds(row.averageCallToWalkDelay) }}</td>
-            <td>{{ formatRisk(row.riskScore) }}</td>
-            <td>{{ formatDistance(row.estimatedDistance) }}</td>
-            <td>{{ formatLanes(row.estimatedLanes) }}</td>
+            <td
+              v-for="column in summaryColumns"
+              :key="`summary-${row.signalId}-${row.phase}-${column.key}`"
+            >
+              {{ formatSummaryValue(row, column.key) }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -141,6 +145,20 @@ const PED_CALL_EVENT = 45;
 const FEET_PER_SECOND = 3.5;
 const LANE_WIDTH_FEET = 12;
 const HEADER_SCAN_LIMIT = 12;
+const SUMMARY_COLUMNS = [
+  { key: "signalId", label: "Signal ID" },
+  { key: "phase", label: "Phase" },
+  { key: "pedEventCount", label: "Ped Phase Uses" },
+  { key: "pedCallsPerHour", label: "Ped Calls / Hr" },
+  { key: "fullServiceCycleCount", label: "Full-Service Cycles" },
+  { key: "fullServiceCallPercent", label: "Calls in Full-Service Cycles (%)" },
+  { key: "averageWalkTime", label: "Avg Walk Time (s)" },
+  { key: "averageChangeInterval", label: "Avg Walk Change Interval (s)" },
+  { key: "averageCallToWalkDelay", label: "Avg Call-to-Walk Delay (s)" },
+  { key: "riskScore", label: "Risk Score" },
+  { key: "estimatedDistance", label: "Estimated Crossing Distance (ft)" },
+  { key: "estimatedLanes", label: "Estimated Lanes" },
+];
 
 export default {
   components: {
@@ -155,11 +173,59 @@ export default {
       invalidRows: 0,
       metadataRows: [],
       summaryRows: [],
+      filters: SUMMARY_COLUMNS.reduce((accumulator, column) => {
+        accumulator[column.key] = "";
+        return accumulator;
+      }, {}),
+      sortKey: "signalId",
+      sortDirection: "asc",
     };
   },
   computed: {
     hasInputData() {
       return this.signals.some((signal) => signal.data.trim());
+    },
+    summaryColumns() {
+      return SUMMARY_COLUMNS;
+    },
+    filteredSummaryRows() {
+      const activeFilters = this.filters;
+      const filterKeys = Object.keys(activeFilters);
+      const filtered = this.summaryRows.filter((row) =>
+        filterKeys.every((key) => {
+          const filterValue = activeFilters[key];
+          if (!filterValue) {
+            return true;
+          }
+          const displayValue = this.formatSummaryValue(row, key);
+          return displayValue
+            .toString()
+            .toLowerCase()
+            .includes(filterValue.toLowerCase());
+        })
+      );
+
+      if (!this.sortKey) {
+        return filtered;
+      }
+      const direction = this.sortDirection === "desc" ? -1 : 1;
+      return [...filtered].sort((a, b) => {
+        const valueA = this.summarySortValue(a, this.sortKey);
+        const valueB = this.summarySortValue(b, this.sortKey);
+        if (valueA === valueB) {
+          return 0;
+        }
+        if (valueA === null || valueA === undefined || valueA === "") {
+          return 1;
+        }
+        if (valueB === null || valueB === undefined || valueB === "") {
+          return -1;
+        }
+        if (typeof valueA === "number" && typeof valueB === "number") {
+          return (valueA - valueB) * direction;
+        }
+        return valueA.toString().localeCompare(valueB.toString()) * direction;
+      });
     },
   },
   methods: {
@@ -192,6 +258,80 @@ export default {
       this.invalidRows = invalidRows.reduce((sum, value) => sum + value, 0);
       this.metadataRows = metadataRows;
       this.summaryRows = summaryRows;
+    },
+    sortBy(key) {
+      if (this.sortKey === key) {
+        this.sortDirection = this.sortDirection === "asc" ? "desc" : "asc";
+        return;
+      }
+      this.sortKey = key;
+      this.sortDirection = "asc";
+    },
+    sortIndicator(key) {
+      if (this.sortKey !== key) {
+        return "";
+      }
+      return this.sortDirection === "asc" ? "▲" : "▼";
+    },
+    formatSummaryValue(row, key) {
+      switch (key) {
+        case "signalId":
+          return row.signalId;
+        case "phase":
+          return row.phase;
+        case "pedEventCount":
+          return row.pedEventCount;
+        case "pedCallsPerHour":
+          return this.formatRate(row.pedCallsPerHour);
+        case "fullServiceCycleCount":
+          return row.fullServiceCycleCount;
+        case "fullServiceCallPercent":
+          return this.formatPercent(row.fullServiceCallPercent);
+        case "averageWalkTime":
+          return this.formatSeconds(row.averageWalkTime);
+        case "averageChangeInterval":
+          return this.formatSeconds(row.averageChangeInterval);
+        case "averageCallToWalkDelay":
+          return this.formatSeconds(row.averageCallToWalkDelay);
+        case "riskScore":
+          return this.formatRisk(row.riskScore);
+        case "estimatedDistance":
+          return this.formatDistance(row.estimatedDistance);
+        case "estimatedLanes":
+          return this.formatLanes(row.estimatedLanes);
+        default:
+          return row[key] ?? "-";
+      }
+    },
+    summarySortValue(row, key) {
+      switch (key) {
+        case "signalId":
+          return row.signalId;
+        case "phase":
+          return row.phase;
+        case "pedEventCount":
+          return row.pedEventCount;
+        case "pedCallsPerHour":
+          return row.pedCallsPerHour;
+        case "fullServiceCycleCount":
+          return row.fullServiceCycleCount;
+        case "fullServiceCallPercent":
+          return row.fullServiceCallPercent;
+        case "averageWalkTime":
+          return row.averageWalkTime;
+        case "averageChangeInterval":
+          return row.averageChangeInterval;
+        case "averageCallToWalkDelay":
+          return row.averageCallToWalkDelay;
+        case "riskScore":
+          return row.riskScore;
+        case "estimatedDistance":
+          return row.estimatedDistance;
+        case "estimatedLanes":
+          return row.estimatedLanes;
+        default:
+          return row[key];
+      }
     },
     processSignalData(signalData, signalId) {
       const lines = signalData.split(/\r?\n/).filter(Boolean);
@@ -631,6 +771,30 @@ export default {
 
 .summary-table th {
   background-color: #f6f6f6;
+}
+
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sort-indicator {
+  margin-left: 6px;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.summary-filter-row th {
+  background-color: #fafafa;
+  padding: 6px 8px;
+}
+
+.summary-filter-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
 }
 
 .note-text {

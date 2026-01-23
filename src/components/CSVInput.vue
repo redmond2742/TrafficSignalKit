@@ -15,6 +15,13 @@
       </div>
 
       <div v-if="useFileUpload" class="file-upload">
+        <div class="input-toggle">
+          <v-switch
+            v-model="allowMultipleUploads"
+            inset
+            label="Allow multiple CSV uploads"
+          />
+        </div>
         <div
           class="file-drop-zone"
           @dragover.prevent
@@ -24,7 +31,7 @@
           <input
             ref="fileInput"
             type="file"
-            multiple
+            :multiple="allowMultipleUploads"
             accept=".csv,text/csv"
             @change="handleFileSelection"
           />
@@ -152,6 +159,7 @@ export default {
     return {
       inputData: "",
       useFileUpload: false,
+      allowMultipleUploads: true,
       selectedFileNames: [],
       filesLoaded: false,
       isLoadingFiles: false,
@@ -363,13 +371,14 @@ export default {
       this.isLoadingFiles = true;
       this.filesLoaded = false;
       const files = Array.from(fileList);
-      this.selectedFileNames = files.map((file) => file.name);
+      const filesToLoad = this.allowMultipleUploads ? files : files.slice(0, 1);
+      this.selectedFileNames = filesToLoad.map((file) => file.name);
       const combinedLines = [];
       let headerLine = null;
       let normalizedHeader = null;
 
       try {
-        for (const file of files) {
+        for (const file of filesToLoad) {
           const text = await file.text();
           const lines = text
             .split(/\r?\n/)
@@ -510,6 +519,19 @@ export default {
         this.inputData = "";
         this.rowData = [];
       } else {
+        this.clearFileSelection();
+      }
+    },
+    allowMultipleUploads(newValue) {
+      if (newValue) {
+        return;
+      }
+      const currentFiles = this.$refs.fileInput?.files;
+      if (currentFiles && currentFiles.length > 1) {
+        this.loadCsvFiles([currentFiles[0]]);
+        return;
+      }
+      if (this.selectedFileNames.length > 1) {
         this.clearFileSelection();
       }
     },

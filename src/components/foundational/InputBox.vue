@@ -33,22 +33,38 @@
 <script>
 export default {
   props: {
+    modelValue: {
+      type: String,
+      default: "",
+    },
     defaultText: {
       type: String,
       default: "Paste in text for processing",
     },
   },
+  emits: ["update:modelValue"],
   data() {
     return {
       inputMode: "text",
-      inputData: this.defaultText,
-      textData: this.defaultText,
-      hasFocused: false,
+      inputData: this.modelValue || this.defaultText,
+      textData: this.modelValue || this.defaultText,
+      hasFocused: this.modelValue !== "" && this.modelValue !== this.defaultText,
     };
+  },
+  watch: {
+    modelValue(newValue) {
+      if (newValue === this.inputData) {
+        return;
+      }
+      this.inputData = newValue;
+      if (this.inputMode === "text") {
+        this.hasFocused = this.inputData !== "" && this.inputData !== this.defaultText;
+      }
+    },
   },
   methods: {
     emitInput() {
-      this.$emit("update:inputData", this.inputData);
+      this.$emit("update:modelValue", this.inputData);
     },
     clearText() {
       if (this.inputMode !== "text") {
@@ -78,7 +94,7 @@ export default {
       const files = Array.from(event.target.files || []);
       if (files.length === 0) {
         this.inputData = "";
-        this.emitInput();
+        this.$emit("update:modelValue", this.inputData);
         return;
       }
       Promise.all(
@@ -94,11 +110,11 @@ export default {
       )
         .then((contents) => {
           this.inputData = contents.filter(Boolean).join("\n");
-          this.emitInput();
+          this.$emit("update:modelValue", this.inputData);
         })
         .catch(() => {
           this.inputData = "";
-          this.emitInput();
+          this.$emit("update:modelValue", this.inputData);
         });
     },
   },

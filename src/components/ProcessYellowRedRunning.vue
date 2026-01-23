@@ -429,6 +429,72 @@
               </button>
             </th>
           </tr>
+          <tr class="filter-row">
+            <th>
+              <input
+                v-model.trim="detailFilters.signalNumber"
+                class="table-filter-input"
+                type="text"
+                placeholder="Filter"
+              />
+            </th>
+            <th>
+              <input
+                v-model.trim="detailFilters.signalName"
+                class="table-filter-input"
+                type="text"
+                placeholder="Filter"
+              />
+            </th>
+            <th>
+              <input
+                v-model.trim="detailFilters.timestamp"
+                class="table-filter-input"
+                type="text"
+                placeholder="Filter"
+              />
+            </th>
+            <th>
+              <input
+                v-model.trim="detailFilters.detector"
+                class="table-filter-input"
+                type="text"
+                placeholder="Filter"
+              />
+            </th>
+            <th>
+              <input
+                v-model.trim="detailFilters.phase"
+                class="table-filter-input"
+                type="text"
+                placeholder="Filter"
+              />
+            </th>
+            <th>
+              <input
+                v-model.trim="detailFilters.state"
+                class="table-filter-input"
+                type="text"
+                placeholder="Filter"
+              />
+            </th>
+            <th>
+              <input
+                v-model.trim="detailFilters.elapsedSeconds"
+                class="table-filter-input"
+                type="text"
+                placeholder="Filter"
+              />
+            </th>
+            <th>
+              <input
+                v-model.trim="detailFilters.termination"
+                class="table-filter-input"
+                type="text"
+                placeholder="Filter"
+              />
+            </th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="row in sortedTableRows" :key="row.key">
@@ -488,6 +554,16 @@ export default {
         key: "timestamp",
         direction: "asc",
       },
+      detailFilters: {
+        signalNumber: "",
+        signalName: "",
+        timestamp: "",
+        detector: "",
+        phase: "",
+        state: "",
+        elapsedSeconds: "",
+        termination: "",
+      },
       summarySort: {
         key: "signalNumber",
         direction: "asc",
@@ -500,9 +576,21 @@ export default {
   computed: {
     sortedTableRows() {
       return this.sortRows(
-        this.tableRows,
+        this.filteredTableRows,
         this.detailSort.key,
         this.detailSort.direction
+      );
+    },
+    filteredTableRows() {
+      return this.tableRows.filter((row) =>
+        Object.entries(this.detailFilters).every(([key, value]) => {
+          if (!value) {
+            return true;
+          }
+          const search = value.toLowerCase();
+          const haystack = this.detailFilterValue(row, key);
+          return haystack.includes(search);
+        })
       );
     },
     summaryRows() {
@@ -815,6 +903,25 @@ export default {
     },
   },
   methods: {
+    detailFilterValue(row, key) {
+      const normalize = (value) => String(value ?? "").toLowerCase();
+      switch (key) {
+        case "elapsedSeconds":
+          return `${normalize(this.formatSeconds(row.elapsedSeconds))} ${normalize(
+            row.elapsedSeconds
+          )}`.trim();
+        case "signalNumber":
+        case "signalName":
+        case "timestamp":
+        case "detector":
+        case "phase":
+        case "state":
+        case "termination":
+          return normalize(row[key]);
+        default:
+          return normalize(row[key]);
+      }
+    },
     async downloadPdfReport() {
       if (!this.reportSummaryRows.length) {
         return;
@@ -1644,6 +1751,24 @@ export default {
   padding: 8px;
   text-align: left;
   vertical-align: top;
+}
+
+.filter-row th {
+  background: #f7f7f7;
+}
+
+.table-filter-input {
+  width: 100%;
+  min-width: 120px;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.table-filter-input:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
 }
 
 .sort-button {

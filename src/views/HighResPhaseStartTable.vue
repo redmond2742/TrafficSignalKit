@@ -6,10 +6,12 @@
       phase start timestamps for green, yellow, and red intervals.
     </p>
 
-    <InputBox
-      v-model="inputData"
-      :defaultText="inputPlaceholder"
-    />
+    <div class="input-box-wrapper">
+      <InputBox
+        v-model="inputData"
+        :defaultText="inputPlaceholder"
+      />
+    </div>
 
     <div class="action-row">
       <v-btn
@@ -40,9 +42,47 @@
                 <th>Yellow Start</th>
                 <th>Red Start</th>
               </tr>
+              <tr class="filter-row">
+                <th>
+                  <input
+                    v-model="filters.phase"
+                    type="text"
+                    class="column-filter"
+                    placeholder="Filter"
+                    aria-label="Filter phase column"
+                  />
+                </th>
+                <th>
+                  <input
+                    v-model="filters.green"
+                    type="text"
+                    class="column-filter"
+                    placeholder="Filter"
+                    aria-label="Filter green start column"
+                  />
+                </th>
+                <th>
+                  <input
+                    v-model="filters.yellow"
+                    type="text"
+                    class="column-filter"
+                    placeholder="Filter"
+                    aria-label="Filter yellow start column"
+                  />
+                </th>
+                <th>
+                  <input
+                    v-model="filters.red"
+                    type="text"
+                    class="column-filter"
+                    placeholder="Filter"
+                    aria-label="Filter red start column"
+                  />
+                </th>
+              </tr>
             </thead>
             <tbody>
-              <tr v-for="row in tableRows" :key="`phase-${row.phase}`">
+              <tr v-for="row in filteredRows" :key="`phase-${row.phase}`">
                 <td class="phase-cell">{{ row.phase }}</td>
                 <td v-html="formatCell(row.greenStarts)"></td>
                 <td v-html="formatCell(row.yellowStarts)"></td>
@@ -69,6 +109,12 @@ export default {
     return {
       inputData: "",
       tableRows: [],
+      filters: {
+        phase: "",
+        green: "",
+        yellow: "",
+        red: "",
+      },
       inputPlaceholder:
         "Paste or upload high-resolution data: timestamp, event code, phase",
     };
@@ -76,6 +122,35 @@ export default {
   computed: {
     canProcess() {
       return this.inputData.trim().length > 0;
+    },
+    filteredRows() {
+      if (!this.tableRows.length) {
+        return [];
+      }
+      const normalizedFilters = {
+        phase: this.filters.phase.trim().toLowerCase(),
+        green: this.filters.green.trim().toLowerCase(),
+        yellow: this.filters.yellow.trim().toLowerCase(),
+        red: this.filters.red.trim().toLowerCase(),
+      };
+      const matches = (value, filter) => {
+        if (!filter) {
+          return true;
+        }
+        return value.toLowerCase().includes(filter);
+      };
+      return this.tableRows.filter((row) => {
+        const phaseValue = `${row.phase}`;
+        const greenValue = row.greenStarts.join(" ");
+        const yellowValue = row.yellowStarts.join(" ");
+        const redValue = row.redStarts.join(" ");
+        return (
+          matches(phaseValue.toLowerCase(), normalizedFilters.phase) &&
+          matches(greenValue.toLowerCase(), normalizedFilters.green) &&
+          matches(yellowValue.toLowerCase(), normalizedFilters.yellow) &&
+          matches(redValue.toLowerCase(), normalizedFilters.red)
+        );
+      });
     },
   },
   methods: {
@@ -201,6 +276,15 @@ export default {
   text-align: center;
 }
 
+.input-box-wrapper {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.input-box-wrapper :deep(.input-box) {
+  width: 100%;
+}
+
 .action-row {
   display: flex;
   flex-wrap: wrap;
@@ -233,6 +317,25 @@ export default {
 
 .phase-table th {
   font-weight: 600;
+}
+
+.filter-row th {
+  padding-top: 6px;
+  padding-bottom: 12px;
+}
+
+.column-filter {
+  width: 100%;
+  min-width: 120px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background-color: rgba(0, 0, 0, 0.15);
+  color: inherit;
+}
+
+.column-filter::placeholder {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .phase-cell {

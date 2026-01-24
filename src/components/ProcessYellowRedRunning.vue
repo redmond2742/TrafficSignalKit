@@ -328,7 +328,17 @@
     </div>
 
     <div v-if="tableRows.length" class="rlr-table-wrapper">
-      <h2 class="section-title">All Yellow and Red Running Events Table</h2>
+      <div class="rlr-table-header">
+        <h2 class="section-title">All Yellow and Red Running Events Table</h2>
+        <v-btn
+          color="primary"
+          variant="outlined"
+          :disabled="sortedTableRows.length === 0"
+          @click="downloadDetailCsv"
+        >
+          Download CSV
+        </v-btn>
+      </div>
       <table class="rlr-table">
         <thead>
           <tr>
@@ -903,6 +913,56 @@ export default {
     },
   },
   methods: {
+    csvEscape(value) {
+      const stringValue = value === null || value === undefined ? "" : String(value);
+      if (/[",\n]/.test(stringValue)) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    },
+    formatIsoTimestamp(millis) {
+      if (!Number.isFinite(millis)) {
+        return "";
+      }
+      return DateTime.fromMillis(millis).toISO();
+    },
+    downloadDetailCsv() {
+      if (!this.sortedTableRows.length) {
+        return;
+      }
+      const header = [
+        "ISO 8601 timestamp",
+        "Signal ID",
+        "Signal Name",
+        "Phase",
+        "Detector Channel",
+        "Light State (Red or Yellow)",
+        "Seconds into State",
+      ];
+      const rows = this.sortedTableRows.map((row) => [
+        this.formatIsoTimestamp(row.millis),
+        row.signalId,
+        row.signalName,
+        row.phase,
+        row.detector,
+        row.state,
+        Number.isFinite(row.elapsedSeconds)
+          ? (Math.round(row.elapsedSeconds * 10) / 10).toFixed(1)
+          : "",
+      ]);
+      const csvContent = [
+        header.map(this.csvEscape).join(","),
+        ...rows.map((row) => row.map(this.csvEscape).join(",")),
+      ].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "yellow-red-running-events.csv");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    },
     detailFilterValue(row, key) {
       const normalize = (value) => String(value ?? "").toLowerCase();
       switch (key) {
@@ -1633,6 +1693,15 @@ export default {
 
 .rlr-table-wrapper {
   overflow-x: auto;
+}
+
+.rlr-table-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .rlr-heatmap-controls {

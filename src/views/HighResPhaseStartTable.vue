@@ -6,39 +6,7 @@
       phase start timestamps for green, yellow, and red intervals.
     </p>
 
-    <div class="input-controls">
-      <v-switch
-        v-model="useFileUpload"
-        inset
-        label="Upload a file instead of pasting"
-      />
-    </div>
-
-    <div v-if="useFileUpload" class="file-upload">
-      <div class="file-drop-zone" @dragover.prevent @drop.prevent="handleDrop">
-        <p>Drag and drop a CSV file here, or choose a file to upload.</p>
-        <input
-          ref="fileInput"
-          type="file"
-          accept=".csv,text/csv"
-          @change="handleFileSelection"
-        />
-      </div>
-      <p v-if="selectedFileName" class="file-name">
-        Selected file: {{ selectedFileName }}
-      </p>
-      <v-btn
-        v-if="selectedFileName"
-        variant="text"
-        color="secondary"
-        @click="clearFileSelection"
-      >
-        Clear selection
-      </v-btn>
-    </div>
-
     <InputBox
-      v-else
       v-model="inputData"
       :defaultText="inputPlaceholder"
     />
@@ -100,11 +68,9 @@ export default {
   data() {
     return {
       inputData: "",
-      useFileUpload: false,
-      selectedFileName: "",
       tableRows: [],
       inputPlaceholder:
-        "Paste high-resolution data: timestamp, event code, phase",
+        "Paste or upload high-resolution data: timestamp, event code, phase",
     };
   },
   computed: {
@@ -113,35 +79,6 @@ export default {
     },
   },
   methods: {
-    handleFileSelection(event) {
-      const file = event.target.files?.[0];
-      if (!file) {
-        return;
-      }
-      this.loadCsvFile(file);
-    },
-    handleDrop(event) {
-      const file = event.dataTransfer.files?.[0];
-      if (!file) {
-        return;
-      }
-      this.loadCsvFile(file);
-    },
-    loadCsvFile(file) {
-      const reader = new FileReader();
-      this.selectedFileName = file.name;
-      reader.onload = () => {
-        this.inputData = reader.result?.toString() ?? "";
-      };
-      reader.readAsText(file);
-    },
-    clearFileSelection() {
-      this.selectedFileName = "";
-      this.inputData = "";
-      if (this.$refs.fileInput) {
-        this.$refs.fileInput.value = "";
-      }
-    },
     processData() {
       const lines = this.inputData
         .split(/\r?\n/)
@@ -186,7 +123,13 @@ export default {
         .map((phase) => ({
           phase,
           ...phaseData.get(phase),
-        }));
+        }))
+        .filter(
+          (row) =>
+            row.greenStarts.length ||
+            row.yellowStarts.length ||
+            row.redStarts.length,
+        );
     },
     formatCell(values) {
       if (!values.length) {
@@ -244,16 +187,6 @@ export default {
       URL.revokeObjectURL(url);
     },
   },
-  watch: {
-    useFileUpload(newValue) {
-      if (newValue) {
-        this.inputData = "";
-        this.tableRows = [];
-      } else {
-        this.clearFileSelection();
-      }
-    },
-  },
 };
 </script>
 
@@ -266,32 +199,6 @@ export default {
   max-width: 760px;
   margin: 0 auto 16px;
   text-align: center;
-}
-
-.input-controls {
-  max-width: 760px;
-  margin: 0 auto 12px;
-}
-
-.file-upload {
-  max-width: 760px;
-  margin: 0 auto 16px;
-  text-align: center;
-}
-
-.file-drop-zone {
-  border: 2px dashed rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.file-drop-zone input[type="file"] {
-  margin-top: 12px;
-}
-
-.file-name {
-  margin-top: 8px;
 }
 
 .action-row {

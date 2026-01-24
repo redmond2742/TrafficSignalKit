@@ -117,7 +117,7 @@
 
     <section class="preview" v-if="frameDataUrl">
       <h2>Preview</h2>
-      <a class="download-button" :href="frameDataUrl" download="frame.png">
+      <a class="download-button" :href="frameDataUrl" :download="downloadFilename">
         Download frame
       </a>
       <img :src="frameDataUrl" alt="Extracted video frame preview" />
@@ -137,6 +137,7 @@ export default {
       objectUrl: null,
       isMetadataLoaded: false,
       videoDuration: 0,
+      videoFileName: "",
       syncReferenceFrame: 0,
       syncInputMode: "clock",
       syncClockTime: "00:00:00.000",
@@ -190,6 +191,15 @@ export default {
       }
       return this.formatSecondsToClock(baseSeconds + this.syncOffsetSeconds);
     },
+    downloadFilename() {
+      const baseName = this.videoFileName || "frame";
+      const safeBaseName = this.sanitizeFilename(baseName);
+      const syncLabel =
+        this.formattedSyncTime && this.formattedSyncTime !== "—"
+          ? this.sanitizeFilename(this.formattedSyncTime)
+          : "Unknown";
+      return `${safeBaseName} -Frame ${this.frameNumber}-${syncLabel}.png`;
+    },
   },
   methods: {
     handleFileChange(event) {
@@ -203,6 +213,7 @@ export default {
       const newUrl = URL.createObjectURL(file);
       this.videoSrc = newUrl;
       this.objectUrl = newUrl;
+      this.videoFileName = file.name.replace(/\.[^/.]+$/, "");
       this.frameDataUrl = "";
       this.isMetadataLoaded = false;
       this.videoDuration = 0;
@@ -400,6 +411,12 @@ export default {
         return null;
       }
       return parsed;
+    },
+    sanitizeFilename(value) {
+      return String(value)
+        .replace(/[\\/:*?"<>|]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim();
     },
   },
   watch: {

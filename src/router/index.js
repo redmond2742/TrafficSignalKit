@@ -25,6 +25,7 @@ import StuckDetectors from '../views/StuckDetectors'
 import SignalOffsetCalculator from '../views/SignalOffsetCalculator'
 import YellowRedRunning from '../views/YellowRedRunning'
 import PedestrianInvestigator from '../views/PedestrianInvestigator'
+import Dashboard from '../views/Dashboard'
 
 
 
@@ -139,6 +140,11 @@ const routes = [
         path: '/pedestrian-investigator',
         name: 'pedestrianInvestigator',
         component: PedestrianInvestigator,
+    },
+    {
+        path: '/dashboard',
+        name: 'dashboard',
+        component: Dashboard,
     },
     {
         path: '/practice-exam',

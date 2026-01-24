@@ -161,6 +161,7 @@ export default {
     return {
       darkMode: true, // Initial mode state
       tools: [
+        { title: "Dashboard", path: "/dashboard" },
         { title: "Split History", path: "/split-history" },
         { title: "Red Light Runners", path: "/detectorRLR" },
         {
@@ -192,6 +193,7 @@ export default {
       ],
 
       TSdataTools: [
+        { title: "Dashboard", path: "/dashboard" },
         { title: "Split History", path: "/split-history" },
         { title: "Red Light Runners", path: "/detectorRLR" },
         {

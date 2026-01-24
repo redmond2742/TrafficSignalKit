@@ -176,6 +176,7 @@ export default {
         { title: "Signal Offset Calculator", path: "/signal-offsets" },
         { title: "Pedestrian Investigator", path: "/pedestrian-investigator" },
         { title: "Phase Plotter", path: "/phase-plotter" },
+        { title: "Phase Start Table", path: "/phase-start-table" },
         { title: "High Res. Explainer", path: "/explainer" },
         { title: "Time Space Visualizer", path: "/gpx" },
         { title: "GPX & Phase Plotter", path: "/gpx-phase-plotter" },
@@ -209,6 +210,7 @@ export default {
         { title: "Signal Offset Calculator", path: "/signal-offsets" },
         { title: "Pedestrian Investigator", path: "/pedestrian-investigator" },
         { title: "Phase Plotter", path: "/phase-plotter" },
+        { title: "Phase Start Table", path: "/phase-start-table" },
         { title: "High Resolution Explainer", path: "/explainer" },
       ],
       TSgpxTools: [

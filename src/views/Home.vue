@@ -10,6 +10,11 @@
         Click that heart button to vote on features and shape the future of
         these tools.
       </v-card-text>
+      <v-card-actions class="intro-actions">
+        <v-btn color="primary" variant="flat" to="/dashboard">
+          Go to Dashboard
+        </v-btn>
+      </v-card-actions>
     </v-card>
 
     <h1 class="h1-center-text">Traffic Signal Kit</h1>
@@ -244,6 +249,10 @@ export default {
   font-size: 1.05rem;
   line-height: 1.6;
   text-align: left;
+}
+.intro-actions {
+  justify-content: center;
+  padding-bottom: 20px;
 }
 .left-justify-text {
   margin: 0;

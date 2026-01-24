@@ -83,31 +83,13 @@
           <v-card class="tool-card" variant="outlined">
             <v-card-title class="card-title">Phase &amp; Split Table</v-card-title>
             <v-card-text class="card-body">
-              <table class="split-history-table">
-                <thead>
-                  <tr>
-                    <th>Phase</th>
-                    <th>State</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Split (s)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, index) in phaseTableRows" :key="index">
-                    <td>{{ row.phase }}</td>
-                    <td>{{ row.state }}</td>
-                    <td>{{ row.start }}</td>
-                    <td>{{ row.end }}</td>
-                    <td>{{ row.split }}</td>
-                  </tr>
-                  <tr v-if="phaseTableRows.length === 0">
-                    <td colspan="5" class="empty-state">
-                      No phase split history available yet.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <ProcessSplitHistory
+                ref="splitHistory"
+                :inputData="inputData"
+                :hideInput="true"
+                @phaseDurations="updateSplitHistory"
+              ></ProcessSplitHistory>
+              <TableDisplaySplit :tableData="splitHistoryRows"></TableDisplaySplit>
             </v-card-text>
           </v-card>
         </v-col>
@@ -115,26 +97,12 @@
           <v-card class="tool-card" variant="outlined">
             <v-card-title class="card-title">Pedestrian Investigator</v-card-title>
             <v-card-text class="card-body">
-              <div class="pedestrian-summary">
-                <div class="summary-line">
-                  <span class="label">Calls observed:</span>
-                  <span class="value">{{ pedestrianSummary.calls }}</span>
-                </div>
-                <div class="summary-line">
-                  <span class="label">Served phases:</span>
-                  <span class="value">{{ pedestrianSummary.served }}</span>
-                </div>
-                <div class="summary-line">
-                  <span class="label">Longest wait:</span>
-                  <span class="value">{{ pedestrianSummary.longestWait }}</span>
-                </div>
-              </div>
-              <v-divider class="my-4"></v-divider>
-              <ul class="pedestrian-insights">
-                <li v-for="(note, index) in pedestrianSummary.notes" :key="index">
-                  {{ note }}
-                </li>
-              </ul>
+              <PedestrianInvestigator
+                ref="pedestrianInvestigator"
+                :embedded="true"
+                :inputData="inputData"
+                :signalId="selectedSignal"
+              ></PedestrianInvestigator>
             </v-card-text>
           </v-card>
         </v-col>
@@ -219,6 +187,9 @@
 <script>
 import PlotDetectionTimeSeries from "../components/foundational/PlotDetectionTimeSeries.vue";
 import InputBox from "../components/foundational/InputBox.vue";
+import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
+import TableDisplaySplit from "../components/foundational/TableDisplaySplit.vue";
+import PedestrianInvestigator from "./PedestrianInvestigator.vue";
 import convertTime from "../mixins/convertTime";
 import enumerationObj from "../data/enumerations.json";
 
@@ -227,6 +198,9 @@ export default {
   components: {
     InputBox,
     PlotDetectionTimeSeries,
+    ProcessSplitHistory,
+    TableDisplaySplit,
+    PedestrianInvestigator,
   },
   mixins: [convertTime],
   data() {
@@ -238,6 +212,7 @@ export default {
       detectionEvents: [],
       phaseEvents: [],
       eventRows: [],
+      splitHistoryRows: [],
       filters: {
         timestamp: "",
         eventCode: "",
@@ -329,88 +304,11 @@ export default {
         );
       });
     },
-    phaseIntervals() {
-      if (!this.phaseEvents.length) {
-        return [];
-      }
-
-      const grouped = this.phaseEvents.reduce((lookup, event) => {
-        if (typeof event.parameterCode !== "number") {
-          return lookup;
-        }
-        if (!lookup[event.parameterCode]) {
-          lookup[event.parameterCode] = [];
-        }
-        lookup[event.parameterCode].push(event);
-        return lookup;
-      }, {});
-
-      const intervals = [];
-      Object.values(grouped).forEach((events) => {
-        const sorted = [...events].sort((a, b) => a.timestampMs - b.timestampMs);
-        sorted.forEach((event, index) => {
-          if (!["green", "yellow", "red"].includes(event.phaseState)) {
-            return;
-          }
-
-          const start = event.timestampMs;
-          const nextEvent = sorted[index + 1];
-          const end = nextEvent ? nextEvent.timestampMs : start;
-
-          if (end <= start) {
-            return;
-          }
-
-          intervals.push({
-            phase: event.parameterCode,
-            state: event.phaseState,
-            start,
-            end,
-          });
-        });
-      });
-
-      return intervals;
-    },
-    phaseTableRows() {
-      return this.phaseIntervals.slice(0, 12).map((interval) => {
-        const splitSeconds = ((interval.end - interval.start) / 1000).toFixed(1);
-        return {
-          phase: interval.phase,
-          state: interval.state,
-          start: new Date(interval.start).toLocaleTimeString(),
-          end: new Date(interval.end).toLocaleTimeString(),
-          split: Number.isNaN(parseFloat(splitSeconds)) ? "-" : splitSeconds,
-        };
-      });
-    },
-    pedestrianSummary() {
-      const pedestrianCalls = this.eventRows.filter((row) =>
-        row.description.toLowerCase().includes("ped"),
-      );
-      const servedPhases = new Set(
-        pedestrianCalls
-          .map((row) => row.parameter)
-          .filter((value) => value && value !== "-"),
-      );
-
-      return {
-        calls: pedestrianCalls.length || "-",
-        served: servedPhases.size ? Array.from(servedPhases).join(", ") : "-",
-        longestWait: pedestrianCalls.length ? "45 s" : "-",
-        notes: pedestrianCalls.length
-          ? [
-              "Pedestrian calls are present in the input data.",
-              "Review served phases for compliance with pedestrian timing.",
-            ]
-          : [
-              "No pedestrian calls detected in the current input.",
-              "Load pedestrian event data to populate this panel.",
-            ],
-      };
-    },
   },
   methods: {
+    updateSplitHistory(data) {
+      this.splitHistoryRows = data;
+    },
     processDashboard() {
       const lines = this.inputData.split("\n");
       const detectedSignals = this.extractSignals(lines);
@@ -488,6 +386,14 @@ export default {
       this.phaseEvents = phaseEvents;
       this.eventRows = eventRows;
       this.dashboardReady = true;
+      this.$nextTick(() => {
+        if (this.$refs.splitHistory) {
+          this.$refs.splitHistory.calculatePhaseDurations();
+        }
+        if (this.$refs.pedestrianInvestigator) {
+          this.$refs.pedestrianInvestigator.processData();
+        }
+      });
     },
     extractSignals(lines) {
       const signalLine = lines.find((line) =>
@@ -590,38 +496,10 @@ export default {
   font-style: italic;
 }
 
-.split-history-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
-
-.split-history-table th,
-.split-history-table td {
-  text-align: left;
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
 .explainer-table {
   max-height: 320px;
   overflow: auto;
   font-size: 0.85rem;
-}
-
-.pedestrian-summary {
-  display: grid;
-  gap: 8px;
-}
-
-.summary-line {
-  display: flex;
-  justify-content: space-between;
-}
-
-.pedestrian-insights {
-  padding-left: 20px;
-  margin: 0;
 }
 
 .filter-row th {
@@ -641,12 +519,5 @@ export default {
 
 .filter-field :deep(.v-label) {
   font-size: 0.7rem;
-}
-
-@media (max-width: 960px) {
-  .summary-line {
-    flex-direction: column;
-    gap: 4px;
-  }
 }
 </style>

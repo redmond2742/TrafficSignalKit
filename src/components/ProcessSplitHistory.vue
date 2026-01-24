@@ -5,10 +5,10 @@
 
     -->
   </div>
-  <div class="grow-wrap">
-    <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
+  <div v-if="!hideInput" class="grow-wrap">
+    <InputBox v-model="localInputData" :defaultText="textboxDefaultText" />
   </div>
-  <div>
+  <div v-if="!hideInput">
     <v-btn @click="calculatePhaseDurations" color="primary">Process</v-btn>
   </div>
 </template>
@@ -26,9 +26,23 @@ export default {
     InputBox,
     TableDisplaySplit,
   },
+  props: {
+    inputData: {
+      type: String,
+      default: "",
+    },
+    hideInput: {
+      type: Boolean,
+      default: false,
+    },
+    autoProcess: {
+      type: Boolean,
+      default: false,
+    },
+  },
   data() {
     return {
-      inputData: "",
+      localInputData: "",
       hdDataObj: [],
       textboxDefaultText:
         "Paste in High-Resolution Traffic Signal Data as Text in CSV format",
@@ -39,9 +53,48 @@ export default {
     this.phaseArray = [];
   },
   computed: {},
+  watch: {
+    inputData: {
+      immediate: true,
+      handler(value) {
+        if (value !== this.localInputData) {
+          this.localInputData = value || "";
+        }
+        if (this.autoProcess && this.localInputData.trim()) {
+          this.calculatePhaseDurations();
+        }
+        if (this.autoProcess && !this.localInputData.trim()) {
+          this.rowData = [];
+          this.$emit("phaseDurations", this.rowData);
+        }
+      },
+    },
+  },
   methods: {
+    resetPhaseState() {
+      this.phasesInCycle = [];
+      this.phaseArray = [];
+      this.activePhasesInCycle = [];
+      this.cycleCount = 1;
+      this.countCycles = 1;
+      this.currentCycleLength = 0;
+      this.rowData = [];
+      this.processedData = [];
+      this.eventStates = {};
+      this.totalPhaseCalls = [];
+      this.previousYellowChangeState = false;
+      this.previousRedClearState = false;
+      this.previousPhaseState = false;
+      this.previousDetectorState = false;
+    },
     calculatePhaseDurations() {
-      this.hdDataObj = this.loadCsv2JsonObj(this.inputData); //load all the enumerations into JSON obj.
+      if (!this.localInputData.trim()) {
+        this.rowData = [];
+        this.$emit("phaseDurations", this.rowData);
+        return;
+      }
+      this.resetPhaseState();
+      this.hdDataObj = this.loadCsv2JsonObj(this.localInputData); //load all the enumerations into JSON obj.
       let allHDData = this.buildCycleItem(this.hdDataObj);
       //emit here not necessary because buildCycleItem emit's the phase data
       console.log(allHDData);

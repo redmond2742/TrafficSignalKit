@@ -3,26 +3,54 @@
     <h1>Video Frame Extractor</h1>
 
     <section class="controls">
-      <label class="control full-width">
-        <span>Select a video</span>
-        <input type="file" accept="video/*" @change="handleFileChange" />
-      </label>
+      <div class="control-row">
+        <label class="control grow">
+          <span>Select a video</span>
+          <input type="file" accept="video/*" @change="handleFileChange" />
+        </label>
 
-      <label class="control">
-        <span>Frame number</span>
-        <input v-model.number="frameNumber" type="number" min="0" />
-      </label>
+        <label class="control fps-control">
+          <span>FPS</span>
+          <input v-model.number="fps" type="number" min="1" step="1" />
+        </label>
+      </div>
 
-      <label class="control">
-        <span>FPS</span>
-        <input v-model.number="fps" type="number" min="1" step="1" />
-      </label>
+      <div class="frame-card">
+        <div class="frame-header">
+          <label class="control">
+            <span>Frame number</span>
+            <input
+              v-model.number="frameNumber"
+              type="number"
+              min="0"
+              :max="maxFrameNumber"
+            />
+          </label>
 
-      <div class="control info">
-        <p>
-          Time in video (based on FPS):
-          <strong>{{ formattedTargetTime }}</strong>
-        </p>
+          <div class="control info">
+            <p>
+              Time in video (based on FPS):
+              <strong>{{ formattedTargetTime }}</strong>
+            </p>
+            <p v-if="maxFrameNumber">
+              Max frame: <strong>{{ maxFrameNumber }}</strong>
+            </p>
+          </div>
+        </div>
+
+        <input
+          v-model.number="frameNumber"
+          class="frame-slider"
+          type="range"
+          min="0"
+          :max="maxFrameNumber"
+          step="1"
+          :disabled="!canExtract || maxFrameNumber === 0"
+        />
+        <div class="frame-slider-meta">
+          <span>0</span>
+          <span>{{ maxFrameNumber }}</span>
+        </div>
       </div>
     </section>
 
@@ -50,6 +78,7 @@ export default {
       frameDataUrl: "",
       objectUrl: null,
       isMetadataLoaded: false,
+      videoDuration: 0,
     };
   },
   computed: {
@@ -64,6 +93,12 @@ export default {
     },
     canExtract() {
       return Boolean(this.videoSrc) && this.fps > 0;
+    },
+    maxFrameNumber() {
+      if (!this.videoDuration || !this.fps) {
+        return 0;
+      }
+      return Math.max(0, Math.floor(this.videoDuration * this.fps));
     },
   },
   methods: {
@@ -80,6 +115,7 @@ export default {
       this.objectUrl = newUrl;
       this.frameDataUrl = "";
       this.isMetadataLoaded = false;
+      this.videoDuration = 0;
 
       this.$nextTick(() => {
         const video = this.$refs.video;
@@ -90,6 +126,8 @@ export default {
         const onLoadedMetadata = () => {
           this.updateCanvasSize();
           this.isMetadataLoaded = true;
+          this.videoDuration = video.duration || 0;
+          this.normalizeFrameNumber();
           this.extractFrameIfReady();
           this.estimateVideoFps();
           video.removeEventListener("loadedmetadata", onLoadedMetadata);
@@ -134,6 +172,17 @@ export default {
         return;
       }
       this.extractFrame();
+    },
+    normalizeFrameNumber() {
+      if (!this.maxFrameNumber) {
+        return;
+      }
+      if (this.frameNumber > this.maxFrameNumber) {
+        this.frameNumber = this.maxFrameNumber;
+      }
+      if (this.frameNumber < 0) {
+        this.frameNumber = 0;
+      }
     },
     estimateVideoFps() {
       const video = this.$refs.video;
@@ -203,6 +252,7 @@ export default {
       this.extractFrameIfReady();
     },
     fps() {
+      this.normalizeFrameNumber();
       this.extractFrameIfReady();
     },
   },
@@ -215,18 +265,41 @@ export default {
 <style scoped>
 .video-frame-extractor {
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.video-frame-extractor h1 {
+  text-align: center;
+  margin: 0;
 }
 
 .controls {
   display: grid;
-  gap: 16px;
-  max-width: 640px;
+  gap: 20px;
+  width: min(720px, 100%);
   padding: 20px;
   border-radius: 16px;
   background: rgba(0, 150, 136, 0.08);
   border: 1px solid rgba(0, 150, 136, 0.35);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.control-row .grow {
+  flex: 1 1 320px;
+}
+
+.fps-control {
+  flex: 0 0 140px;
 }
 
 .control {
@@ -248,14 +321,11 @@ export default {
 }
 
 .control input[type="file"]:focus,
-.control input[type="number"]:focus {
+.control input[type="number"]:focus,
+.frame-slider:focus {
   outline: none;
   border-color: #009688;
   box-shadow: 0 0 0 3px rgba(0, 150, 136, 0.2);
-}
-
-.control.full-width {
-  grid-column: 1 / -1;
 }
 
 .control.info {
@@ -267,6 +337,65 @@ export default {
   margin: 0;
   font-weight: 500;
   color: #2b3b39;
+}
+
+.frame-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 150, 136, 0.1);
+  display: grid;
+  gap: 16px;
+}
+
+.frame-header {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.frame-slider {
+  width: 100%;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 150, 136, 0.35), rgba(0, 121, 107, 0.7));
+  outline: none;
+}
+
+.frame-slider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.frame-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #009688;
+  border: 3px solid #ffffff;
+  box-shadow: 0 6px 12px rgba(0, 150, 136, 0.35);
+  cursor: pointer;
+}
+
+.frame-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #009688;
+  border: 3px solid #ffffff;
+  box-shadow: 0 6px 12px rgba(0, 150, 136, 0.35);
+  cursor: pointer;
+}
+
+.frame-slider-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #4a5d5b;
 }
 
 .action-button {
@@ -299,10 +428,9 @@ export default {
 }
 
 .preview {
-  margin-top: 24px;
   display: grid;
   gap: 12px;
-  max-width: 640px;
+  width: min(720px, 100%);
 }
 
 .preview img {
@@ -328,6 +456,12 @@ export default {
 .download-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 20px rgba(0, 150, 136, 0.2);
+}
+
+@media (max-width: 720px) {
+  .frame-header {
+    grid-template-columns: 1fr;
+  }
 }
 
 .visually-hidden {

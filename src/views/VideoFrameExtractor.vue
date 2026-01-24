@@ -52,6 +52,64 @@
           <span>{{ maxFrameNumber }}</span>
         </div>
       </div>
+
+      <div class="sync-card">
+        <div class="sync-header">
+          <div>
+            <h2>Sync Time</h2>
+            <p>Calculated from the reference frame and FPS.</p>
+          </div>
+          <p class="sync-value">{{ formattedSyncTime }}</p>
+        </div>
+
+        <div class="sync-controls">
+          <label class="control">
+            <span>Reference frame</span>
+            <input
+              v-model.number="syncReferenceFrame"
+              type="number"
+              min="0"
+              :max="maxFrameNumber"
+            />
+          </label>
+
+          <div class="control">
+            <span>Time format</span>
+            <div class="toggle">
+              <button
+                type="button"
+                :class="{ active: syncInputMode === 'clock' }"
+                @click="syncInputMode = 'clock'"
+              >
+                Clock
+              </button>
+              <button
+                type="button"
+                :class="{ active: syncInputMode === 'iso' }"
+                @click="syncInputMode = 'iso'"
+              >
+                ISO 8601
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <label class="control">
+          <span>Time for reference frame</span>
+          <input
+            v-if="syncInputMode === 'clock'"
+            v-model="syncClockTime"
+            type="text"
+            placeholder="HH:MM:SS.mmm"
+          />
+          <input
+            v-else
+            v-model="syncIsoTime"
+            type="text"
+            placeholder="2024-03-18T15:20:45.123Z"
+          />
+        </label>
+      </div>
     </section>
 
     <video ref="video" :src="videoSrc" class="visually-hidden" preload="metadata"></video>
@@ -79,6 +137,10 @@ export default {
       objectUrl: null,
       isMetadataLoaded: false,
       videoDuration: 0,
+      syncReferenceFrame: 0,
+      syncInputMode: "clock",
+      syncClockTime: "00:00:00.000",
+      syncIsoTime: "",
     };
   },
   computed: {
@@ -99,6 +161,34 @@ export default {
         return 0;
       }
       return Math.max(0, Math.floor(this.videoDuration * this.fps));
+    },
+    syncOffsetSeconds() {
+      if (!this.fps) {
+        return 0;
+      }
+      return (this.frameNumber - this.syncReferenceFrame) / this.fps;
+    },
+    formattedSyncTime() {
+      if (!this.fps) {
+        return "—";
+      }
+
+      if (this.syncInputMode === "iso") {
+        const baseDate = this.parseIsoDate(this.syncIsoTime);
+        if (!baseDate) {
+          return "—";
+        }
+        const syncedDate = new Date(
+          baseDate.getTime() + this.syncOffsetSeconds * 1000
+        );
+        return syncedDate.toISOString();
+      }
+
+      const baseSeconds = this.parseClockToSeconds(this.syncClockTime);
+      if (baseSeconds === null) {
+        return "—";
+      }
+      return this.formatSecondsToClock(baseSeconds + this.syncOffsetSeconds);
     },
   },
   methods: {
@@ -184,6 +274,17 @@ export default {
         this.frameNumber = 0;
       }
     },
+    normalizeSyncReferenceFrame() {
+      if (!this.maxFrameNumber) {
+        return;
+      }
+      if (this.syncReferenceFrame > this.maxFrameNumber) {
+        this.syncReferenceFrame = this.maxFrameNumber;
+      }
+      if (this.syncReferenceFrame < 0) {
+        this.syncReferenceFrame = 0;
+      }
+    },
     estimateVideoFps() {
       const video = this.$refs.video;
       if (!video || typeof video.requestVideoFrameCallback !== "function") {
@@ -246,6 +347,60 @@ export default {
         this.objectUrl = null;
       }
     },
+    parseClockToSeconds(value) {
+      if (!value) {
+        return null;
+      }
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return null;
+      }
+      const segments = trimmed.split(":");
+      if (segments.length < 1 || segments.length > 3) {
+        return null;
+      }
+      const numbers = segments.map((segment) => Number(segment));
+      if (numbers.some((number) => Number.isNaN(number))) {
+        return null;
+      }
+      const [first, second, third] = numbers;
+      if (segments.length === 3) {
+        return first * 3600 + second * 60 + third;
+      }
+      if (segments.length === 2) {
+        return first * 60 + second;
+      }
+      return first;
+    },
+    formatSecondsToClock(value) {
+      if (!Number.isFinite(value)) {
+        return "—";
+      }
+      const isNegative = value < 0;
+      const totalSeconds = Math.abs(value);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const secondsString = seconds.toFixed(3).padStart(6, "0");
+      const prefix = isNegative ? "-" : "";
+      if (hours > 0) {
+        return `${prefix}${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+          2,
+          "0"
+        )}:${secondsString}`;
+      }
+      return `${prefix}${String(minutes).padStart(2, "0")}:${secondsString}`;
+    },
+    parseIsoDate(value) {
+      if (!value) {
+        return null;
+      }
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        return null;
+      }
+      return parsed;
+    },
   },
   watch: {
     frameNumber() {
@@ -253,7 +408,11 @@ export default {
     },
     fps() {
       this.normalizeFrameNumber();
+      this.normalizeSyncReferenceFrame();
       this.extractFrameIfReady();
+    },
+    syncReferenceFrame() {
+      this.normalizeSyncReferenceFrame();
     },
   },
   beforeUnmount() {
@@ -311,7 +470,8 @@ export default {
 }
 
 .control input[type="file"],
-.control input[type="number"] {
+.control input[type="number"],
+.control input[type="text"] {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.15);
@@ -322,6 +482,7 @@ export default {
 
 .control input[type="file"]:focus,
 .control input[type="number"]:focus,
+.control input[type="text"]:focus,
 .frame-slider:focus {
   outline: none;
   border-color: #009688;
@@ -347,6 +508,78 @@ export default {
   box-shadow: inset 0 0 0 1px rgba(0, 150, 136, 0.1);
   display: grid;
   gap: 16px;
+}
+
+.sync-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 150, 136, 0.08);
+  display: grid;
+  gap: 16px;
+}
+
+.sync-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sync-header h2 {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+}
+
+.sync-header p {
+  margin: 0;
+  color: #4a5d5b;
+  font-weight: 500;
+}
+
+.sync-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #00796b;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(0, 150, 136, 0.08);
+  border: 1px solid rgba(0, 150, 136, 0.25);
+  word-break: break-all;
+}
+
+.sync-controls {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 150, 136, 0.08);
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 150, 136, 0.2);
+}
+
+.toggle button {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: #2b3b39;
+  cursor: pointer;
+}
+
+.toggle button.active {
+  background: #009688;
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(0, 150, 136, 0.25);
 }
 
 .frame-header {

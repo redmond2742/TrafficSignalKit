@@ -34,9 +34,34 @@
             <v-col cols="12" md="6">
               <div class="status-row">
                 <span class="label">Detector status:</span>
-                <v-chip :color="statusColor" variant="flat" class="status-chip">
-                  {{ detectorStatus }}
+                <v-chip
+                  :color="statusColor"
+                  :variant="statusVariant"
+                  class="status-chip"
+                >
+                  {{ detectorStatusText }}
                 </v-chip>
+              </div>
+              <div v-if="failedDetectorRows.length" class="failed-detectors">
+                <div class="failed-detectors-title">Failed detectors</div>
+                <v-table density="compact">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Event Code</th>
+                      <th>Detector</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in failedDetectorRows" :key="row.id">
+                      <td>{{ row.timestamp }}</td>
+                      <td>{{ row.eventCode }}</td>
+                      <td>{{ row.parameter }}</td>
+                      <td>{{ row.description }}</td>
+                    </tr>
+                  </tbody>
+                </v-table>
               </div>
             </v-col>
           </v-row>
@@ -58,7 +83,7 @@
           <v-card class="tool-card" variant="outlined">
             <v-card-title class="card-title">Phase &amp; Split Table</v-card-title>
             <v-card-text class="card-body">
-              <v-table density="compact">
+              <table class="split-history-table">
                 <thead>
                   <tr>
                     <th>Phase</th>
@@ -82,7 +107,7 @@
                     </td>
                   </tr>
                 </tbody>
-              </v-table>
+              </table>
             </v-card-text>
           </v-card>
         </v-col>
@@ -131,6 +156,7 @@
                 <th>
                   <v-text-field
                     v-model="filters.timestamp"
+                    class="filter-field"
                     label="Filter"
                     variant="outlined"
                     density="compact"
@@ -140,6 +166,7 @@
                 <th>
                   <v-text-field
                     v-model="filters.eventCode"
+                    class="filter-field"
                     label="Filter"
                     variant="outlined"
                     density="compact"
@@ -149,6 +176,7 @@
                 <th>
                   <v-text-field
                     v-model="filters.parameter"
+                    class="filter-field"
                     label="Filter"
                     variant="outlined"
                     density="compact"
@@ -158,6 +186,7 @@
                 <th>
                   <v-text-field
                     v-model="filters.description"
+                    class="filter-field"
                     label="Filter"
                     variant="outlined"
                     density="compact"
@@ -268,11 +297,23 @@ export default {
           row.description.toLowerCase().includes("failed"),
       );
     },
-    detectorStatus() {
-      return this.hasDetectorFailure ? "Failed Detector Found" : "OK";
+    failedDetectorRows() {
+      return this.eventRows.filter(
+        (row) =>
+          row.description.toLowerCase().includes("fault") ||
+          row.description.toLowerCase().includes("failed"),
+      );
+    },
+    detectorStatusText() {
+      return this.hasDetectorFailure
+        ? "Failed detector found"
+        : "No Failed Detectors Found";
     },
     statusColor() {
       return this.hasDetectorFailure ? "red" : "green";
+    },
+    statusVariant() {
+      return "outlined";
     },
     filteredEvents() {
       const filters = Object.fromEntries(
@@ -515,8 +556,17 @@ export default {
 }
 
 .status-chip {
-  color: white;
   font-weight: 600;
+  text-transform: none;
+}
+
+.failed-detectors {
+  margin-top: 10px;
+}
+
+.failed-detectors-title {
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
 .label {
@@ -538,6 +588,19 @@ export default {
   text-align: center;
   color: rgba(0, 0, 0, 0.6);
   font-style: italic;
+}
+
+.split-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.split-history-table th,
+.split-history-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .explainer-table {
@@ -563,6 +626,21 @@ export default {
 
 .filter-row th {
   padding: 6px 4px;
+}
+
+.filter-field :deep(.v-field) {
+  min-height: 28px;
+  font-size: 0.75rem;
+}
+
+.filter-field :deep(.v-field__input) {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  min-height: 24px;
+}
+
+.filter-field :deep(.v-label) {
+  font-size: 0.7rem;
 }
 
 @media (max-width: 960px) {

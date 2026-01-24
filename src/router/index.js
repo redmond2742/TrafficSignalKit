@@ -27,6 +27,7 @@ import YellowRedRunning from '../views/YellowRedRunning'
 import PedestrianInvestigator from '../views/PedestrianInvestigator'
 import Dashboard from '../views/Dashboard'
 import VideoFrameExtractor from '../views/VideoFrameExtractor'
+import HighResPhaseStartTable from '../views/HighResPhaseStartTable'
 
 
 
@@ -156,6 +157,11 @@ const routes = [
         path: '/video-frame-extractor',
         name: 'videoFrameExtractor',
         component: VideoFrameExtractor,
+    },
+    {
+        path: '/phase-start-table',
+        name: 'phaseStartTable',
+        component: HighResPhaseStartTable,
     },
     {
         path: '/message-sign-designer',

@@ -15,6 +15,74 @@
         </label>
       </div>
 
+      <div class="sync-card">
+        <div class="sync-header">
+          <div>
+            <h2>Sync Time</h2>
+            <p>Calculated from the reference frame and FPS.</p>
+          </div>
+          <div class="sync-actions">
+            <p class="sync-value">{{ formattedSyncTime }}</p>
+            <button
+              class="collapse-toggle"
+              type="button"
+              :aria-expanded="!isSyncCollapsed"
+              @click="isSyncCollapsed = !isSyncCollapsed"
+            >
+              {{ isSyncCollapsed ? "Expand" : "Collapse" }}
+            </button>
+          </div>
+        </div>
+
+        <div class="sync-controls" v-show="!isSyncCollapsed">
+          <label class="control">
+            <span>Reference frame</span>
+            <input
+              v-model.number="syncReferenceFrame"
+              type="number"
+              min="0"
+              :max="maxFrameNumber"
+            />
+          </label>
+
+          <div class="control">
+            <span>Time format</span>
+            <div class="toggle">
+              <button
+                type="button"
+                :class="{ active: syncInputMode === 'clock' }"
+                @click="syncInputMode = 'clock'"
+              >
+                Clock
+              </button>
+              <button
+                type="button"
+                :class="{ active: syncInputMode === 'iso' }"
+                @click="syncInputMode = 'iso'"
+              >
+                ISO 8601
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <label class="control" v-show="!isSyncCollapsed">
+          <span>Time for reference frame</span>
+          <input
+            v-if="syncInputMode === 'clock'"
+            v-model="syncClockTime"
+            type="text"
+            placeholder="HH:MM:SS.mmm"
+          />
+          <input
+            v-else
+            v-model="syncIsoTime"
+            type="text"
+            placeholder="2024-03-18T15:20:45.123Z"
+          />
+        </label>
+      </div>
+
       <div class="frame-card">
         <div class="frame-header">
           <label class="control">
@@ -52,75 +120,18 @@
           <span>{{ maxFrameNumber }}</span>
         </div>
       </div>
-
-      <div class="sync-card">
-        <div class="sync-header">
-          <div>
-            <h2>Sync Time</h2>
-            <p>Calculated from the reference frame and FPS.</p>
-          </div>
-          <p class="sync-value">{{ formattedSyncTime }}</p>
-        </div>
-
-        <div class="sync-controls">
-          <label class="control">
-            <span>Reference frame</span>
-            <input
-              v-model.number="syncReferenceFrame"
-              type="number"
-              min="0"
-              :max="maxFrameNumber"
-            />
-          </label>
-
-          <div class="control">
-            <span>Time format</span>
-            <div class="toggle">
-              <button
-                type="button"
-                :class="{ active: syncInputMode === 'clock' }"
-                @click="syncInputMode = 'clock'"
-              >
-                Clock
-              </button>
-              <button
-                type="button"
-                :class="{ active: syncInputMode === 'iso' }"
-                @click="syncInputMode = 'iso'"
-              >
-                ISO 8601
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <label class="control">
-          <span>Time for reference frame</span>
-          <input
-            v-if="syncInputMode === 'clock'"
-            v-model="syncClockTime"
-            type="text"
-            placeholder="HH:MM:SS.mmm"
-          />
-          <input
-            v-else
-            v-model="syncIsoTime"
-            type="text"
-            placeholder="2024-03-18T15:20:45.123Z"
-          />
-        </label>
-      </div>
     </section>
 
     <video ref="video" :src="videoSrc" class="visually-hidden" preload="metadata"></video>
     <canvas ref="canvas" class="frame-canvas"></canvas>
 
     <section class="preview" v-if="frameDataUrl">
-      <h2>Preview</h2>
-      <a class="download-button" :href="frameDataUrl" :download="downloadFilename">
-        Download frame
-      </a>
-      <img :src="frameDataUrl" alt="Extracted video frame preview" />
+      <div class="preview-image">
+        <a class="download-button" :href="frameDataUrl" :download="downloadFilename">
+          Download frame
+        </a>
+        <img :src="frameDataUrl" alt="Extracted video frame preview" />
+      </div>
     </section>
   </div>
 </template>
@@ -142,6 +153,7 @@ export default {
       syncInputMode: "clock",
       syncClockTime: "00:00:00.000",
       syncIsoTime: "",
+      isSyncCollapsed: false,
     };
   },
   computed: {
@@ -444,7 +456,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
 }
 
 .video-frame-extractor h1 {
@@ -454,8 +466,8 @@ export default {
 
 .controls {
   display: grid;
-  gap: 20px;
-  width: min(720px, 100%);
+  gap: 16px;
+  width: min(880px, 100%);
   padding: 20px;
   border-radius: 16px;
   background: rgba(0, 150, 136, 0.08);
@@ -520,21 +532,21 @@ export default {
 .frame-card {
   background: #ffffff;
   border-radius: 14px;
-  padding: 16px;
+  padding: 14px 16px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: inset 0 0 0 1px rgba(0, 150, 136, 0.1);
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .sync-card {
   background: #ffffff;
   border-radius: 14px;
-  padding: 18px;
+  padding: 16px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: inset 0 0 0 1px rgba(0, 150, 136, 0.08);
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .sync-header {
@@ -567,10 +579,33 @@ export default {
   word-break: break-all;
 }
 
+.sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.collapse-toggle {
+  border: none;
+  background: rgba(0, 150, 136, 0.12);
+  color: #005f56;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.collapse-toggle:hover {
+  background: rgba(0, 150, 136, 0.2);
+}
+
 .sync-controls {
   display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .toggle {
@@ -678,9 +713,12 @@ export default {
 }
 
 .preview {
-  display: grid;
-  gap: 12px;
-  width: min(720px, 100%);
+  width: min(880px, 100%);
+}
+
+.preview-image {
+  position: relative;
+  display: block;
 }
 
 .preview img {
@@ -691,8 +729,10 @@ export default {
 }
 
 .download-button {
-  justify-self: start;
-  padding: 10px 18px;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 8px 14px;
   border-radius: 999px;
   text-decoration: none;
   background: #ffffff;
@@ -711,6 +751,11 @@ export default {
 @media (max-width: 720px) {
   .frame-header {
     grid-template-columns: 1fr;
+  }
+
+  .download-button {
+    position: static;
+    margin: 8px 0;
   }
 }
 

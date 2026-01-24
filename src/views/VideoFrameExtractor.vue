@@ -85,23 +85,39 @@
 
       <div class="frame-card">
         <div class="frame-header">
-          <label class="control">
+          <div class="control">
             <span>Frame number</span>
-            <input
-              v-model.number="frameNumber"
-              type="number"
-              min="0"
-              :max="maxFrameNumber"
-            />
-          </label>
+            <div class="frame-stepper">
+              <button
+                class="stepper-button"
+                type="button"
+                :disabled="!canExtract || frameNumber <= 0"
+                @click="updateFrameNumber(-1)"
+              >
+                −
+              </button>
+              <input
+                v-model.number="frameNumber"
+                class="frame-stepper-input"
+                type="number"
+                min="0"
+                :max="maxFrameNumber"
+              />
+              <button
+                class="stepper-button"
+                type="button"
+                :disabled="!canExtract || frameNumber >= maxFrameNumber"
+                @click="updateFrameNumber(1)"
+              >
+                +
+              </button>
+            </div>
+          </div>
 
           <div class="control info">
             <p>
-              Time in video (based on FPS):
+              Time in video (FPS-based):
               <strong>{{ formattedTargetTime }}</strong>
-            </p>
-            <p v-if="maxFrameNumber">
-              Max frame: <strong>{{ maxFrameNumber }}</strong>
             </p>
           </div>
         </div>
@@ -164,7 +180,10 @@ export default {
       return this.frameNumber / this.fps;
     },
     formattedTargetTime() {
-      return `${this.targetTime.toFixed(2)}s`;
+      if (!this.fps) {
+        return "—";
+      }
+      return this.formatSecondsToClock(this.targetTime);
     },
     canExtract() {
       return Boolean(this.videoSrc) && this.fps > 0;
@@ -285,6 +304,16 @@ export default {
         return;
       }
       this.extractFrame();
+    },
+    updateFrameNumber(delta) {
+      const nextValue = this.frameNumber + delta;
+      if (Number.isNaN(nextValue)) {
+        return;
+      }
+      this.frameNumber = Math.min(
+        Math.max(nextValue, 0),
+        this.maxFrameNumber || 0
+      );
     },
     normalizeFrameNumber() {
       if (!this.maxFrameNumber) {
@@ -521,12 +550,50 @@ export default {
 .control.info {
   justify-content: space-between;
   gap: 12px;
+  align-items: flex-end;
+  text-align: right;
 }
 
 .control.info p {
   margin: 0;
   font-weight: 500;
   color: #2b3b39;
+}
+
+.frame-stepper {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.frame-stepper-input {
+  text-align: center;
+}
+
+.stepper-button {
+  border: none;
+  background: rgba(0, 150, 136, 0.16);
+  color: #005f56;
+  font-weight: 700;
+  font-size: 1.25rem;
+  padding: 12px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  min-width: 56px;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 12px rgba(0, 150, 136, 0.18);
+}
+
+.stepper-button:hover:not(:disabled) {
+  background: rgba(0, 150, 136, 0.28);
+  transform: translateY(-1px);
+}
+
+.stepper-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: none;
 }
 
 .frame-card {

@@ -26,6 +26,7 @@ import SignalOffsetCalculator from '../views/SignalOffsetCalculator'
 import YellowRedRunning from '../views/YellowRedRunning'
 import PedestrianInvestigator from '../views/PedestrianInvestigator'
 import Dashboard from '../views/Dashboard'
+import VideoFrameExtractor from '../views/VideoFrameExtractor'
 
 
 
@@ -150,6 +151,11 @@ const routes = [
         path: '/practice-exam',
         name: 'practiceExam',
         component: PracticeExam,
+    },
+    {
+        path: '/video-frame-extractor',
+        name: 'videoFrameExtractor',
+        component: VideoFrameExtractor,
     },
     {
         path: '/message-sign-designer',

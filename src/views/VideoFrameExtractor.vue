@@ -20,17 +20,9 @@
 
       <div class="control info">
         <p>
-          Target time:
+          Time in video (based on FPS):
           <strong>{{ formattedTargetTime }}</strong>
         </p>
-        <button
-          class="action-button"
-          type="button"
-          @click="extractFrame"
-          :disabled="!canExtract"
-        >
-          Extract frame
-        </button>
       </div>
     </section>
 
@@ -39,10 +31,10 @@
 
     <section class="preview" v-if="frameDataUrl">
       <h2>Preview</h2>
-      <img :src="frameDataUrl" alt="Extracted video frame preview" />
       <a class="download-button" :href="frameDataUrl" download="frame.png">
         Download frame
       </a>
+      <img :src="frameDataUrl" alt="Extracted video frame preview" />
     </section>
   </div>
 </template>
@@ -57,6 +49,7 @@ export default {
       fps: 30,
       frameDataUrl: "",
       objectUrl: null,
+      isMetadataLoaded: false,
     };
   },
   computed: {
@@ -86,6 +79,7 @@ export default {
       this.videoSrc = newUrl;
       this.objectUrl = newUrl;
       this.frameDataUrl = "";
+      this.isMetadataLoaded = false;
 
       this.$nextTick(() => {
         const video = this.$refs.video;
@@ -95,6 +89,8 @@ export default {
 
         const onLoadedMetadata = () => {
           this.updateCanvasSize();
+          this.isMetadataLoaded = true;
+          this.extractFrameIfReady();
           this.estimateVideoFps();
           video.removeEventListener("loadedmetadata", onLoadedMetadata);
         };
@@ -131,6 +127,13 @@ export default {
 
       video.addEventListener("seeked", onSeeked, { once: true });
       video.currentTime = this.targetTime;
+    },
+    extractFrameIfReady() {
+      const video = this.$refs.video;
+      if (!video || !this.isMetadataLoaded || !this.canExtract) {
+        return;
+      }
+      this.extractFrame();
     },
     estimateVideoFps() {
       const video = this.$refs.video;
@@ -193,6 +196,14 @@ export default {
         URL.revokeObjectURL(this.objectUrl);
         this.objectUrl = null;
       }
+    },
+  },
+  watch: {
+    frameNumber() {
+      this.extractFrameIfReady();
+    },
+    fps() {
+      this.extractFrameIfReady();
     },
   },
   beforeUnmount() {

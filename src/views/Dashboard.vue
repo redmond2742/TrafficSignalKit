@@ -1,23 +1,21 @@
 <template>
   <div class="dashboard-view">
-    <h1 class="h1-center-text">Signal Data Dashboard</h1>
+    <h1 class="h1-center-text dashboard-title">Signal Data Dashboard</h1>
 
     <div v-if="!dashboardReady" class="input-panel">
-      <v-textarea
+      <InputBox
         v-model="inputData"
-        label="Paste high-resolution signal data"
-        rows="8"
-        variant="outlined"
-        auto-grow
-      ></v-textarea>
-      <v-btn color="primary" class="process-btn" @click="processDashboard">
+        class="dashboard-input"
+        defaultText="Paste high-resolution signal data or upload files"
+      />
+      <v-btn color="primary" class="process-btn" size="small" @click="processDashboard">
         Process
       </v-btn>
     </div>
 
     <div v-else class="dashboard-content">
       <v-card class="status-card" variant="outlined">
-        <v-card-text>
+        <v-card-text class="card-body">
           <v-row align="center" dense>
             <v-col cols="12" md="6">
               <v-select
@@ -26,7 +24,7 @@
                 :items="signals"
                 label="Signal selection"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
               ></v-select>
               <div v-else class="single-signal">
                 <span class="label">Signal:</span>
@@ -46,8 +44,8 @@
       </v-card>
 
       <v-card class="plot-card" variant="outlined">
-        <v-card-title>Detector &amp; Phase Plot</v-card-title>
-        <v-card-text>
+        <v-card-title class="card-title">Detector &amp; Phase Plot</v-card-title>
+        <v-card-text class="card-body">
           <PlotDetectionTimeSeries
             :plotData="detectionEvents"
             :phaseData="phaseEvents"
@@ -58,8 +56,8 @@
       <v-row class="tool-row" dense>
         <v-col cols="12" md="6">
           <v-card class="tool-card" variant="outlined">
-            <v-card-title>Phase &amp; Split Table</v-card-title>
-            <v-card-text>
+            <v-card-title class="card-title">Phase &amp; Split Table</v-card-title>
+            <v-card-text class="card-body">
               <v-table density="compact">
                 <thead>
                   <tr>
@@ -90,8 +88,8 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-card class="tool-card" variant="outlined">
-            <v-card-title>Pedestrian Investigator</v-card-title>
-            <v-card-text>
+            <v-card-title class="card-title">Pedestrian Investigator</v-card-title>
+            <v-card-text class="card-body">
               <div class="pedestrian-summary">
                 <div class="summary-line">
                   <span class="label">Calls observed:</span>
@@ -118,9 +116,10 @@
       </v-row>
 
       <v-card class="tool-card" variant="outlined">
-        <v-card-title>High Resolution Explainer Tool</v-card-title>
-        <v-card-text>
-          <v-table density="compact">
+        <v-card-title class="card-title">High Resolution Explainer Tool</v-card-title>
+        <v-card-text class="card-body">
+          <div class="explainer-table">
+            <v-table density="compact">
             <thead>
               <tr>
                 <th>Timestamp</th>
@@ -180,7 +179,8 @@
                 </td>
               </tr>
             </tbody>
-          </v-table>
+            </v-table>
+          </div>
         </v-card-text>
       </v-card>
     </div>
@@ -189,12 +189,14 @@
 
 <script>
 import PlotDetectionTimeSeries from "../components/foundational/PlotDetectionTimeSeries.vue";
+import InputBox from "../components/foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
 import enumerationObj from "../data/enumerations.json";
 
 export default {
   name: "Dashboard",
   components: {
+    InputBox,
     PlotDetectionTimeSeries,
   },
   mixins: [convertTime],
@@ -467,7 +469,12 @@ export default {
 
 <style scoped>
 .dashboard-view {
-  padding: 12px;
+  padding: 8px;
+}
+
+.dashboard-title {
+  font-size: 1.4rem;
+  margin-bottom: 12px;
 }
 
 .input-panel {
@@ -475,7 +482,11 @@ export default {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+}
+
+.dashboard-input {
+  width: 100%;
 }
 
 .process-btn {
@@ -485,7 +496,16 @@ export default {
 .status-card,
 .plot-card,
 .tool-card {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
+}
+
+.card-title {
+  font-size: 1rem;
+  padding: 12px 16px 6px;
+}
+
+.card-body {
+  padding: 12px 16px 16px;
 }
 
 .status-row {
@@ -520,6 +540,12 @@ export default {
   font-style: italic;
 }
 
+.explainer-table {
+  max-height: 320px;
+  overflow: auto;
+  font-size: 0.85rem;
+}
+
 .pedestrian-summary {
   display: grid;
   gap: 8px;
@@ -536,7 +562,7 @@ export default {
 }
 
 .filter-row th {
-  padding: 8px 4px;
+  padding: 6px 4px;
 }
 
 @media (max-width: 960px) {

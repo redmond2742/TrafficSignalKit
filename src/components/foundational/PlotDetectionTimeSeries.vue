@@ -1,30 +1,31 @@
 <template>
-  <br />
-  <v-card class="mapping-card" variant="outlined">
-    <v-card-title>Detector-to-Phase Alignment</v-card-title>
-    <v-card-text>
-      <v-row>
-        <v-col cols="12" md="7">
-          <v-textarea
-            v-model="mappingInput"
-            :placeholder="mappingPlaceholder"
-            label="Detector-to-Phase Table"
-            rows="6"
-            class="mapping-textarea"
-          ></v-textarea>
-        </v-col>
-        <v-col cols="12" md="5">
-          <div class="alignment-toggle">
-            <div class="alignment-label">Sort rows by</div>
-            <v-btn-toggle v-model="alignmentMode" color="primary" mandatory>
-              <v-btn value="channels">Detection</v-btn>
-              <v-btn value="phases">Phase</v-btn>
-            </v-btn-toggle>
-          </div>
-        </v-col>
-      </v-row>
-    </v-card-text>
-  </v-card>
+  <v-expansion-panels class="mapping-card" variant="accordion">
+    <v-expansion-panel>
+      <v-expansion-panel-title>Detector-to-Phase Alignment</v-expansion-panel-title>
+      <v-expansion-panel-text>
+        <v-row>
+          <v-col cols="12" md="7">
+            <v-textarea
+              v-model="mappingInput"
+              :placeholder="mappingPlaceholder"
+              label="Detector-to-Phase Table"
+              rows="6"
+              class="mapping-textarea"
+            ></v-textarea>
+          </v-col>
+          <v-col cols="12" md="5">
+            <div class="alignment-toggle">
+              <div class="alignment-label">Sort rows by</div>
+              <v-btn-toggle v-model="alignmentMode" color="primary" mandatory>
+                <v-btn value="channels">Detection</v-btn>
+                <v-btn value="phases">Phase</v-btn>
+              </v-btn-toggle>
+            </div>
+          </v-col>
+        </v-row>
+      </v-expansion-panel-text>
+    </v-expansion-panel>
+  </v-expansion-panels>
   <br />
   <v-btn @click="resetZoom">Reset Zoom</v-btn>
   <br />

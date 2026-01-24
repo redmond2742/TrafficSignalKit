@@ -1,59 +1,65 @@
 <template>
   <div>
-    &nbsp;
-    <h1 class="h1-center-text">Pedestrian Investigator</h1>
-    <p class="intro-text">
-      Analyze pedestrian walk intervals from high-resolution controller logs.
-      This tool looks for walk events (enumeration 21), walk change interval
-      start (enumeration 22), and solid don’t walk start (enumeration 23) to
-      estimate pedestrian walk times, clearance intervals, and crossing
-      distances.
-    </p>
+    <div v-if="!embedded">
+      &nbsp;
+      <h1 class="h1-center-text">Pedestrian Investigator</h1>
+      <p class="intro-text">
+        Analyze pedestrian walk intervals from high-resolution controller logs.
+        This tool looks for walk events (enumeration 21), walk change interval
+        start (enumeration 22), and solid don’t walk start (enumeration 23) to
+        estimate pedestrian walk times, clearance intervals, and crossing
+        distances.
+      </p>
 
-    <div class="signal-inputs">
-      <div
-        v-for="(signal, index) in signals"
-        :key="`signal-${index}`"
-        class="signal-card"
-      >
-        <div class="signal-card-header">
-          <h2 class="signal-title">Signal {{ index + 1 }}</h2>
-          <v-btn
-            v-if="signals.length > 1"
-            color="error"
-            variant="text"
-            @click="removeSignal(index)"
-          >
-            Remove
-          </v-btn>
+      <div class="signal-inputs">
+        <div
+          v-for="(signal, index) in signals"
+          :key="`signal-${index}`"
+          class="signal-card"
+        >
+          <div class="signal-card-header">
+            <h2 class="signal-title">Signal {{ index + 1 }}</h2>
+            <v-btn
+              v-if="signals.length > 1"
+              color="error"
+              variant="text"
+              @click="removeSignal(index)"
+            >
+              Remove
+            </v-btn>
+          </div>
+          <v-text-field
+            v-model="signal.signalId"
+            label="Signal ID"
+            density="compact"
+            hide-details
+            class="signal-id-input"
+          ></v-text-field>
+          <div class="grow-wrap">
+            <InputBox v-model="signal.data" :defaultText="dataDefaultText" />
+          </div>
         </div>
-        <v-text-field
-          v-model="signal.signalId"
-          label="Signal ID"
-          density="compact"
-          hide-details
-          class="signal-id-input"
-        ></v-text-field>
-        <div class="grow-wrap">
-          <InputBox v-model="signal.data" :defaultText="dataDefaultText" />
-        </div>
+      </div>
+
+      <div class="actions">
+        <v-btn color="secondary" variant="outlined" @click="addSignal">
+          Add Another Signal
+        </v-btn>
+        <v-btn color="primary" :disabled="!hasInputData" @click="processData">
+          Process Pedestrian Data
+        </v-btn>
+        <span v-if="invalidRows" class="warning-text">
+          Skipped {{ invalidRows }} rows that did not match the expected CSV
+          format.
+        </span>
       </div>
     </div>
 
-    <div class="actions">
-      <v-btn color="secondary" variant="outlined" @click="addSignal">
-        Add Another Signal
-      </v-btn>
-      <v-btn color="primary" :disabled="!hasInputData" @click="processData">
-        Process Pedestrian Data
-      </v-btn>
-      <span v-if="invalidRows" class="warning-text">
-        Skipped {{ invalidRows }} rows that did not match the expected CSV
-        format.
-      </span>
-    </div>
-
-    <v-card v-if="metadataRows.length" class="metadata-card" variant="outlined">
+    <v-card
+      v-if="!embedded && metadataRows.length"
+      class="metadata-card"
+      variant="outlined"
+    >
       <v-card-title>Data Log Details</v-card-title>
       <v-card-text>
         <table class="metadata-table">
@@ -78,7 +84,11 @@
       </v-card-text>
     </v-card>
 
-    <div v-if="summaryRows.length" class="summary-wrapper">
+    <div
+      v-if="summaryRows.length"
+      class="summary-wrapper"
+      :class="{ 'summary-embedded': embedded }"
+    >
       <h2>Walk Phase Summary</h2>
       <table class="summary-table">
         <thead>
@@ -121,7 +131,7 @@
           </tr>
         </tbody>
       </table>
-      <p class="note-text">
+      <p v-if="!embedded" class="note-text">
         Walk and change interval averages use the controller event timestamps
         (0.1-second resolution). Estimated distance uses 3.5 ft/sec multiplied
         by the average walk change interval. Estimated lanes use a 12-foot lane
@@ -165,6 +175,20 @@ export default {
     InputBox,
   },
   mixins: [convertTime],
+  props: {
+    embedded: {
+      type: Boolean,
+      default: false,
+    },
+    inputData: {
+      type: String,
+      default: "",
+    },
+    signalId: {
+      type: String,
+      default: "",
+    },
+  },
   data() {
     return {
       signals: [{ signalId: "", data: "" }],
@@ -180,6 +204,35 @@ export default {
       sortKey: "signalId",
       sortDirection: "asc",
     };
+  },
+  watch: {
+    inputData: {
+      immediate: true,
+      handler(value) {
+        if (!this.embedded) {
+          return;
+        }
+        this.signals = [
+          {
+            signalId: this.signalId || "Signal 1",
+            data: value || "",
+          },
+        ];
+        if (value && value.trim()) {
+          this.processData();
+        } else {
+          this.invalidRows = 0;
+          this.metadataRows = [];
+          this.summaryRows = [];
+        }
+      },
+    },
+    signalId(value) {
+      if (!this.embedded || !this.signals.length) {
+        return;
+      }
+      this.signals[0].signalId = value || "Signal 1";
+    },
   },
   computed: {
     hasInputData() {
@@ -754,6 +807,10 @@ export default {
 
 .summary-wrapper {
   margin-top: 24px;
+}
+
+.summary-wrapper.summary-embedded {
+  margin-top: 0;
 }
 
 .summary-table {

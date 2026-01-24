@@ -924,7 +924,7 @@ export default {
       if (!Number.isFinite(millis)) {
         return "";
       }
-      return DateTime.fromMillis(millis).toISO();
+      return DateTime.fromMillis(millis).toUTC().toISO();
     },
     downloadDetailCsv() {
       if (!this.sortedTableRows.length) {

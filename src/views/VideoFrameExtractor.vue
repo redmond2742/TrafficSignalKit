@@ -15,6 +15,21 @@
         </label>
       </div>
 
+      <div class="file-info" :class="{ empty: !videoSrc }">
+        <div class="file-info-item">
+          <span class="file-info-label">Duration</span>
+          <strong class="file-info-value">{{ formattedVideoDuration }}</strong>
+        </div>
+        <div class="file-info-item">
+          <span class="file-info-label">Frame rate</span>
+          <strong class="file-info-value">{{ fps }} fps</strong>
+        </div>
+        <div class="file-info-item">
+          <span class="file-info-label">File size</span>
+          <strong class="file-info-value">{{ formattedFileSize }}</strong>
+        </div>
+      </div>
+
       <div class="sync-card">
         <div class="sync-header">
           <div>
@@ -165,6 +180,7 @@ export default {
       isMetadataLoaded: false,
       videoDuration: 0,
       videoFileName: "",
+      videoFileSize: 0,
       syncReferenceFrame: 0,
       syncInputMode: "clock",
       syncClockTime: "00:00:00.000",
@@ -222,6 +238,18 @@ export default {
       }
       return this.formatSecondsToClock(baseSeconds + this.syncOffsetSeconds);
     },
+    formattedVideoDuration() {
+      if (!this.videoDuration) {
+        return "—";
+      }
+      return this.formatSecondsToClock(this.videoDuration);
+    },
+    formattedFileSize() {
+      if (!this.videoFileSize) {
+        return "—";
+      }
+      return this.formatFileSize(this.videoFileSize);
+    },
     downloadFilename() {
       const baseName = this.videoFileName || "frame";
       const safeBaseName = this.sanitizeFilename(baseName);
@@ -245,6 +273,7 @@ export default {
       this.videoSrc = newUrl;
       this.objectUrl = newUrl;
       this.videoFileName = file.name.replace(/\.[^/.]+$/, "");
+      this.videoFileSize = file.size || 0;
       this.frameDataUrl = "";
       this.isMetadataLoaded = false;
       this.videoDuration = 0;
@@ -459,6 +488,20 @@ export default {
         .replace(/\s+/g, " ")
         .trim();
     },
+    formatFileSize(value) {
+      if (!Number.isFinite(value) || value <= 0) {
+        return "—";
+      }
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      let size = value;
+      let unitIndex = 0;
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
+      }
+      const decimals = unitIndex === 0 ? 0 : 1;
+      return `${size.toFixed(decimals)} ${units[unitIndex]}`;
+    },
   },
   watch: {
     frameNumber() {
@@ -517,6 +560,38 @@ export default {
 
 .fps-control {
   flex: 0 0 140px;
+}
+
+.file-info {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.file-info.empty {
+  opacity: 0.6;
+}
+
+.file-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-info-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4a5d5b;
+}
+
+.file-info-value {
+  font-size: 1rem;
+  color: #1f2d2a;
 }
 
 .control {

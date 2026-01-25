@@ -98,6 +98,23 @@
         </label>
       </div>
 
+      <details class="csv-card">
+        <summary>Timestamp CSV</summary>
+        <p class="csv-description">
+          Upload a CSV with ISO 8601 timestamps to extract frames using the sync time. The
+          file should include columns for signal ID, name, phase, light state, and the
+          timestamp.
+        </p>
+        <label class="control">
+          <span>CSV file</span>
+          <input type="file" accept=".csv,text/csv" @change="handleCsvFileChange" />
+        </label>
+        <p class="csv-hint" v-if="csvFileName">
+          Loaded: <strong>{{ csvFileName }}</strong>
+        </p>
+        <p class="csv-error" v-if="csvError">{{ csvError }}</p>
+      </details>
+
       <div class="frame-card">
         <div class="frame-header">
           <div class="control">
@@ -163,6 +180,46 @@
         </a>
         <img :src="frameDataUrl" alt="Extracted video frame preview" />
       </div>
+      <div class="csv-output" v-if="csvFrames.length">
+        <div class="csv-output-header">
+          <h2>Extracted CSV Frames</h2>
+          <p v-if="csvProcessing">Processing CSV frames…</p>
+        </div>
+        <div class="csv-table-wrapper">
+          <table class="csv-table">
+            <thead>
+              <tr>
+                <th>Timestamp (UTC)</th>
+                <th>Signal</th>
+                <th>Phase</th>
+                <th>Light State</th>
+                <th>Video Time</th>
+                <th>Download</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="frame in csvFrames" :key="frame.rowId">
+                <td>{{ frame.timestamp }}</td>
+                <td>{{ frame.signalId }} · {{ frame.signalName }}</td>
+                <td>Phase {{ frame.phase }}</td>
+                <td>{{ frame.lightState }}</td>
+                <td>{{ frame.formattedVideoTime }}</td>
+                <td>
+                  <span v-if="frame.error" class="csv-error">{{ frame.error }}</span>
+                  <a
+                    v-else
+                    class="csv-download"
+                    :href="frame.dataUrl"
+                    :download="frame.filename"
+                  >
+                    Download
+                  </a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
   </div>
 </template>
@@ -186,6 +243,12 @@ export default {
       syncClockTime: "00:00:00.000",
       syncIsoTime: "",
       isSyncCollapsed: false,
+      csvFileName: "",
+      csvRows: [],
+      csvFrames: [],
+      csvError: "",
+      csvProcessing: false,
+      csvJobId: 0,
     };
   },
   computed: {
@@ -275,6 +338,8 @@ export default {
       this.videoFileName = file.name.replace(/\.[^/.]+$/, "");
       this.videoFileSize = file.size || 0;
       this.frameDataUrl = "";
+      this.csvFrames = [];
+      this.csvError = "";
       this.isMetadataLoaded = false;
       this.videoDuration = 0;
 
@@ -291,12 +356,39 @@ export default {
           this.normalizeFrameNumber();
           this.extractFrameIfReady();
           this.estimateVideoFps();
+          this.queueCsvExtraction();
           video.removeEventListener("loadedmetadata", onLoadedMetadata);
         };
 
         video.addEventListener("loadedmetadata", onLoadedMetadata);
         video.load();
       });
+    },
+    handleCsvFileChange(event) {
+      const [file] = event.target.files || [];
+      if (!file) {
+        return;
+      }
+      this.csvFileName = file.name;
+      this.csvError = "";
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = String(reader.result || "");
+        const { rows, error } = this.parseCsvContent(text);
+        if (error) {
+          this.csvError = error;
+          this.csvRows = [];
+          return;
+        }
+        this.csvRows = rows;
+        this.queueCsvExtraction();
+      };
+      reader.onerror = () => {
+        this.csvError = "Unable to read the CSV file.";
+        this.csvRows = [];
+      };
+      reader.readAsText(file);
     },
     updateCanvasSize() {
       const video = this.$refs.video;
@@ -327,12 +419,185 @@ export default {
       video.addEventListener("seeked", onSeeked, { once: true });
       video.currentTime = this.targetTime;
     },
+    extractFrameAtTime(targetTime) {
+      return new Promise((resolve) => {
+        const video = this.$refs.video;
+        const canvas = this.$refs.canvas;
+        if (!video || !canvas || !this.canExtract) {
+          resolve("");
+          return;
+        }
+        const context = canvas.getContext("2d");
+        if (!context) {
+          resolve("");
+          return;
+        }
+
+        const onSeeked = () => {
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/png"));
+        };
+
+        video.addEventListener("seeked", onSeeked, { once: true });
+        video.currentTime = Math.min(Math.max(targetTime, 0), video.duration || targetTime);
+      });
+    },
     extractFrameIfReady() {
       const video = this.$refs.video;
       if (!video || !this.isMetadataLoaded || !this.canExtract) {
         return;
       }
       this.extractFrame();
+    },
+    parseCsvContent(text) {
+      if (!text) {
+        return { rows: [], error: "CSV file is empty." };
+      }
+      const lines = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+      if (!lines.length) {
+        return { rows: [], error: "CSV file is empty." };
+      }
+
+      let startIndex = 0;
+      const header = lines[0].toLowerCase();
+      if (header.includes("iso") && header.includes("signal id")) {
+        startIndex = 1;
+      }
+
+      const rows = [];
+      for (let index = startIndex; index < lines.length; index += 1) {
+        const parts = lines[index].split(",").map((part) => part.trim());
+        if (parts.length < 7) {
+          return { rows: [], error: "CSV rows must include 7 columns." };
+        }
+        const [
+          timestamp,
+          signalId,
+          signalName,
+          phase,
+          detectorChannel,
+          lightState,
+          secondsIntoState,
+        ] = parts;
+        rows.push({
+          rowId: `${index}-${timestamp}`,
+          timestamp,
+          signalId,
+          signalName,
+          phase,
+          detectorChannel,
+          lightState,
+          secondsIntoState,
+        });
+      }
+
+      return { rows, error: "" };
+    },
+    queueCsvExtraction() {
+      if (!this.csvRows.length) {
+        this.csvFrames = [];
+        return;
+      }
+      if (!this.canExtract || !this.isMetadataLoaded) {
+        this.csvFrames = [];
+        return;
+      }
+      this.extractCsvFrames();
+    },
+    async extractCsvFrames() {
+      const jobId = this.csvJobId + 1;
+      this.csvJobId = jobId;
+      this.csvProcessing = true;
+      this.csvFrames = [];
+      this.csvError = "";
+
+      const referenceTimeSeconds = this.syncReferenceFrame / (this.fps || 1);
+      const syncBase = this.getSyncBase();
+      if (!syncBase) {
+        this.csvError = "Enter a valid sync time before extracting CSV frames.";
+        this.csvProcessing = false;
+        return;
+      }
+
+      for (const row of this.csvRows) {
+        const targetTime = this.calculateCsvTargetTime(row, syncBase, referenceTimeSeconds);
+        if (jobId !== this.csvJobId) {
+          return;
+        }
+        if (targetTime === null || !Number.isFinite(targetTime)) {
+          this.csvFrames.push({
+            ...row,
+            formattedVideoTime: "—",
+            error: "Invalid timestamp.",
+          });
+          continue;
+        }
+        if (targetTime < 0 || targetTime > this.videoDuration) {
+          this.csvFrames.push({
+            ...row,
+            formattedVideoTime: this.formatSecondsToClock(targetTime),
+            error: "Out of video range.",
+          });
+          continue;
+        }
+        const dataUrl = await this.extractFrameAtTime(targetTime);
+        if (jobId !== this.csvJobId) {
+          return;
+        }
+        this.csvFrames.push({
+          ...row,
+          targetTime,
+          formattedVideoTime: this.formatSecondsToClock(targetTime),
+          dataUrl,
+          filename: this.buildCsvFilename(row),
+          error: dataUrl ? "" : "Unable to extract frame.",
+        });
+      }
+
+      this.csvProcessing = false;
+    },
+    getSyncBase() {
+      if (this.syncInputMode === "iso") {
+        const baseDate = this.parseIsoDate(this.syncIsoTime);
+        if (!baseDate) {
+          return null;
+        }
+        return { mode: "iso", baseDate };
+      }
+      const baseSeconds = this.parseClockToSeconds(this.syncClockTime);
+      if (baseSeconds === null) {
+        return null;
+      }
+      return { mode: "clock", baseSeconds };
+    },
+    calculateCsvTargetTime(row, syncBase, referenceTimeSeconds) {
+      const csvDate = this.parseIsoDate(row.timestamp);
+      if (!csvDate) {
+        return null;
+      }
+      if (syncBase.mode === "iso") {
+        const offsetSeconds = (csvDate.getTime() - syncBase.baseDate.getTime()) / 1000;
+        return referenceTimeSeconds + offsetSeconds;
+      }
+      const csvSeconds =
+        csvDate.getUTCHours() * 3600 +
+        csvDate.getUTCMinutes() * 60 +
+        csvDate.getUTCSeconds() +
+        csvDate.getUTCMilliseconds() / 1000;
+      const offsetSeconds = csvSeconds - syncBase.baseSeconds;
+      return referenceTimeSeconds + offsetSeconds;
+    },
+    buildCsvFilename(row) {
+      const signalId = row.signalId || "Signal";
+      const signalName = row.signalName || "Unknown";
+      const phase = row.phase || "X";
+      const lightState = row.lightState || "State";
+      const timestamp = row.timestamp || "Unknown";
+      const fileName = `${signalId}.${signalName}-Phase${phase}-${lightState}_UTC-${timestamp}`;
+      return `${this.sanitizeFilename(fileName)}.png`;
     },
     updateFrameNumber(delta) {
       const nextValue = this.frameNumber + delta;
@@ -511,9 +776,23 @@ export default {
       this.normalizeFrameNumber();
       this.normalizeSyncReferenceFrame();
       this.extractFrameIfReady();
+      this.queueCsvExtraction();
+    },
+    syncInputMode() {
+      this.queueCsvExtraction();
     },
     syncReferenceFrame() {
       this.normalizeSyncReferenceFrame();
+      this.queueCsvExtraction();
+    },
+    syncClockTime() {
+      this.queueCsvExtraction();
+    },
+    syncIsoTime() {
+      this.queueCsvExtraction();
+    },
+    csvRows() {
+      this.queueCsvExtraction();
     },
   },
   beforeUnmount() {
@@ -689,6 +968,37 @@ export default {
   box-shadow: inset 0 0 0 1px rgba(0, 150, 136, 0.08);
   display: grid;
   gap: 12px;
+}
+
+.csv-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 150, 136, 0.08);
+}
+
+.csv-card summary {
+  font-weight: 700;
+  cursor: pointer;
+  color: #005f56;
+  margin-bottom: 8px;
+}
+
+.csv-description {
+  margin: 0 0 12px;
+  color: #4a5d5b;
+  font-weight: 500;
+}
+
+.csv-hint {
+  margin: 8px 0 0;
+  color: #2b3b39;
+}
+
+.csv-error {
+  color: #b42318;
+  font-weight: 600;
 }
 
 .sync-header {
@@ -888,6 +1198,64 @@ export default {
 .download-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 20px rgba(0, 150, 136, 0.2);
+}
+
+.csv-output {
+  margin-top: 20px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 150, 136, 0.08);
+}
+
+.csv-output-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.csv-output h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.csv-table-wrapper {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.csv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.csv-table th,
+.csv-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.csv-table th {
+  color: #4a5d5b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+}
+
+.csv-download {
+  color: #00796b;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.csv-download:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 720px) {

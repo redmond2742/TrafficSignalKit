@@ -95,6 +95,13 @@
         </v-col>
         <v-col cols="12" md="6">
           <v-card class="tool-card" variant="outlined">
+            <v-card-title class="card-title">Phase Termination Reasons</v-card-title>
+            <TerminationReasonTable
+              class="card-body"
+              :tableData="splitHistoryRows"
+            ></TerminationReasonTable>
+          </v-card>
+          <v-card class="tool-card" variant="outlined">
             <v-card-title class="card-title">Pedestrian Investigator</v-card-title>
             <v-card-text class="card-body">
               <PedestrianInvestigator
@@ -189,6 +196,7 @@ import PlotDetectionTimeSeries from "../components/foundational/PlotDetectionTim
 import InputBox from "../components/foundational/InputBox.vue";
 import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
 import TableDisplaySplit from "../components/foundational/TableDisplaySplit.vue";
+import TerminationReasonTable from "../components/foundational/TerminationReasonTable.vue";
 import PedestrianInvestigator from "./PedestrianInvestigator.vue";
 import convertTime from "../mixins/convertTime";
 import enumerationObj from "../data/enumerations.json";
@@ -200,6 +208,7 @@ export default {
     PlotDetectionTimeSeries,
     ProcessSplitHistory,
     TableDisplaySplit,
+    TerminationReasonTable,
     PedestrianInvestigator,
   },
   mixins: [convertTime],

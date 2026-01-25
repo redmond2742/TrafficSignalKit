@@ -78,42 +78,38 @@
         </v-card-text>
       </v-card>
 
-      <v-row class="tool-row" dense>
-        <v-col cols="12" md="6">
-          <v-card class="tool-card" variant="outlined">
-            <v-card-title class="card-title">Phase &amp; Split Table</v-card-title>
-            <v-card-text class="card-body">
-              <ProcessSplitHistory
-                ref="splitHistory"
-                :inputData="inputData"
-                :hideInput="true"
-                @phaseDurations="updateSplitHistory"
-              ></ProcessSplitHistory>
-              <TableDisplaySplit :tableData="splitHistoryRows"></TableDisplaySplit>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="6">
-          <v-card class="tool-card" variant="outlined">
-            <v-card-title class="card-title">Phase Termination Reasons</v-card-title>
-            <TerminationReasonTable
-              class="card-body"
-              :tableData="splitHistoryRows"
-            ></TerminationReasonTable>
-          </v-card>
-          <v-card class="tool-card" variant="outlined">
-            <v-card-title class="card-title">Pedestrian Investigator</v-card-title>
-            <v-card-text class="card-body">
-              <PedestrianInvestigator
-                ref="pedestrianInvestigator"
-                :embedded="true"
-                :inputData="inputData"
-                :signalId="selectedSignal"
-              ></PedestrianInvestigator>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+      <div class="stacked-tools">
+        <v-card class="tool-card" variant="outlined">
+          <v-card-title class="card-title">Phase &amp; Split Table</v-card-title>
+          <v-card-text class="card-body">
+            <ProcessSplitHistory
+              ref="splitHistory"
+              :inputData="inputData"
+              :hideInput="true"
+              @phaseDurations="updateSplitHistory"
+            ></ProcessSplitHistory>
+            <TableDisplaySplit :tableData="splitHistoryRows"></TableDisplaySplit>
+          </v-card-text>
+        </v-card>
+        <v-card class="tool-card" variant="outlined">
+          <v-card-title class="card-title">Phase Termination Reasons</v-card-title>
+          <TerminationReasonTable
+            class="card-body"
+            :tableData="splitHistoryRows"
+          ></TerminationReasonTable>
+        </v-card>
+        <v-card class="tool-card" variant="outlined">
+          <v-card-title class="card-title">Pedestrian Investigator</v-card-title>
+          <v-card-text class="card-body">
+            <PedestrianInvestigator
+              ref="pedestrianInvestigator"
+              :embedded="true"
+              :inputData="inputData"
+              :signalId="selectedSignal"
+            ></PedestrianInvestigator>
+          </v-card-text>
+        </v-card>
+      </div>
 
       <v-card class="tool-card" variant="outlined">
         <v-card-title class="card-title">High Resolution Explainer Tool</v-card-title>
@@ -426,10 +422,11 @@ export default {
 <style scoped>
 .dashboard-view {
   padding: 8px;
+  font-size: 0.9rem;
 }
 
 .dashboard-title {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   margin-bottom: 12px;
 }
 
@@ -452,16 +449,16 @@ export default {
 .status-card,
 .plot-card,
 .tool-card {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .card-title {
-  font-size: 1rem;
-  padding: 12px 16px 6px;
+  font-size: 0.95rem;
+  padding: 10px 14px 4px;
 }
 
 .card-body {
-  padding: 12px 16px 16px;
+  padding: 10px 14px 14px;
 }
 
 .status-row {
@@ -495,8 +492,27 @@ export default {
   gap: 4px;
 }
 
-.tool-row {
-  margin-top: 8px;
+.stacked-tools {
+  max-width: 1200px;
+  margin: 8px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stacked-tools :deep(.summary-wrapper h2) {
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.stacked-tools :deep(.summary-table),
+.stacked-tools :deep(.v-table) {
+  font-size: 0.85rem;
+}
+
+.stacked-tools :deep(.summary-filter-input) {
+  font-size: 0.75rem;
+  padding: 4px 6px;
 }
 
 .empty-state {
@@ -506,9 +522,23 @@ export default {
 }
 
 .explainer-table {
-  max-height: 320px;
+  max-height: 300px;
   overflow: auto;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+}
+
+.explainer-table thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+}
+
+.explainer-table thead tr.filter-row th {
+  position: sticky;
+  top: 34px;
+  background: #fff;
+  z-index: 1;
 }
 
 .filter-row th {

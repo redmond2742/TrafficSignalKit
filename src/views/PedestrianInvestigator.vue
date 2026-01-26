@@ -140,6 +140,70 @@
         unique walk cycles in which every phase with a pedestrian call is served
         without repeats.
       </p>
+      <div v-if="pedEvents.length" class="ped-heatmap">
+        <h3 class="heatmap-title">Pedestrian Event Heatmap</h3>
+        <div class="heatmap-controls">
+          <v-select
+            label="Signal"
+            variant="outlined"
+            density="compact"
+            :items="heatmapSignalItems"
+            v-model="selectedHeatmapSignal"
+          ></v-select>
+        </div>
+        <p class="heatmap-subtitle" v-if="heatmapConfig.rangeLabel">
+          {{ heatmapConfig.rangeLabel }}
+        </p>
+        <div v-if="heatmapConfig.rows.length" class="heatmap-grid">
+          <div
+            class="heatmap-header"
+            :style="{
+              '--heatmap-columns': heatmapConfig.columns.length,
+            }"
+          >
+            <div class="heatmap-corner"></div>
+            <div
+              v-for="column in heatmapConfig.columns"
+              :key="`ped-column-${column.key}`"
+              class="heatmap-hour"
+            >
+              {{ column.displayLabel }}
+            </div>
+          </div>
+          <div
+            v-for="row in heatmapConfig.rows"
+            :key="`ped-row-${row.key}`"
+            class="heatmap-row"
+            :style="{
+              '--heatmap-columns': heatmapConfig.columns.length,
+            }"
+          >
+            <div class="heatmap-row-label">{{ row.label }}</div>
+            <div
+              v-for="column in heatmapConfig.columns"
+              :key="`${row.key}-${column.key}`"
+              class="heatmap-cell"
+              :style="{ backgroundColor: heatmapCellColor(row.key, column.key) }"
+              :title="heatmapCellTitle(row, column)"
+            ></div>
+          </div>
+        </div>
+        <div v-else class="no-results">
+          No pedestrian events found for the selected signal.
+        </div>
+        <div class="heatmap-legend" v-if="heatmapConfig.maxCount > 0">
+          <span class="heatmap-legend-label">Less</span>
+          <div class="heatmap-legend-bar">
+            <span
+              v-for="step in heatmapLegendSteps"
+              :key="`legend-${step}`"
+              class="heatmap-legend-swatch"
+              :style="{ backgroundColor: heatmapLegendColor(step) }"
+            ></span>
+          </div>
+          <span class="heatmap-legend-label">More</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -147,6 +211,7 @@
 <script>
 import InputBox from "../components/foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
+import { DateTime } from "luxon";
 
 const WALK_EVENT = 21;
 const CHANGE_START_EVENT = 22;
@@ -197,12 +262,14 @@ export default {
       invalidRows: 0,
       metadataRows: [],
       summaryRows: [],
+      pedEvents: [],
       filters: SUMMARY_COLUMNS.reduce((accumulator, column) => {
         accumulator[column.key] = "";
         return accumulator;
       }, {}),
       sortKey: "signalId",
       sortDirection: "asc",
+      selectedHeatmapSignal: "All",
     };
   },
   watch: {
@@ -240,6 +307,110 @@ export default {
     },
     summaryColumns() {
       return SUMMARY_COLUMNS;
+    },
+    heatmapSignalItems() {
+      const signals = Array.from(
+        new Set(this.summaryRows.map((row) => row.signalId))
+      ).sort((a, b) => a.localeCompare(b));
+      return [
+        { title: "All signals", value: "All" },
+        ...signals.map((signalId) => ({
+          title: signalId,
+          value: signalId,
+        })),
+      ];
+    },
+    heatmapEvents() {
+      return this.pedEvents.filter(
+        (event) =>
+          this.selectedHeatmapSignal === "All" ||
+          event.signalId === this.selectedHeatmapSignal
+      );
+    },
+    heatmapConfig() {
+      const events = this.heatmapEvents;
+      if (!events.length) {
+        return {
+          rows: [],
+          columns: [],
+          counts: new Map(),
+          maxCount: 0,
+          rangeLabel: "",
+        };
+      }
+
+      const millisList = events.map((row) => row.timestampMs);
+      const minMillis = Math.min(...millisList);
+      const maxMillis = Math.max(...millisList);
+      const totalMinutes = Math.max(1, (maxMillis - minMillis) / 60000);
+      const targetBins = 24;
+      const rawMinutes = Math.ceil(totalMinutes / targetBins);
+      const binMinutes = this.roundBinMinutes(rawMinutes);
+      const binMillis = binMinutes * 60000;
+      const alignedStartMillis =
+        Math.floor(minMillis / binMillis) * binMillis;
+      const counts = new Map();
+      let maxCount = 0;
+
+      const phases = Array.from(new Set(events.map((row) => row.phase))).sort(
+        (a, b) => a - b
+      );
+      const rows = phases.map((phase) => ({
+        key: `${phase}`,
+        label: `Phase ${phase}`,
+      }));
+
+      const labelIntervalMinutes = Math.max(
+        binMinutes,
+        binMinutes <= 10 ? 30 : binMinutes <= 30 ? 60 : binMinutes <= 120 ? 240 : 720
+      );
+      const columns = [];
+      const endMillis = maxMillis;
+      for (
+        let cursor = alignedStartMillis;
+        cursor <= endMillis;
+        cursor += binMillis
+      ) {
+        const minutesFromStart = (cursor - alignedStartMillis) / 60000;
+        const shouldLabel = minutesFromStart % labelIntervalMinutes === 0;
+        const label = this.formatHeatmapColumnLabel(cursor, binMinutes);
+        columns.push({
+          key: cursor,
+          label,
+          displayLabel: shouldLabel ? label : "",
+        });
+      }
+
+      events.forEach((row) => {
+        const minutesOffset = (row.timestampMs - alignedStartMillis) / 60000;
+        const binIndex = Math.floor(minutesOffset / binMinutes);
+        const column = columns[binIndex];
+        if (!column) {
+          return;
+        }
+        const key = `${row.phase}-${column.key}`;
+        const nextCount = (counts.get(key) || 0) + 1;
+        counts.set(key, nextCount);
+        if (nextCount > maxCount) {
+          maxCount = nextCount;
+        }
+      });
+
+      const rangeLabel = `${DateTime.fromMillis(minMillis).toFormat(
+        "MMM d, yyyy h:mm a"
+      )} - ${DateTime.fromMillis(maxMillis).toFormat("MMM d, yyyy h:mm a")}`;
+
+      return {
+        rows,
+        columns,
+        counts,
+        maxCount,
+        rangeLabel,
+      };
+    },
+    heatmapLegendSteps() {
+      const steps = 5;
+      return Array.from({ length: steps }, (_, index) => index);
     },
     filteredSummaryRows() {
       const activeFilters = this.filters;
@@ -286,6 +457,7 @@ export default {
       const invalidRows = [];
       const metadataRows = [];
       const summaryRows = [];
+      const pedEvents = [];
 
       this.signals.forEach((signal, index) => {
         if (!signal.data.trim()) {
@@ -296,6 +468,7 @@ export default {
         invalidRows.push(result.invalidRows);
         metadataRows.push(...result.metadataRows);
         summaryRows.push(...result.summaryRows);
+        pedEvents.push(...result.pedEvents);
       });
 
       summaryRows.sort((a, b) => {
@@ -311,6 +484,15 @@ export default {
       this.invalidRows = invalidRows.reduce((sum, value) => sum + value, 0);
       this.metadataRows = metadataRows;
       this.summaryRows = summaryRows;
+      this.pedEvents = pedEvents;
+
+      const availableSignals = new Set(summaryRows.map((row) => row.signalId));
+      if (
+        this.selectedHeatmapSignal !== "All" &&
+        !availableSignals.has(this.selectedHeatmapSignal)
+      ) {
+        this.selectedHeatmapSignal = "All";
+      }
     },
     sortBy(key) {
       if (this.sortKey === key) {
@@ -616,7 +798,15 @@ export default {
         };
       });
 
-      return { invalidRows, metadataRows, summaryRows };
+      const pedEvents = events
+        .filter((event) => event.enumeration === WALK_EVENT)
+        .map((event) => ({
+          signalId,
+          phase: event.phase,
+          timestampMs: event.timestampMs,
+        }));
+
+      return { invalidRows, metadataRows, summaryRows, pedEvents };
     },
     addSignal() {
       this.signals.push({ signalId: "", data: "" });
@@ -733,6 +923,51 @@ export default {
       return (
         (averageChangeInterval + averageCallToWalkDelay) * pedCallsPerHour
       );
+    },
+    roundBinMinutes(rawMinutes) {
+      const steps = [5, 10, 15, 30, 60, 120, 240, 360, 720, 1440];
+      for (const step of steps) {
+        if (rawMinutes <= step) {
+          return step;
+        }
+      }
+      return 1440;
+    },
+    formatHeatmapColumnLabel(millis, binMinutes) {
+      const dateTime = DateTime.fromMillis(millis);
+      if (binMinutes >= 1440) {
+        return dateTime.toFormat("MMM d");
+      }
+      if (binMinutes >= 60) {
+        return dateTime.toFormat("MMM d h a");
+      }
+      return dateTime.toFormat("h:mm a");
+    },
+    heatmapCount(rowKey, columnKey) {
+      return this.heatmapConfig.counts.get(`${rowKey}-${columnKey}`) || 0;
+    },
+    heatmapCellColor(rowKey, columnKey) {
+      const count = this.heatmapCount(rowKey, columnKey);
+      const maxCount = this.heatmapConfig.maxCount;
+      if (!count || maxCount === 0) {
+        return "#f4f7f4";
+      }
+      const intensity = count / maxCount;
+      const lightness = 92 - intensity * 45;
+      return `hsl(135, 45%, ${lightness}%)`;
+    },
+    heatmapLegendColor(step) {
+      const maxStep = this.heatmapLegendSteps.length - 1;
+      if (maxStep <= 0) {
+        return "#f4f7f4";
+      }
+      const intensity = step / maxStep;
+      const lightness = 92 - intensity * 45;
+      return `hsl(135, 45%, ${lightness}%)`;
+    },
+    heatmapCellTitle(row, column) {
+      const count = this.heatmapCount(row.key, column.key);
+      return `${row.label} • ${column.label} • ${count} events`;
     },
   },
 };
@@ -859,5 +1094,98 @@ export default {
   font-size: 0.95rem;
   color: #444;
   text-align: left;
+}
+
+.ped-heatmap {
+  margin-top: 20px;
+}
+
+.heatmap-title {
+  margin-bottom: 8px;
+}
+
+.heatmap-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+  max-width: 320px;
+}
+
+.heatmap-subtitle {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.heatmap-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+}
+
+.heatmap-header,
+.heatmap-row {
+  display: grid;
+  grid-template-columns: 140px repeat(var(--heatmap-columns, 24), minmax(16px, 1fr));
+  align-items: center;
+  gap: 4px;
+}
+
+.heatmap-corner {
+  height: 20px;
+}
+
+.heatmap-hour {
+  font-size: 0.7rem;
+  color: #666;
+  text-align: center;
+}
+
+.heatmap-row-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.heatmap-cell {
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid #e7efe7;
+}
+
+.heatmap-legend {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.heatmap-legend-bar {
+  display: flex;
+  gap: 4px;
+}
+
+.heatmap-legend-swatch {
+  width: 20px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid #e7efe7;
+}
+
+.heatmap-legend-label {
+  font-weight: 600;
+}
+
+.no-results {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #666;
 }
 </style>

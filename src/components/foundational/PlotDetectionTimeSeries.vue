@@ -72,6 +72,10 @@ export default {
       type: Array,
       default: () => [],
     },
+    coordPatternData: {
+      type: Array,
+      default: () => [],
+    },
   },
   data() {
     return {
@@ -285,6 +289,7 @@ export default {
       const timestamps = [
         ...this.plotData.map((event) => event.timestampMs),
         ...this.phaseData.map((event) => event.timestampMs),
+        ...this.coordPatternData.map((event) => event.timestampMs),
       ].filter((value) => typeof value === "number");
       return timestamps.length ? Math.max(...timestamps) : null;
     },
@@ -292,6 +297,7 @@ export default {
       const timestamps = [
         ...this.plotData.map((event) => event.timestampMs),
         ...this.phaseData.map((event) => event.timestampMs),
+        ...this.coordPatternData.map((event) => event.timestampMs),
       ].filter((value) => typeof value === "number");
       if (!timestamps.length) {
         return null;
@@ -303,6 +309,65 @@ export default {
       }
       const padding = Math.max((max - min) * 0.05, 1);
       return { min: min - padding, max: max + padding };
+    },
+    coordPatternNumbers() {
+      const patternSet = new Set();
+      this.coordPatternData.forEach((event) => {
+        if (typeof event.parameterCode === "number") {
+          patternSet.add(event.parameterCode);
+        }
+      });
+      return Array.from(patternSet).sort((a, b) => a - b);
+    },
+    coordPatternColors() {
+      const count = this.coordPatternNumbers.length;
+      const colorMap = {};
+      this.coordPatternNumbers.forEach((pattern, index) => {
+        const hue = Math.round((index / Math.max(count, 1)) * 320);
+        colorMap[pattern] = `hsl(${hue}, 70%, 45%)`;
+      });
+      return colorMap;
+    },
+    coordPatternLineDataset() {
+      if (!this.coordPatternData.length) {
+        return [];
+      }
+
+      if (!this.channelLabels.length) {
+        return [];
+      }
+
+      const yStart = this.channelLabels[0];
+      const yEnd = this.channelLabels[this.channelLabels.length - 1];
+
+      const grouped = this.coordPatternData.reduce((lookup, event) => {
+        if (typeof event.parameterCode !== "number") {
+          return lookup;
+        }
+        if (!lookup[event.parameterCode]) {
+          lookup[event.parameterCode] = [];
+        }
+        lookup[event.parameterCode].push(event);
+        return lookup;
+      }, {});
+
+      return Object.entries(grouped).map(([patternCode, events]) => ({
+        type: "line",
+        label: `Coord Pattern ${patternCode}`,
+        data: events.flatMap((event) => [
+          { x: event.timestampMs, y: yStart, event },
+          { x: event.timestampMs, y: yEnd, event },
+        ]),
+        borderColor: this.coordPatternColors[patternCode] ?? "#ff7043",
+        backgroundColor: this.coordPatternColors[patternCode] ?? "#ff7043",
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        showLine: true,
+        borderCapStyle: "round",
+        borderJoinStyle: "round",
+        spanGaps: true,
+      }));
     },
     phaseIntervals() {
       if (!this.phaseData.length) {
@@ -425,7 +490,9 @@ export default {
               borderColor: "#1976d2",
               backgroundColor: "#1976d2",
             },
-          ].concat(this.phaseDataset ? [this.phaseDataset] : []),
+          ]
+            .concat(this.coordPatternLineDataset)
+            .concat(this.phaseDataset ? [this.phaseDataset] : []),
         };
       }
 
@@ -435,7 +502,9 @@ export default {
             label: "Detection Events",
             data: this.plotData.map((event) => ({
               x: event.timestampMs,
-              y: this.channelLookup[event.parameterCode] ?? `Channel ${event.parameterCode}`,
+              y:
+                this.channelLookup[event.parameterCode] ??
+                `Channel ${event.parameterCode}`,
               event,
             })),
             borderColor: this.plotData.map(
@@ -454,7 +523,9 @@ export default {
               (event) => this.getDetectionEventStyle(event).radius + 1
             ),
           },
-        ].concat(this.phaseDataset ? [this.phaseDataset] : []),
+        ]
+          .concat(this.coordPatternLineDataset)
+          .concat(this.phaseDataset ? [this.phaseDataset] : []),
       };
     },
     chartOptions() {
@@ -507,6 +578,15 @@ export default {
                     ];
                   }
                   return `${this.formatPhaseAxisLabel(context.parsed.y)}`;
+                }
+                if (
+                  event.eventDescriptor?.toLowerCase().includes("coord pattern change")
+                ) {
+                  return [
+                    `${event.eventDescriptor} (Code ${event.eventCode})`,
+                    `Pattern: ${event.parameterCode ?? "N/A"}`,
+                    `Time: ${event.humanReadable ?? event.timestampISO}`,
+                  ];
                 }
                 return [
                   `${event.eventDescriptor} (Code ${event.eventCode})`,

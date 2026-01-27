@@ -46,6 +46,7 @@
       ref="processDetectionEvents"
       @detectionEvents="storeDetectionEvents"
       @phaseEvents="storePhaseEvents"
+      @coordPatternEvents="storeCoordPatternEvents"
     ></ProcessDetectionEvents>
     <div>
       <v-btn @click="processDetection" color="primary">
@@ -55,6 +56,7 @@
     <PlotDetectionTimeSeries
       :plotData="detectionEvents"
       :phaseData="phaseEvents"
+      :coordPatternData="coordPatternEvents"
     ></PlotDetectionTimeSeries>
   </div>
 </template>
@@ -74,6 +76,7 @@ export default {
       panel: [],
       detectionEvents: [],
       phaseEvents: [],
+      coordPatternEvents: [],
     };
   },
   methods: {
@@ -85,6 +88,9 @@ export default {
     },
     storePhaseEvents(events) {
       this.phaseEvents = events;
+    },
+    storeCoordPatternEvents(events) {
+      this.coordPatternEvents = events;
     },
   },
 };

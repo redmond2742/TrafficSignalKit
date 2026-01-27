@@ -321,9 +321,28 @@ export default {
     },
     coordPatternColors() {
       const count = this.coordPatternNumbers.length;
+      const basePalette = [
+        "#e53935",
+        "#1e88e5",
+        "#43a047",
+        "#8e24aa",
+        "#f4511e",
+        "#3949ab",
+        "#00897b",
+        "#f9a825",
+        "#6d4c41",
+        "#5e35b1",
+      ];
+      const extraCount = Math.max(count - basePalette.length, 1);
       const colorMap = {};
       this.coordPatternNumbers.forEach((pattern, index) => {
-        const hue = Math.round((index / Math.max(count, 1)) * 320);
+        if (index < basePalette.length) {
+          colorMap[pattern] = basePalette[index];
+          return;
+        }
+        const hue = Math.round(
+          ((index - basePalette.length) / extraCount) * 360
+        );
         colorMap[pattern] = `hsl(${hue}, 70%, 45%)`;
       });
       return colorMap;

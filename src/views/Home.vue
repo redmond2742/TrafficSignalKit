@@ -132,6 +132,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Offset+Calculation.png",
+          title: "Pattern Calendar",
+          description:
+            "Visualize coordination pattern changes by day and time in a calendar view.",
+          link: "/pattern-calendar",
+          topics: ["Controller Data", "Coordination", "Calendar"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+GPX+Map+and+Table.png",
           title: "GPX Mapper",
           description: "Plot GPX tracks on a map",

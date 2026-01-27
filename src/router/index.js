@@ -29,6 +29,7 @@ import PedestrianInvestigator from '../views/PedestrianInvestigator'
 import Dashboard from '../views/Dashboard'
 import VideoFrameExtractor from '../views/VideoFrameExtractor'
 import HighResPhaseStartTable from '../views/HighResPhaseStartTable'
+import PatternCalendar from '../views/PatternCalendar'
 
 
 
@@ -173,6 +174,11 @@ const routes = [
         path: '/message-sign-designer',
         name: 'messageSignDesigner',
         component: MessageSignDesigner,
+    },
+    {
+        path: '/pattern-calendar',
+        name: 'patternCalendar',
+        component: PatternCalendar,
     },
     {
         path: '/PracticeExam',

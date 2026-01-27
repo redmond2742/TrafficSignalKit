@@ -14,6 +14,24 @@
         </p>
       </v-card-text>
     </v-card>
+    <v-card class="blog-card" variant="outlined">
+      <v-card-title>Offsets Are the Point</v-card-title>
+      <v-card-subtitle>
+        Why Cycle Length, Splits, and TOD Schedules Exist Only to Serve the Green Wave
+      </v-card-subtitle>
+      <v-card-text>
+        <p>
+          Offsets drive the green wave experience. This essay reframes
+          coordination around the timing of green arrivals first, then
+          everything else.
+        </p>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn color="primary" variant="text" to="/blog/offsets-are-the-point">
+          Read the article
+        </v-btn>
+      </v-card-actions>
+    </v-card>
   </v-container>
 </template>
 

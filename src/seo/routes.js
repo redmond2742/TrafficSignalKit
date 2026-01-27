@@ -24,7 +24,7 @@ export const routeMeta = {
     path: "/terms-of-service",
   },
   SplitCalculator: {
-    title: "Traffic Signal Split Calculator | Coordination & Timing Checks",
+    title: "Traffic Signal Split Calculator 2 | Coordination & Timing Checks",
     description:
       "Verify split allocations and cycle lengths during coordination and timing plan adjustments.",
     path: "/split-calculator",

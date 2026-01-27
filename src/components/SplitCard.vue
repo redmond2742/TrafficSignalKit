@@ -1,7 +1,7 @@
 <template>
   <v-container class="grey lighten-5">
     <v-btn variant="tonal" color="success" @click="addCard">
-      New Split Calculator
+      New Split Calculator 2
     </v-btn>
 
     <v-row class="mb-6" justify="center" no-gutters>

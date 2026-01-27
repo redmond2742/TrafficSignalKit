@@ -2,14 +2,14 @@
   <div>
     &nbsp;
 
-    <h1 class="h1-center-text">Traffic Signal Split Calculator</h1>
+    <h1 class="h1-center-text">Traffic Signal Split Calculator 2</h1>
 
     <div class="left-justify-text">
       <v-expansion-panels v-model="panel" multiple>
         <v-expansion-panel title="About: Split Calculator" value="about">
           <v-expansion-panel-text>
-            This is a simple signal timing calculator for setting the "split"
-            time of traffic lights. It helps decide how long each phase can be
+            This is a signal timing calculator for setting the "split" time of
+            traffic lights. It helps decide how long each phase can be
             allocated. By balancing the green light time well, it helps to
             lessen traffic jams, make traffic flow smoother, and increase safety
             on the roads.

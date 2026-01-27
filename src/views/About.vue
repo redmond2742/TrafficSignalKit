@@ -92,6 +92,12 @@ export default {
               path: "/delay-estimator",
             },
             {
+              title: "Pattern Calendar",
+              description:
+                "Plot coordination pattern changes on a daily calendar with cycle lengths.",
+              path: "/pattern-calendar",
+            },
+            {
               title: "Pedestrian Investigator",
               description:
                 "Summarize pedestrian walk, clearance, and crossing distance estimates.",

@@ -149,17 +149,47 @@ export const routeMeta = {
       "Estimate call delays between detector actuations and phase service.",
     path: "/delay-estimator",
   },
+  signalOffsets: {
+    title: "Signal Offset Calculator | Coordinated Phase Alignment",
+    description:
+      "Compare high-resolution controller logs to compute coordinated phase offsets by timing events.",
+    path: "/signal-offsets",
+  },
   stuckDetectors: {
     title: "Stuck Detector Diagnostics | Signal Health Checks",
     description:
       "Identify detector channels that appear stuck on or off in high-resolution data.",
     path: "/stuck-detectors",
   },
+  pedestrianInvestigator: {
+    title: "Pedestrian Investigator | Walk & Clearance Analysis",
+    description:
+      "Analyze pedestrian walk, clearance, and don't-walk intervals from high-resolution controller logs.",
+    path: "/pedestrian-investigator",
+  },
+  dashboard: {
+    title: "Signal Data Dashboard | Detector Status & Phase Insights",
+    description:
+      "Process high-resolution data to review detector status, phase plots, and split history in one dashboard.",
+    path: "/dashboard",
+  },
   practiceExam: {
     title: "Traffic Signal Practice Exam | Certification Prep",
     description:
       "Practice multiple-choice questions for traffic engineering and signal timing.",
     path: "/practice-exam",
+  },
+  videoFrameExtractor: {
+    title: "Video Frame Extractor | Sync Frames to Timestamps",
+    description:
+      "Extract video frames at a chosen FPS or from timestamp CSVs using a sync reference frame.",
+    path: "/video-frame-extractor",
+  },
+  phaseStartTable: {
+    title: "Phase Start Table | High-Resolution Interval Starts",
+    description:
+      "Generate a table of phase start timestamps for green, yellow, and red intervals.",
+    path: "/phase-start-table",
   },
   messageSignDesigner: {
     title: "Changeable Message Sign Designer | CMS Preview",

@@ -14,7 +14,7 @@
         </p>
       </v-card-text>
     </v-card>
-    <v-card class="blog-card" variant="outlined">
+    <v-card class="blog-card blog-card--link" variant="outlined" to="/blog/offsets-are-the-point" link>
       <v-card-title>Offsets Are the Point</v-card-title>
       <v-card-subtitle>
         Why Cycle Length, Splits, and TOD Schedules Exist Only to Serve the Green Wave
@@ -49,5 +49,8 @@ export default {
 .blog-card {
   margin-top: 24px;
   border-radius: 16px;
+}
+.blog-card--link {
+  cursor: pointer;
 }
 </style>

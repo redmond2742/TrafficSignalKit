@@ -47,6 +47,7 @@
       @detectionEvents="storeDetectionEvents"
       @phaseEvents="storePhaseEvents"
       @coordPatternEvents="storeCoordPatternEvents"
+      @coordCycleStateEvents="storeCoordCycleStateEvents"
     ></ProcessDetectionEvents>
     <div>
       <v-btn @click="processDetection" color="primary">
@@ -57,6 +58,7 @@
       :plotData="detectionEvents"
       :phaseData="phaseEvents"
       :coordPatternData="coordPatternEvents"
+      :coordCycleStateData="coordCycleStateEvents"
     ></PlotDetectionTimeSeries>
   </div>
 </template>
@@ -77,6 +79,7 @@ export default {
       detectionEvents: [],
       phaseEvents: [],
       coordPatternEvents: [],
+      coordCycleStateEvents: [],
     };
   },
   methods: {
@@ -91,6 +94,9 @@ export default {
     },
     storeCoordPatternEvents(events) {
       this.coordPatternEvents = events;
+    },
+    storeCoordCycleStateEvents(events) {
+      this.coordCycleStateEvents = events;
     },
   },
 };

@@ -36,6 +36,13 @@ export default {
         )
         .map((item) => parseInt(item.eventCode, 10));
     },
+    coordCycleStateEventCodes() {
+      return enumerationObj
+        .filter((item) =>
+          item.eventDescriptor.toLowerCase().includes("coord cycle state change")
+        )
+        .map((item) => parseInt(item.eventCode, 10));
+    },
     phaseEventStates() {
       return enumerationObj.reduce((lookup, item) => {
         if (!item.parameterType || item.parameterType.toLowerCase() !== "phase") {
@@ -81,6 +88,7 @@ export default {
       const events = [];
       const phaseEvents = [];
       const coordPatternEvents = [];
+      const coordCycleStateEvents = [];
 
       lines.forEach((line) => {
         const trimmedLine = line.trim();
@@ -129,6 +137,17 @@ export default {
           });
         }
 
+        if (this.coordCycleStateEventCodes.includes(eventCode)) {
+          coordCycleStateEvents.push({
+            timestampISO: timestampInfo.iso,
+            timestampMs: timestampInfo.MillisecFromEpoch,
+            humanReadable: timestampInfo.humanReadable,
+            eventCode,
+            eventDescriptor: this.detectionLookup[eventCode] ?? `Event ${eventCode}`,
+            parameterCode,
+          });
+        }
+
         const phaseState = this.phaseEventStates[eventCode];
         if (phaseState) {
           phaseEvents.push({
@@ -146,9 +165,11 @@ export default {
       events.sort((a, b) => a.timestampMs - b.timestampMs);
       phaseEvents.sort((a, b) => a.timestampMs - b.timestampMs);
       coordPatternEvents.sort((a, b) => a.timestampMs - b.timestampMs);
+      coordCycleStateEvents.sort((a, b) => a.timestampMs - b.timestampMs);
       this.$emit("detectionEvents", events);
       this.$emit("phaseEvents", phaseEvents);
       this.$emit("coordPatternEvents", coordPatternEvents);
+      this.$emit("coordCycleStateEvents", coordCycleStateEvents);
     },
   },
 };

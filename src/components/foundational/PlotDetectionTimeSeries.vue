@@ -76,6 +76,10 @@ export default {
       type: Array,
       default: () => [],
     },
+    coordCycleStateData: {
+      type: Array,
+      default: () => [],
+    },
   },
   data() {
     return {
@@ -290,6 +294,7 @@ export default {
         ...this.plotData.map((event) => event.timestampMs),
         ...this.phaseData.map((event) => event.timestampMs),
         ...this.coordPatternData.map((event) => event.timestampMs),
+        ...this.coordCycleStateData.map((event) => event.timestampMs),
       ].filter((value) => typeof value === "number");
       return timestamps.length ? Math.max(...timestamps) : null;
     },
@@ -298,6 +303,7 @@ export default {
         ...this.plotData.map((event) => event.timestampMs),
         ...this.phaseData.map((event) => event.timestampMs),
         ...this.coordPatternData.map((event) => event.timestampMs),
+        ...this.coordCycleStateData.map((event) => event.timestampMs),
       ].filter((value) => typeof value === "number");
       if (!timestamps.length) {
         return null;
@@ -387,6 +393,90 @@ export default {
         borderJoinStyle: "round",
         spanGaps: true,
       }));
+    },
+    coordCycleStateTypes() {
+      const typeSet = new Set();
+      this.coordCycleStateData.forEach((event) => {
+        if (typeof event.parameterCode === "number") {
+          typeSet.add(event.parameterCode);
+        }
+      });
+      return Array.from(typeSet).sort((a, b) => a - b);
+    },
+    coordCycleStateLabels() {
+      return {
+        0: "Free",
+        1: "In Step",
+        2: "Transition - Add",
+        3: "Transition - Subtract",
+        4: "Transition - Dwell",
+        5: "Local Zero",
+        6: "Begin Pickup",
+        7: "Master Cycle Zero",
+      };
+    },
+    coordCycleStateColors() {
+      const palette = [
+        "#00acc1",
+        "#3949ab",
+        "#7cb342",
+        "#f4511e",
+        "#8e24aa",
+        "#fdd835",
+        "#6d4c41",
+        "#00897b",
+      ];
+      const colorMap = {};
+      this.coordCycleStateTypes.forEach((state, index) => {
+        colorMap[state] = palette[index % palette.length];
+      });
+      return colorMap;
+    },
+    coordCycleStateLineDataset() {
+      if (!this.coordCycleStateData.length) {
+        return [];
+      }
+
+      if (!this.channelLabels.length) {
+        return [];
+      }
+
+      const yStart = this.channelLabels[0];
+      const yEnd = this.channelLabels[this.channelLabels.length - 1];
+
+      const grouped = this.coordCycleStateData.reduce((lookup, event) => {
+        if (typeof event.parameterCode !== "number") {
+          return lookup;
+        }
+        if (!lookup[event.parameterCode]) {
+          lookup[event.parameterCode] = [];
+        }
+        lookup[event.parameterCode].push(event);
+        return lookup;
+      }, {});
+
+      return Object.entries(grouped).map(([stateCode, events]) => {
+        const label =
+          this.coordCycleStateLabels[stateCode] ?? `State ${stateCode}`;
+        const color = this.coordCycleStateColors[stateCode] ?? "#546e7a";
+        return {
+          type: "line",
+          label: `Coord Cycle ${label}`,
+          data: events.flatMap((event) => [
+            { x: event.timestampMs, y: yStart, event },
+            { x: event.timestampMs, y: yEnd, event },
+          ]),
+          borderColor: color,
+          backgroundColor: color,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          showLine: true,
+          borderCapStyle: "round",
+          borderJoinStyle: "round",
+          spanGaps: true,
+        };
+      });
     },
     phaseIntervals() {
       if (!this.phaseData.length) {
@@ -511,6 +601,7 @@ export default {
             },
           ]
             .concat(this.coordPatternLineDataset)
+            .concat(this.coordCycleStateLineDataset)
             .concat(this.phaseDataset ? [this.phaseDataset] : []),
         };
       }
@@ -544,6 +635,7 @@ export default {
           },
         ]
           .concat(this.coordPatternLineDataset)
+          .concat(this.coordCycleStateLineDataset)
           .concat(this.phaseDataset ? [this.phaseDataset] : []),
       };
     },
@@ -604,6 +696,20 @@ export default {
                   return [
                     `${event.eventDescriptor} (Code ${event.eventCode})`,
                     `Pattern: ${event.parameterCode ?? "N/A"}`,
+                    `Time: ${event.humanReadable ?? event.timestampISO}`,
+                  ];
+                }
+                if (
+                  event.eventDescriptor
+                    ?.toLowerCase()
+                    .includes("coord cycle state change")
+                ) {
+                  const stateLabel =
+                    this.coordCycleStateLabels[event.parameterCode] ??
+                    `State ${event.parameterCode ?? "N/A"}`;
+                  return [
+                    `${event.eventDescriptor} (Code ${event.eventCode})`,
+                    `State: ${stateLabel}`,
                     `Time: ${event.humanReadable ?? event.timestampISO}`,
                   ];
                 }

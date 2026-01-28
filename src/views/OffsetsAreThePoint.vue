@@ -172,6 +172,34 @@ export default {
   margin-top: 24px;
 }
 
+@media (prefers-color-scheme: dark) {
+  .blog-article {
+    color: #f5f5f5;
+    background: #0f0f0f;
+  }
+
+  .article-header {
+    border-top-color: #f5f5f5;
+    border-bottom-color: #f5f5f5;
+  }
+
+  .article-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .article-meta {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .article-callout {
+    border-left-color: #f5f5f5;
+  }
+
+  .article-body {
+    column-rule-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
 @media (max-width: 900px) {
   .article-body {
     column-count: 1;

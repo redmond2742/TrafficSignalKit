@@ -116,6 +116,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
+          title: "Start Up Loss Average",
+          description:
+            "Estimate start-up loss from green intervals and detector-off events",
+          link: "/startup-loss-average",
+          topics: ["Controller Data", "Detection", "Performance"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+split+history+phase+termination+table.png",
           title: "High Resolution Split History",
           description: "Calculate Phase Durations from High Resolution Data",

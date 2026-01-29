@@ -190,6 +190,7 @@ export default {
         },
         { title: "Message Sign Designer", path: "/message-sign-designer" },
         { title: "Video Frame Extractor", path: "/video-frame-extractor" },
+        { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
         { title: "Reference", path: "/reference" },
         { title: "Practice Exam", path: "/practice-exam" },
         { title: "About", path: "/about" },
@@ -216,6 +217,7 @@ export default {
         { title: "Phase Start Table", path: "/phase-start-table" },
         { title: "Start Up Loss Average", path: "/startup-loss-average" },
         { title: "High Resolution Explainer", path: "/explainer" },
+        { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
       ],
       TSgpxTools: [
         { title: "Time Space Visualizer", path: "/gpx" },
@@ -231,6 +233,7 @@ export default {
         },
         { title: "Message Sign Designer", path: "/message-sign-designer" },
         { title: "Video Frame Extractor", path: "/video-frame-extractor" },
+        { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
         { title: "Reference", path: "/reference" },
         { title: "Practice Exam", path: "/practice-exam" },
       ],

@@ -158,6 +158,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Yellow+and+Red+Light+Running.png",
+          title: "Basic Timing Seeker",
+          description:
+            "Estimate GTSS timing parameters from high-resolution controller data.",
+          link: "/basic-timing-seeker",
+          topics: ["Controller Data", "Timing", "GTSS"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
           title: "High Resolution Data Explainer",
           description:

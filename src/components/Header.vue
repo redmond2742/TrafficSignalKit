@@ -179,6 +179,7 @@ export default {
         { title: "Phase Plotter", path: "/phase-plotter" },
         { title: "Phase Start Table", path: "/phase-start-table" },
         { title: "Start Up Loss Average", path: "/startup-loss-average" },
+        { title: "Time to Reduce", path: "/time-to-reduce" },
         { title: "High Res. Explainer", path: "/explainer" },
         { title: "Time Space Visualizer", path: "/gpx" },
         { title: "GPX & Phase Plotter", path: "/gpx-phase-plotter" },
@@ -217,6 +218,7 @@ export default {
         { title: "Phase Start Table", path: "/phase-start-table" },
         { title: "Start Up Loss Average", path: "/startup-loss-average" },
         { title: "High Resolution Explainer", path: "/explainer" },
+        { title: "Time to Reduce", path: "/time-to-reduce" },
         { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
       ],
       TSgpxTools: [

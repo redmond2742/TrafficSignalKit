@@ -110,6 +110,12 @@ export default {
               path: "/phase-plotter",
             },
             {
+              title: "Start Up Loss Average",
+              description:
+                "Estimate start-up loss using green events and detector-off timestamps.",
+              path: "/startup-loss-average",
+            },
+            {
               title: "High Resolution Data Explainer",
               description:
                 "Explore event enumerations and how they map to controller behavior.",

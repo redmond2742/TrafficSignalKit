@@ -30,6 +30,7 @@ import Dashboard from '../views/Dashboard'
 import VideoFrameExtractor from '../views/VideoFrameExtractor'
 import HighResPhaseStartTable from '../views/HighResPhaseStartTable'
 import PatternCalendar from '../views/PatternCalendar'
+import StartUpLossAverage from '../views/StartUpLossAverage'
 
 
 
@@ -179,6 +180,11 @@ const routes = [
         path: '/pattern-calendar',
         name: 'patternCalendar',
         component: PatternCalendar,
+    },
+    {
+        path: '/startup-loss-average',
+        name: 'startUpLossAverage',
+        component: StartUpLossAverage,
     },
     {
         path: '/PracticeExam',

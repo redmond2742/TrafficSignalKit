@@ -178,6 +178,7 @@ export default {
         { title: "Pedestrian Investigator", path: "/pedestrian-investigator" },
         { title: "Phase Plotter", path: "/phase-plotter" },
         { title: "Phase Start Table", path: "/phase-start-table" },
+        { title: "Start Up Loss Average", path: "/startup-loss-average" },
         { title: "High Res. Explainer", path: "/explainer" },
         { title: "Time Space Visualizer", path: "/gpx" },
         { title: "GPX & Phase Plotter", path: "/gpx-phase-plotter" },
@@ -213,6 +214,7 @@ export default {
         { title: "Pedestrian Investigator", path: "/pedestrian-investigator" },
         { title: "Phase Plotter", path: "/phase-plotter" },
         { title: "Phase Start Table", path: "/phase-start-table" },
+        { title: "Start Up Loss Average", path: "/startup-loss-average" },
         { title: "High Resolution Explainer", path: "/explainer" },
       ],
       TSgpxTools: [

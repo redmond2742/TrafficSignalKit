@@ -98,6 +98,12 @@ export default {
               path: "/pattern-calendar",
             },
             {
+              title: "Basic Timing Seeker",
+              description:
+                "Generate GTSS basic timing parameters from high-resolution data.",
+              path: "/basic-timing-seeker",
+            },
+            {
               title: "Pedestrian Investigator",
               description:
                 "Summarize pedestrian walk, clearance, and crossing distance estimates.",

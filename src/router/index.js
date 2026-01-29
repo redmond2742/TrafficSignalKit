@@ -30,6 +30,7 @@ import Dashboard from '../views/Dashboard'
 import VideoFrameExtractor from '../views/VideoFrameExtractor'
 import HighResPhaseStartTable from '../views/HighResPhaseStartTable'
 import PatternCalendar from '../views/PatternCalendar'
+import BasicTimingSeeker from '../views/BasicTimingSeeker'
 
 
 
@@ -179,6 +180,11 @@ const routes = [
         path: '/pattern-calendar',
         name: 'patternCalendar',
         component: PatternCalendar,
+    },
+    {
+        path: '/basic-timing-seeker',
+        name: 'basicTimingSeeker',
+        component: BasicTimingSeeker,
     },
     {
         path: '/PracticeExam',

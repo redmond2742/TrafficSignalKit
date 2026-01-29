@@ -122,6 +122,12 @@ export default {
               path: "/startup-loss-average",
             },
             {
+              title: "Time to Reduce",
+              description:
+                "Plot min green, extension, and gap-out durations using detector assignments.",
+              path: "/time-to-reduce",
+            },
+            {
               title: "High Resolution Data Explainer",
               description:
                 "Explore event enumerations and how they map to controller behavior.",

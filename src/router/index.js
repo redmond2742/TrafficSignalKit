@@ -32,6 +32,7 @@ import HighResPhaseStartTable from '../views/HighResPhaseStartTable'
 import PatternCalendar from '../views/PatternCalendar'
 import BasicTimingSeeker from '../views/BasicTimingSeeker'
 import StartUpLossAverage from '../views/StartUpLossAverage'
+import TimeToReduce from '../views/TimeToReduce'
 
 
 
@@ -192,6 +193,11 @@ const routes = [
         path: '/startup-loss-average',
         name: 'startUpLossAverage',
         component: StartUpLossAverage,
+    },
+    {
+        path: '/time-to-reduce',
+        name: 'timeToReduce',
+        component: TimeToReduce,
     },
     {
         path: '/PracticeExam',

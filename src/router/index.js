@@ -184,15 +184,14 @@ const routes = [
         component: PatternCalendar,
     },
     {
-
         path: '/basic-timing-seeker',
         name: 'basicTimingSeeker',
         component: BasicTimingSeeker,
-
+    },
+    {
         path: '/startup-loss-average',
         name: 'startUpLossAverage',
         component: StartUpLossAverage,
-
     },
     {
         path: '/PracticeExam',

@@ -140,6 +140,31 @@
         </v-table>
       </div>
     </v-card>
+
+    <v-card v-if="phaseSummaryRows.length" class="pa-4 mt-6" variant="outlined">
+      <h2 class="section-title">Average Phase Durations by Pattern</h2>
+      <v-table density="compact">
+        <thead>
+          <tr>
+            <th>Pattern</th>
+            <th v-for="phase in phaseDurationColumns" :key="`phase-${phase}`">
+              Phase {{ phase }} Avg (s)
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in phaseSummaryRows" :key="`pattern-${row.pattern}`">
+            <td>{{ row.pattern }}</td>
+            <td
+              v-for="phase in phaseDurationColumns"
+              :key="`pattern-${row.pattern}-phase-${phase}`"
+            >
+              {{ formatDuration(row.phaseAverages[phase]) }}
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+    </v-card>
   </div>
 </template>
 
@@ -161,6 +186,7 @@ export default {
       inputDefault:
         "Paste high-resolution CSV data (timestamp, event code, parameter)",
       warningMessage: "",
+      rawEvents: [],
       segments: [],
       selectedMonth: "",
       selectedDay: "",
@@ -247,11 +273,66 @@ export default {
       }
       return DateTime.fromISO(this.selectedDay).toFormat("cccc, LLLL d, yyyy");
     },
+    phaseSummary() {
+      if (!this.rawEvents.length || !this.segments.length) {
+        return { phases: [], rows: [] };
+      }
+      const intervals = this.buildPhaseIntervals(this.rawEvents);
+      if (!intervals.length) {
+        return { phases: [], rows: [] };
+      }
+
+      const phaseSet = new Set(intervals.map((interval) => interval.phase));
+      const phases = Array.from(phaseSet).sort((a, b) => a - b);
+      const patternMap = new Map();
+
+      intervals.forEach((interval) => {
+        const pattern = this.findPatternForMillis(interval.startMillis);
+        if (pattern === null || pattern === undefined) {
+          return;
+        }
+        if (!patternMap.has(pattern)) {
+          patternMap.set(pattern, new Map());
+        }
+        const phaseMap = patternMap.get(pattern);
+        if (!phaseMap.has(interval.phase)) {
+          phaseMap.set(interval.phase, { sum: 0, count: 0 });
+        }
+        const stats = phaseMap.get(interval.phase);
+        stats.sum += interval.durationSeconds;
+        stats.count += 1;
+      });
+
+      const rows = Array.from(patternMap.entries())
+        .map(([pattern, phaseMap]) => {
+          const phaseAverages = {};
+          phases.forEach((phase) => {
+            const stats = phaseMap.get(phase);
+            phaseAverages[phase] = stats
+              ? stats.sum / stats.count
+              : null;
+          });
+          return {
+            pattern,
+            phaseAverages,
+          };
+        })
+        .sort((a, b) => a.pattern - b.pattern);
+
+      return { phases, rows };
+    },
+    phaseDurationColumns() {
+      return this.phaseSummary.phases;
+    },
+    phaseSummaryRows() {
+      return this.phaseSummary.rows;
+    },
   },
   methods: {
     resetCalendar() {
       this.rawData = "";
       this.warningMessage = "";
+      this.rawEvents = [];
       this.segments = [];
       this.selectedMonth = "";
       this.selectedDay = "";
@@ -275,6 +356,7 @@ export default {
         return;
       }
 
+      this.rawEvents = rawEvents;
       this.segments = segments;
       this.selectedMonth = this.monthOptions[0]?.value || "";
       this.selectedDay = DateTime.fromISO(segments[0].startIso).toISODate();
@@ -370,6 +452,51 @@ export default {
       }
 
       return segments.filter((segment) => segment.pattern !== null);
+    },
+    buildPhaseIntervals(rawEvents) {
+      const relevantEvents = rawEvents
+        .filter((event) => [1, 11, 12].includes(event.eventCode))
+        .sort((a, b) => a.milliseconds - b.milliseconds);
+      const activeStarts = new Map();
+      const intervals = [];
+
+      relevantEvents.forEach((event) => {
+        const phase = event.parameter;
+        if (event.eventCode === 1) {
+          activeStarts.set(phase, event);
+          return;
+        }
+        if (event.eventCode === 11 || event.eventCode === 12) {
+          const startEvent = activeStarts.get(phase);
+          if (!startEvent) {
+            return;
+          }
+          if (event.milliseconds > startEvent.milliseconds) {
+            intervals.push({
+              phase,
+              startMillis: startEvent.milliseconds,
+              endMillis: event.milliseconds,
+              durationSeconds:
+                (event.milliseconds - startEvent.milliseconds) / 1000,
+            });
+          }
+          activeStarts.delete(phase);
+        }
+      });
+
+      return intervals;
+    },
+    findPatternForMillis(millis) {
+      const segment = this.segments.find(
+        (item) => item.startMillis <= millis && item.endMillis >= millis
+      );
+      return segment ? segment.pattern : null;
+    },
+    formatDuration(value) {
+      if (value === null || value === undefined || Number.isNaN(value)) {
+        return "—";
+      }
+      return value.toFixed(1);
     },
     buildDayMap() {
       const dayMap = new Map();

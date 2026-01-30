@@ -9,8 +9,7 @@
           <v-expansion-panel-text>
             Basic Timing Seeker processes high-resolution controller events to
             estimate timing parameters (min green, yellow, all-red, and
-            pedestrian intervals) for each phase. It outputs GTSS-ready CSV and
-            a simple text list of phases for quick reference.
+            pedestrian intervals) for each phase. It outputs GTSS-ready CSV.
           </v-expansion-panel-text>
         </v-expansion-panel>
         <v-expansion-panel
@@ -32,7 +31,7 @@
 1. Paste high-resolution events (timestamp, enumeration, phase).
 2. Set the signal ID to match your controller.
 3. Click "Process High Resolution Data".
-4. Download the GTSS CSV and the phase list text file.
+4. Download the GTSS CSV (.txt).
 
 Example input:
 16764339605, 1, 6
@@ -81,11 +80,8 @@ Example input:
             </p>
           </div>
           <div class="download-buttons">
-            <v-btn color="secondary" @click="downloadCsv">
-              Download GTSS CSV
-            </v-btn>
-            <v-btn color="secondary" variant="outlined" @click="downloadPhaseText">
-              Download Phase List (.txt)
+            <v-btn color="secondary" @click="downloadGtssTxt">
+              Download GTSS CSV (.txt)
             </v-btn>
           </div>
         </div>
@@ -97,18 +93,108 @@ Example input:
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in processedRows" :key="row.phase">
-              <td>{{ row.phase }}</td>
-              <td>{{ row.signal_id }}</td>
-              <td>{{ row.ped_walk }}</td>
-              <td>{{ row.ped_clearance }}</td>
-              <td>{{ row.leading_ped_interval }}</td>
-              <td>{{ row.min_green }}</td>
-              <td>{{ row.max_green }}</td>
-              <td>{{ row.yellow }}</td>
-              <td>{{ row.all_red }}</td>
+            <tr v-for="(row, index) in processedRows" :key="`row-${index}`">
+              <td>
+                <v-text-field
+                  v-model.number="row.phase"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
+              <td>
+                <v-text-field
+                  v-model.number="row.signal_id"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
+              <td>
+                <v-text-field
+                  v-model.number="row.ped_walk"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
+              <td>
+                <v-text-field
+                  v-model.number="row.ped_clearance"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
+              <td>
+                <v-text-field
+                  v-model.number="row.leading_ped_interval"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
+              <td>
+                <v-text-field
+                  v-model.number="row.min_green"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
+              <td>
+                <v-text-field
+                  v-model.number="row.max_green"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
+              <td>
+                <v-text-field
+                  v-model.number="row.yellow"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
+              <td>
+                <v-text-field
+                  v-model.number="row.all_red"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
               <td>{{ row.veh_recall_type }}</td>
-              <td>{{ row.ped_recall }}</td>
+              <td>
+                <v-select
+                  v-model="row.ped_recall"
+                  :items="booleanOptions"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-input"
+                />
+              </td>
             </tr>
           </tbody>
         </v-table>
@@ -148,6 +234,7 @@ export default {
       signalId: 1,
       processedRows: [],
       errorMessage: "",
+      booleanOptions: [true, false],
       csvHeaders: [
         "phase",
         "signal_id",
@@ -237,7 +324,7 @@ export default {
             yellow: yellow,
             all_red: allRed,
             veh_recall_type: "Min",
-            ped_recall: "true",
+            ped_recall: true,
           });
         });
 
@@ -299,6 +386,9 @@ export default {
           if (timestamp === null || enumeration === null || phase === null) {
             return null;
           }
+          if (phase === 0) {
+            return null;
+          }
           return { timestamp, enumeration, phase };
         })
         .filter(Boolean);
@@ -355,25 +445,14 @@ export default {
       );
       return [header, ...rows].join("\n");
     },
-    downloadCsv() {
+    downloadGtssTxt() {
       const csvContent = this.buildCsvContent();
       const blob = new Blob(["\ufeff", csvContent], {
-        type: "text/csv;charset=utf-8",
+        type: "text/plain;charset=utf-8",
       });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = "basic-timing-gtss.csv";
-      link.click();
-      URL.revokeObjectURL(link.href);
-    },
-    downloadPhaseText() {
-      const phases = this.processedRows
-        .map((row) => `Phase ${row.phase}`)
-        .join("\n");
-      const blob = new Blob([phases], { type: "text/plain;charset=utf-8" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "basic-timing-phases.txt";
+      link.download = "basic-timing-gtss.txt";
       link.click();
       URL.revokeObjectURL(link.href);
     },
@@ -405,6 +484,9 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+.table-input {
+  min-width: 110px;
 }
 .muted {
   color: rgba(0, 0, 0, 0.6);

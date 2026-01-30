@@ -143,7 +143,8 @@ export default {
     return {
       panel: [],
       inputData: "",
-      defaultText: "Paste high-resolution data here (timestamp, enumeration, phase).",
+      defaultText:
+        "Paste high-resolution data here (timestamp, enumeration, phase). CSV rows with date/time stamps are supported.",
       signalId: 1,
       processedRows: [],
       errorMessage: "",
@@ -246,6 +247,42 @@ export default {
       if (!this.inputData) {
         return [];
       }
+      const parseIntegerField = (value) => {
+        const trimmed = String(value ?? "").trim();
+        if (!trimmed || !/^-?\d+$/.test(trimmed)) {
+          return null;
+        }
+        return Number(trimmed);
+      };
+      const parseTimestampToTenths = (value) => {
+        const trimmed = String(value ?? "").trim();
+        if (!trimmed) {
+          return null;
+        }
+        if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+          return Number(trimmed);
+        }
+        const match = trimmed.match(
+          /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?$/,
+        );
+        if (!match) {
+          return null;
+        }
+        const [, month, day, year, hour, minute, second, fraction] = match;
+        const milliseconds = fraction
+          ? Number(String(fraction).padEnd(3, "0").slice(0, 3))
+          : 0;
+        const utcTimestamp = Date.UTC(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hour),
+          Number(minute),
+          Number(second),
+          milliseconds,
+        );
+        return utcTimestamp / 100;
+      };
       const lines = this.inputData
         .split(/\r?\n/)
         .map((line) => line.trim())
@@ -256,14 +293,10 @@ export default {
           if (parts.length < 3) {
             return null;
           }
-          const timestamp = Number(parts[0]);
-          const enumeration = Number(parts[1]);
-          const phase = Number(parts[2]);
-          if (
-            Number.isNaN(timestamp) ||
-            Number.isNaN(enumeration) ||
-            Number.isNaN(phase)
-          ) {
+          const timestamp = parseTimestampToTenths(parts[0]);
+          const enumeration = parseIntegerField(parts[1]);
+          const phase = parseIntegerField(parts[2]);
+          if (timestamp === null || enumeration === null || phase === null) {
             return null;
           }
           return { timestamp, enumeration, phase };

@@ -160,6 +160,7 @@ export default {
 
 .input-box {
   overflow-y: auto;
+  width: 100%;
   max-height: 220px;
   min-height: 140px;
 }

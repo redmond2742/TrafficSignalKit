@@ -109,6 +109,10 @@
           <span>CSV file</span>
           <input type="file" accept=".csv,text/csv" @change="handleCsvFileChange" />
         </label>
+        <label class="control">
+          <span>Generate GIF downloads</span>
+          <input v-model="enableGifDownloads" type="checkbox" />
+        </label>
         <p class="csv-hint" v-if="csvFileName">
           Loaded: <strong>{{ csvFileName }}</strong>
         </p>
@@ -214,7 +218,19 @@
                     >
                       Download PNG
                     </a>
-                    <span v-if="frame.gifError" class="csv-error">{{ frame.gifError }}</span>
+                    <span
+                      v-if="!enableGifDownloads"
+                      class="csv-download disabled"
+                      aria-disabled="true"
+                    >
+                      GIF downloads disabled
+                    </span>
+                    <span
+                      v-else-if="frame.gifError"
+                      class="csv-error"
+                    >
+                      {{ frame.gifError }}
+                    </span>
                     <a
                       v-else-if="frame.gifUrl"
                       class="csv-download"
@@ -261,6 +277,7 @@ export default {
       csvError: "",
       csvProcessing: false,
       csvJobId: 0,
+      enableGifDownloads: false,
     };
   },
   computed: {
@@ -563,9 +580,12 @@ export default {
         if (jobId !== this.csvJobId) {
           return;
         }
-        const gifResult = dataUrl
-          ? await this.extractGifClipAtTime(targetTime, row)
-          : { gifUrl: "", gifFilename: "", gifError: "Unable to generate GIF." };
+        let gifResult = { gifUrl: "", gifFilename: "", gifError: "" };
+        if (this.enableGifDownloads && dataUrl) {
+          gifResult = await this.extractGifClipAtTime(targetTime, row);
+        } else if (this.enableGifDownloads && !dataUrl) {
+          gifResult = { gifUrl: "", gifFilename: "", gifError: "Unable to generate GIF." };
+        }
         if (jobId !== this.csvJobId) {
           if (gifResult.gifUrl) {
             URL.revokeObjectURL(gifResult.gifUrl);
@@ -892,6 +912,9 @@ export default {
       this.queueCsvExtraction();
     },
     csvRows() {
+      this.queueCsvExtraction();
+    },
+    enableGifDownloads() {
       this.queueCsvExtraction();
     },
   },
@@ -1357,6 +1380,12 @@ export default {
 
 .csv-download:hover {
   text-decoration: underline;
+}
+
+.csv-download.disabled {
+  color: #8a9b98;
+  cursor: not-allowed;
+  text-decoration: none;
 }
 
 .csv-downloads {

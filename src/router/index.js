@@ -33,6 +33,7 @@ import PatternCalendar from '../views/PatternCalendar'
 import BasicTimingSeeker from '../views/BasicTimingSeeker'
 import StartUpLossAverage from '../views/StartUpLossAverage'
 import TimeToReduce from '../views/TimeToReduce'
+import SkippedPhaseFinder from '../views/SkippedPhaseFinder'
 
 
 
@@ -198,6 +199,11 @@ const routes = [
         path: '/time-to-reduce',
         name: 'timeToReduce',
         component: TimeToReduce,
+    },
+    {
+        path: '/skipped-phase-finder',
+        name: 'skippedPhaseFinder',
+        component: SkippedPhaseFinder,
     },
     {
         path: '/PracticeExam',

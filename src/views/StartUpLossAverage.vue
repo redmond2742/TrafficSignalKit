@@ -5,8 +5,8 @@
       Paste high-resolution controller data and a detector-to-phase mapping to
       estimate start-up loss times. The tool matches each phase green event
       (event code 1) with the first detector-off event (event code 81) on the
-      mapped detector channels. A per-phase fudge factor is subtracted to
-      account for vehicles clearing the detection zone.
+      mapped detector channels. Add a per-phase fudge factor below to account
+      for vehicles clearing the detection zone.
     </p>
 
     <div class="input-grid">
@@ -15,7 +15,7 @@
         <InputBox v-model="inputData" :defaultText="dataPlaceholder" />
       </div>
       <div class="input-card">
-        <h3>Detector Mapping &amp; Fudge Factor</h3>
+        <h3>Detector Mapping</h3>
         <InputBox v-model="detectorMapInput" :defaultText="mappingPlaceholder" />
       </div>
     </div>
@@ -51,7 +51,17 @@
             <tbody>
               <tr v-for="row in tableRows" :key="`phase-${row.phase}`">
                 <td class="phase-cell">{{ row.phase }}</td>
-                <td>{{ formatSeconds(row.fudgeSeconds) }}</td>
+                <td class="fudge-cell">
+                  <v-text-field
+                    :model-value="row.fudgeSeconds"
+                    type="number"
+                    density="compact"
+                    hide-details
+                    variant="outlined"
+                    class="fudge-input"
+                    @update:model-value="(value) => updateFudgeFactor(row, value)"
+                  />
+                </td>
                 <td>{{ row.samples.length }}</td>
                 <td>
                   <span v-if="row.averageSeconds !== null">
@@ -98,10 +108,11 @@ export default {
       inputData: "",
       detectorMapInput: "",
       tableRows: [],
+      phaseFudgeOverrides: {},
       dataPlaceholder:
         "timestamp, eventCode, parameter\n2024-03-14T08:00:00.100, 1, 2\n2024-03-14T08:00:02.300, 81, 12",
       mappingPlaceholder:
-        "Detector, Phase, FudgeSeconds\n12, 2, 0.6\n15, 6, 0.8",
+        "Detector, Phase\nDet 1 1",
     };
   },
   computed: {
@@ -130,7 +141,7 @@ export default {
       mapping.phaseDetectors.forEach((detectors, phase) => {
         phaseResults.set(phase, {
           phase,
-          fudgeSeconds: mapping.phaseFudge.get(phase) ?? 0,
+          fudgeSeconds: this.getPhaseFudge(phase),
           samples: [],
         });
       });
@@ -168,23 +179,17 @@ export default {
           }
 
           const rawSeconds = (earliestOff - greenMillis) / 1000;
-          const fudge = phaseResult.fudgeSeconds || 0;
-          const adjustedSeconds = Math.max(0, rawSeconds - fudge);
-
           phaseResult.samples.push({
             greenLabel: this.formatMillis(greenMillis),
             detector: earliestDetector,
             rawSeconds,
-            adjustedSeconds,
+            adjustedSeconds: 0,
           });
         });
       });
 
       const tableRows = Array.from(phaseResults.values())
-        .map((row) => ({
-          ...row,
-          averageSeconds: this.calculateAverage(row.samples),
-        }))
+        .map((row) => this.applyFudgeToRow(row))
         .sort((a, b) => a.phase - b.phase);
 
       this.tableRows = tableRows;
@@ -218,7 +223,6 @@ export default {
     },
     parseDetectorMapping(input) {
       const phaseDetectors = new Map();
-      const phaseFudge = new Map();
 
       const lines = input
         .split(/\r?\n/)
@@ -230,10 +234,9 @@ export default {
         if (!numericParts || numericParts.length < 2) {
           return;
         }
-        const [detectorRaw, phaseRaw, fudgeRaw] = numericParts;
+        const [detectorRaw, phaseRaw] = numericParts;
         const detector = Number(detectorRaw);
         const phase = Number(phaseRaw);
-        const fudge = fudgeRaw !== undefined ? Number(fudgeRaw) : 0;
 
         if (Number.isNaN(detector) || Number.isNaN(phase)) {
           return;
@@ -243,10 +246,9 @@ export default {
           phaseDetectors.set(phase, new Set());
         }
         phaseDetectors.get(phase).add(detector);
-        phaseFudge.set(phase, Number.isNaN(fudge) ? 0 : fudge);
       });
 
-      return { phaseDetectors, phaseFudge };
+      return { phaseDetectors };
     },
     collectPhaseEvents(events, eventCode) {
       const phaseMap = new Map();
@@ -310,6 +312,26 @@ export default {
       }
       const total = samples.reduce((sum, sample) => sum + sample.adjustedSeconds, 0);
       return total / samples.length;
+    },
+    getPhaseFudge(phase) {
+      const stored = this.phaseFudgeOverrides[phase];
+      return Number.isFinite(stored) ? stored : 0;
+    },
+    updateFudgeFactor(row, value) {
+      const numeric = Number(value);
+      const safeValue = Number.isFinite(numeric) ? numeric : 0;
+      row.fudgeSeconds = safeValue;
+      this.phaseFudgeOverrides[row.phase] = safeValue;
+      this.applyFudgeToRow(row);
+    },
+    applyFudgeToRow(row) {
+      const fudge = Number.isFinite(row.fudgeSeconds) ? row.fudgeSeconds : 0;
+      row.samples = row.samples.map((sample) => ({
+        ...sample,
+        adjustedSeconds: Math.max(0, sample.rawSeconds - fudge),
+      }));
+      row.averageSeconds = this.calculateAverage(row.samples);
+      return row;
     },
     formatSeconds(value) {
       return Number.isFinite(value) ? value.toFixed(2) : "—";
@@ -394,5 +416,13 @@ export default {
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.85rem;
   margin-left: 6px;
+}
+
+.fudge-cell {
+  min-width: 140px;
+}
+
+.fudge-input {
+  max-width: 120px;
 }
 </style>

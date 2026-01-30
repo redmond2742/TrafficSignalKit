@@ -19,11 +19,14 @@
             <ul>
               <li>
                 High-resolution events as <b>timestamp, event code, parameter</b>.
-                Example: <code>16764339605, 1, 6</code>.
+                Timestamps can be decimal epoch values or date/time strings.
+                Example: <code>16764339605, 1, 6</code> or
+                <code>1/6/2024 15:00:03.3, 9, 3</code>.
               </li>
               <li>
-                Detector assignments as <b>phase, detector channel</b>.
-                Example: <code>6, 12</code>.
+                Detector assignments as <b>phase, detector channel</b>. Labels
+                like <code>Det 1</code> are accepted.
+                Example: <code>6, 12</code> or <code>Det 1, 1</code>.
               </li>
             </ul>
           </v-expansion-panel-text>
@@ -223,8 +226,10 @@ export default {
       panel: [],
       inputData: "",
       assignmentData: "",
-      defaultText: "Paste high-resolution data here (timestamp, event, parameter).",
-      assignmentPlaceholder: "Paste detector assignments: phase, detector.",
+      defaultText:
+        "Paste high-resolution data here (timestamp, event, parameter). Date/time stamps are supported.",
+      assignmentPlaceholder:
+        "Paste detector assignments: phase, detector. Labels like 'Det 1' are supported.",
       detectorEventCode: EVENT_CODES.DETECTOR_ON,
       minGreenFallback: 0,
       minGreenAdjustment: 0,
@@ -442,7 +447,7 @@ export default {
           if (parts.length < 3) {
             return null;
           }
-          const timestamp = Number(parts[0]);
+          const timestamp = this.parseTimestamp(parts[0]);
           const eventCode = Number(parts[1]);
           const parameter = Number(parts[2]);
           if (
@@ -466,12 +471,12 @@ export default {
         .map((line) => line.trim())
         .filter(Boolean)
         .forEach((line) => {
-          const parts = line.split(",").map((value) => value.trim());
+          const parts = line.split(/[\t,]/).map((value) => value.trim());
           if (parts.length < 2) {
             return;
           }
-          const phase = Number(parts[0]);
-          const detector = Number(parts[1]);
+          const phase = this.parseNumberFromText(parts[0]);
+          const detector = this.parseNumberFromText(parts[1]);
           if (Number.isNaN(phase) || Number.isNaN(detector)) {
             return;
           }
@@ -481,6 +486,39 @@ export default {
           assignments.get(phase).push(detector);
         });
       return assignments;
+    },
+    parseTimestamp(value) {
+      if (value === null || value === undefined) {
+        return Number.NaN;
+      }
+      const trimmed = String(value).trim();
+      if (!trimmed) {
+        return Number.NaN;
+      }
+      const numeric = Number(trimmed);
+      if (!Number.isNaN(numeric)) {
+        return numeric;
+      }
+      const parsedMillis = Date.parse(trimmed);
+      if (Number.isNaN(parsedMillis)) {
+        return Number.NaN;
+      }
+      return Math.round(parsedMillis / 100);
+    },
+    parseNumberFromText(value) {
+      if (value === null || value === undefined) {
+        return Number.NaN;
+      }
+      const trimmed = String(value).trim();
+      if (!trimmed) {
+        return Number.NaN;
+      }
+      const numeric = Number(trimmed);
+      if (!Number.isNaN(numeric)) {
+        return numeric;
+      }
+      const match = trimmed.match(/-?\d+(\.\d+)?/);
+      return match ? Number(match[0]) : Number.NaN;
     },
     findLastDetection(events, detectors, start, end) {
       if (!detectors.length) {

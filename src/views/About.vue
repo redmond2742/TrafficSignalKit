@@ -128,6 +128,12 @@ export default {
               path: "/time-to-reduce",
             },
             {
+              title: "Skipped Phase Finder",
+              description:
+                "Find detector calls where the assigned phase is not served within two minutes.",
+              path: "/skipped-phase-finder",
+            },
+            {
               title: "High Resolution Data Explainer",
               description:
                 "Explore event enumerations and how they map to controller behavior.",

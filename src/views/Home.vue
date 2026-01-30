@@ -90,6 +90,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
+          title: "Skipped Phase Finder",
+          description:
+            "Find detector calls where the phase is not served within two minutes",
+          link: "/skipped-phase-finder",
+          topics: ["Controller Data", "Detection", "Diagnostics"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+All+Enumerations+Plot.png",
           title: "Timeseries Plot All Enumerations",
           description: "Plot preemption (101-119) enumeration events over time",

@@ -149,6 +149,12 @@ export const routeMeta = {
       "Estimate call delays between detector actuations and phase service.",
     path: "/delay-estimator",
   },
+  skippedPhaseFinder: {
+    title: "Skipped Phase Finder | Detector Calls Without Service",
+    description:
+      "Identify detector on events where the assigned phase is not served within two minutes.",
+    path: "/skipped-phase-finder",
+  },
   signalOffsets: {
     title: "Signal Offset Calculator | Coordinated Phase Alignment",
     description:

@@ -158,15 +158,29 @@
           </div>
         </div>
 
-        <input
-          v-model.number="frameNumber"
-          class="frame-slider"
-          type="range"
-          min="0"
-          :max="maxFrameNumber"
-          step="1"
-          :disabled="!canExtract || maxFrameNumber === 0"
-        />
+        <div class="frame-slider-wrapper">
+          <input
+            v-model.number="frameNumber"
+            class="frame-slider"
+            type="range"
+            min="0"
+            :max="maxFrameNumber"
+            step="1"
+            :disabled="!canExtract || maxFrameNumber === 0"
+          />
+          <div v-if="runningEventMarkers.length" class="frame-slider-markers">
+            <button
+              v-for="marker in runningEventMarkers"
+              :key="marker.frameNumber"
+              class="frame-slider-marker"
+              :class="marker.type"
+              type="button"
+              :style="{ left: marker.position }"
+              :title="marker.label"
+              @click="selectFrame(marker.frameNumber)"
+            ></button>
+          </div>
+        </div>
         <div class="frame-slider-meta">
           <span>0</span>
           <span>{{ maxFrameNumber }}</span>
@@ -238,6 +252,7 @@
                 <th>Phase</th>
                 <th>Light State</th>
                 <th>Video Time</th>
+                <th>Event Frame</th>
                 <th>Downloads</th>
               </tr>
             </thead>
@@ -248,6 +263,10 @@
                 <td>Phase {{ frame.phase }}</td>
                 <td>{{ frame.lightState }}</td>
                 <td>{{ frame.formattedVideoTime }}</td>
+                <td>
+                  <span v-if="frame.isRunningEvent">{{ frame.frameNumber }}</span>
+                  <span v-else>—</span>
+                </td>
                 <td>
                   <span v-if="frame.error" class="csv-error">{{ frame.error }}</span>
                   <div v-else class="csv-downloads">
@@ -382,6 +401,33 @@ export default {
         return "—";
       }
       return this.formatFileSize(this.videoFileSize);
+    },
+    runningEventMarkers() {
+      if (!this.maxFrameNumber) {
+        return [];
+      }
+      const markers = new Map();
+      this.csvFrames.forEach((frame) => {
+        if (!frame.isRunningEvent || !Number.isFinite(frame.frameNumber)) {
+          return;
+        }
+        const existing = markers.get(frame.frameNumber);
+        if (existing) {
+          if (existing.type !== frame.runningEventType) {
+            existing.type = "mixed";
+            existing.label = `Frame ${frame.frameNumber} (red/yellow running)`;
+          }
+          return;
+        }
+        const type = frame.runningEventType || "mixed";
+        markers.set(frame.frameNumber, {
+          frameNumber: frame.frameNumber,
+          position: `${(frame.frameNumber / this.maxFrameNumber) * 100}%`,
+          type,
+          label: `Frame ${frame.frameNumber} (${type} running)`,
+        });
+      });
+      return Array.from(markers.values()).sort((a, b) => a.frameNumber - b.frameNumber);
     },
     downloadFilename() {
       const baseName = this.videoFileName || "frame";
@@ -606,6 +652,9 @@ export default {
             ...row,
             formattedVideoTime: "—",
             error: "Invalid timestamp.",
+            frameNumber: null,
+            isRunningEvent: this.isRunningEventLightState(row.lightState),
+            runningEventType: this.getRunningEventType(row.lightState),
           });
           continue;
         }
@@ -614,6 +663,9 @@ export default {
             ...row,
             formattedVideoTime: this.formatSecondsToClock(targetTime),
             error: "Out of video range.",
+            frameNumber: this.calculateFrameNumber(targetTime),
+            isRunningEvent: this.isRunningEventLightState(row.lightState),
+            runningEventType: this.getRunningEventType(row.lightState),
           });
           continue;
         }
@@ -636,6 +688,7 @@ export default {
         this.csvFrames.push({
           ...row,
           targetTime,
+          frameNumber: this.calculateFrameNumber(targetTime),
           formattedVideoTime: this.formatSecondsToClock(targetTime),
           dataUrl,
           filename: this.buildCsvFilename(row),
@@ -643,6 +696,8 @@ export default {
           gifFilename: gifResult.gifFilename,
           gifError: gifResult.gifError,
           error: dataUrl ? "" : "Unable to extract frame.",
+          isRunningEvent: this.isRunningEventLightState(row.lightState),
+          runningEventType: this.getRunningEventType(row.lightState),
         });
       }
 
@@ -773,6 +828,12 @@ export default {
       if (this.frameNumber < 0) {
         this.frameNumber = 0;
       }
+    },
+    selectFrame(frameNumber) {
+      if (!Number.isFinite(frameNumber)) {
+        return;
+      }
+      this.frameNumber = Math.min(Math.max(frameNumber, 0), this.maxFrameNumber || 0);
     },
     normalizeSyncReferenceFrame() {
       if (!this.maxFrameNumber) {
@@ -927,6 +988,36 @@ export default {
       }
       const decimals = unitIndex === 0 ? 0 : 1;
       return `${size.toFixed(decimals)} ${units[unitIndex]}`;
+    },
+    calculateFrameNumber(targetTime) {
+      if (!Number.isFinite(targetTime) || !this.fps) {
+        return null;
+      }
+      return Math.min(
+        Math.max(Math.round(targetTime * this.fps), 0),
+        this.maxFrameNumber || 0
+      );
+    },
+    isRunningEventLightState(lightState) {
+      return this.getRunningEventType(lightState) !== "";
+    },
+    getRunningEventType(lightState) {
+      if (!lightState) {
+        return "";
+      }
+      const normalized = String(lightState).toLowerCase();
+      const hasRed = normalized.includes("red");
+      const hasYellow = normalized.includes("yellow");
+      if (hasRed && hasYellow) {
+        return "mixed";
+      }
+      if (hasRed) {
+        return "red";
+      }
+      if (hasYellow) {
+        return "yellow";
+      }
+      return "";
     },
   },
   watch: {
@@ -1265,6 +1356,50 @@ export default {
   border-radius: 999px;
   background: linear-gradient(90deg, rgba(0, 150, 136, 0.35), rgba(0, 121, 107, 0.7));
   outline: none;
+}
+
+.frame-slider-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.frame-slider-markers {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 0;
+  pointer-events: none;
+}
+
+.frame-slider-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #d84315;
+  box-shadow: 0 4px 10px rgba(216, 67, 21, 0.35);
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 0;
+}
+
+.frame-slider-marker.yellow {
+  background: #f9a825;
+  box-shadow: 0 4px 10px rgba(249, 168, 37, 0.35);
+}
+
+.frame-slider-marker.mixed {
+  background: linear-gradient(135deg, #d84315 0%, #f9a825 100%);
+  box-shadow: 0 4px 10px rgba(216, 67, 21, 0.3);
+}
+
+.frame-slider-marker:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 150, 136, 0.3);
 }
 
 .frame-slider:disabled {

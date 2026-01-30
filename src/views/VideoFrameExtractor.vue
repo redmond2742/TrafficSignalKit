@@ -178,8 +178,48 @@
     <canvas ref="canvas" class="frame-canvas"></canvas>
 
     <section class="preview" v-if="frameDataUrl">
+      <div class="preview-controls" role="group" aria-label="Download button position">
+        <span class="preview-controls-label">Download button position</span>
+        <label class="preview-radio">
+          <input
+            v-model="downloadButtonPosition"
+            type="radio"
+            value="top-left"
+          />
+          Top left
+        </label>
+        <label class="preview-radio">
+          <input
+            v-model="downloadButtonPosition"
+            type="radio"
+            value="top-right"
+          />
+          Top right
+        </label>
+        <label class="preview-radio">
+          <input
+            v-model="downloadButtonPosition"
+            type="radio"
+            value="bottom-left"
+          />
+          Bottom left
+        </label>
+        <label class="preview-radio">
+          <input
+            v-model="downloadButtonPosition"
+            type="radio"
+            value="bottom-right"
+          />
+          Bottom right
+        </label>
+      </div>
       <div class="preview-image">
-        <a class="download-button" :href="frameDataUrl" :download="downloadFilename">
+        <a
+          class="download-button"
+          :class="downloadButtonPosition"
+          :href="frameDataUrl"
+          :download="downloadFilename"
+        >
           Download frame
         </a>
         <img :src="frameDataUrl" alt="Extracted video frame preview" />
@@ -278,6 +318,7 @@ export default {
       csvProcessing: false,
       csvJobId: 0,
       enableGifDownloads: false,
+      downloadButtonPosition: "top-right",
     };
   },
   computed: {
@@ -1292,6 +1333,35 @@ export default {
   width: min(880px, 100%);
 }
 
+.preview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.preview-controls-label {
+  font-weight: 600;
+  color: #335250;
+}
+
+.preview-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  color: #2f3f3d;
+}
+
+.preview-radio input {
+  accent-color: #00796b;
+}
+
 .preview-image {
   position: relative;
   display: block;
@@ -1322,6 +1392,34 @@ export default {
 .download-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 20px rgba(0, 150, 136, 0.2);
+}
+
+.download-button.top-left {
+  top: 12px;
+  right: auto;
+  bottom: auto;
+  left: 12px;
+}
+
+.download-button.top-right {
+  top: 12px;
+  right: 12px;
+  bottom: auto;
+  left: auto;
+}
+
+.download-button.bottom-left {
+  top: auto;
+  right: auto;
+  bottom: 12px;
+  left: 12px;
+}
+
+.download-button.bottom-right {
+  top: auto;
+  right: 12px;
+  bottom: 12px;
+  left: auto;
 }
 
 .csv-output {

@@ -184,7 +184,16 @@ Example input:
                   class="table-input"
                 />
               </td>
-              <td>{{ row.veh_recall_type }}</td>
+              <td>
+                <v-select
+                  v-model="row.veh_recall_type"
+                  :items="vehRecallOptions"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="table-select"
+                />
+              </td>
               <td>
                 <v-select
                   v-model="row.ped_recall"
@@ -192,7 +201,7 @@ Example input:
                   density="compact"
                   variant="outlined"
                   hide-details
-                  class="table-input"
+                  class="table-select"
                 />
               </td>
             </tr>
@@ -235,6 +244,7 @@ export default {
       processedRows: [],
       errorMessage: "",
       booleanOptions: [true, false],
+      vehRecallOptions: ["None", "Min", "Max", "Soft"],
       csvHeaders: [
         "phase",
         "signal_id",
@@ -312,6 +322,20 @@ export default {
             [EVENT_CODES.PED_WALK],
             [EVENT_CODES.BEGIN_GREEN],
           );
+
+          const hasTiming = [
+            minGreen,
+            maxGreen,
+            yellow,
+            allRed,
+            pedWalk,
+            pedClearance,
+            lpi,
+          ].some((value) => value > 0);
+
+          if (!hasTiming) {
+            return;
+          }
 
           rows.push({
             phase: Number(phase),
@@ -487,6 +511,13 @@ export default {
 }
 .table-input {
   min-width: 110px;
+}
+.table-select {
+  min-width: 110px;
+}
+.table-select .v-field__input,
+.table-select .v-select__selection {
+  font-size: 0.75rem;
 }
 .muted {
   color: rgba(0, 0, 0, 0.6);

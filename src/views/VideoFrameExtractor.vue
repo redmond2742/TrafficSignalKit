@@ -194,7 +194,7 @@
                 <th>Phase</th>
                 <th>Light State</th>
                 <th>Video Time</th>
-                <th>Download</th>
+                <th>Downloads</th>
               </tr>
             </thead>
             <tbody>
@@ -206,14 +206,24 @@
                 <td>{{ frame.formattedVideoTime }}</td>
                 <td>
                   <span v-if="frame.error" class="csv-error">{{ frame.error }}</span>
-                  <a
-                    v-else
-                    class="csv-download"
-                    :href="frame.dataUrl"
-                    :download="frame.filename"
-                  >
-                    Download
-                  </a>
+                  <div v-else class="csv-downloads">
+                    <a
+                      class="csv-download"
+                      :href="frame.dataUrl"
+                      :download="frame.filename"
+                    >
+                      Download PNG
+                    </a>
+                    <span v-if="frame.gifError" class="csv-error">{{ frame.gifError }}</span>
+                    <a
+                      v-else-if="frame.gifUrl"
+                      class="csv-download"
+                      :href="frame.gifUrl"
+                      :download="frame.gifFilename"
+                    >
+                      Download GIF
+                    </a>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -225,6 +235,8 @@
 </template>
 
 <script>
+import gifshot from "gifshot";
+
 export default {
   name: "VideoFrameExtractor",
   data() {
@@ -331,6 +343,7 @@ export default {
       }
 
       this.revokeObjectUrl();
+      this.revokeCsvGifUrls();
 
       const newUrl = URL.createObjectURL(file);
       this.videoSrc = newUrl;
@@ -498,10 +511,12 @@ export default {
     },
     queueCsvExtraction() {
       if (!this.csvRows.length) {
+        this.revokeCsvGifUrls();
         this.csvFrames = [];
         return;
       }
       if (!this.canExtract || !this.isMetadataLoaded) {
+        this.revokeCsvGifUrls();
         this.csvFrames = [];
         return;
       }
@@ -511,6 +526,7 @@ export default {
       const jobId = this.csvJobId + 1;
       this.csvJobId = jobId;
       this.csvProcessing = true;
+      this.revokeCsvGifUrls();
       this.csvFrames = [];
       this.csvError = "";
 
@@ -547,12 +563,24 @@ export default {
         if (jobId !== this.csvJobId) {
           return;
         }
+        const gifResult = dataUrl
+          ? await this.extractGifClipAtTime(targetTime, row)
+          : { gifUrl: "", gifFilename: "", gifError: "Unable to generate GIF." };
+        if (jobId !== this.csvJobId) {
+          if (gifResult.gifUrl) {
+            URL.revokeObjectURL(gifResult.gifUrl);
+          }
+          return;
+        }
         this.csvFrames.push({
           ...row,
           targetTime,
           formattedVideoTime: this.formatSecondsToClock(targetTime),
           dataUrl,
           filename: this.buildCsvFilename(row),
+          gifUrl: gifResult.gifUrl,
+          gifFilename: gifResult.gifFilename,
+          gifError: gifResult.gifError,
           error: dataUrl ? "" : "Unable to extract frame.",
         });
       }
@@ -598,6 +626,71 @@ export default {
       const timestamp = row.timestamp || "Unknown";
       const fileName = `${signalId}.${signalName}-Phase${phase}-${lightState}_UTC-${timestamp}`;
       return `${this.sanitizeFilename(fileName)}.png`;
+    },
+    buildCsvGifFilename(row) {
+      const baseName = this.buildCsvFilename(row).replace(/\.png$/i, "");
+      return `${baseName}.gif`;
+    },
+    async extractGifClipAtTime(targetTime, row) {
+      const video = this.$refs.video;
+      const canvas = this.$refs.canvas;
+      if (!video || !canvas || !this.canExtract) {
+        return { gifUrl: "", gifFilename: "", gifError: "Video unavailable." };
+      }
+
+      const startTime = Math.max(targetTime - 1, 0);
+      const endTime = Math.min(targetTime + 1, this.videoDuration || targetTime + 1);
+      if (endTime <= startTime) {
+        return { gifUrl: "", gifFilename: "", gifError: "Invalid clip range." };
+      }
+
+      const maxFps = 12;
+      const clipFps = Math.max(1, Math.min(this.fps || maxFps, maxFps));
+      const frameInterval = 1 / clipFps;
+      const frameTimes = [];
+      for (let time = startTime; time <= endTime + frameInterval / 2; time += frameInterval) {
+        frameTimes.push(time);
+      }
+
+      const frames = [];
+      for (const time of frameTimes) {
+        const dataUrl = await this.extractFrameAtTime(time);
+        if (!dataUrl) {
+          return { gifUrl: "", gifFilename: "", gifError: "Unable to capture GIF frames." };
+        }
+        frames.push(dataUrl);
+      }
+
+      const gifDataUrl = await new Promise((resolve) => {
+        gifshot.createGIF(
+          {
+            images: frames,
+            gifWidth: canvas.width,
+            gifHeight: canvas.height,
+            interval: frameInterval,
+            numFrames: frames.length,
+          },
+          (result) => {
+            if (!result || result.error) {
+              resolve("");
+              return;
+            }
+            resolve(result.image);
+          }
+        );
+      });
+
+      if (!gifDataUrl) {
+        return { gifUrl: "", gifFilename: "", gifError: "GIF encoding failed." };
+      }
+
+      const gifBlob = await fetch(gifDataUrl).then((response) => response.blob());
+      const gifUrl = URL.createObjectURL(gifBlob);
+      return {
+        gifUrl,
+        gifFilename: this.buildCsvGifFilename(row),
+        gifError: "",
+      };
     },
     updateFrameNumber(delta) {
       const nextValue = this.frameNumber + delta;
@@ -692,6 +785,13 @@ export default {
         URL.revokeObjectURL(this.objectUrl);
         this.objectUrl = null;
       }
+    },
+    revokeCsvGifUrls() {
+      this.csvFrames.forEach((frame) => {
+        if (frame.gifUrl) {
+          URL.revokeObjectURL(frame.gifUrl);
+        }
+      });
     },
     parseClockToSeconds(value) {
       if (!value) {
@@ -797,6 +897,7 @@ export default {
   },
   beforeUnmount() {
     this.revokeObjectUrl();
+    this.revokeCsvGifUrls();
   },
 };
 </script>
@@ -1256,6 +1357,12 @@ export default {
 
 .csv-download:hover {
   text-decoration: underline;
+}
+
+.csv-downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 @media (max-width: 720px) {

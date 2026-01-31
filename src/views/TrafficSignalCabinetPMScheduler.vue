@@ -55,49 +55,92 @@
     </v-card>
 
     <v-card class="tool-card" elevation="2">
-      <v-card-title class="section-title">Cabinet Frequencies</v-card-title>
+      <v-card-title class="section-title cabinet-header">
+        Cabinet Frequencies
+        <v-spacer></v-spacer>
+        <v-btn
+          variant="text"
+          color="primary"
+          @click="showSignalList = !showSignalList"
+        >
+          {{ showSignalList ? "Hide signal list" : "Show signal list" }}
+        </v-btn>
+      </v-card-title>
+      <v-expand-transition>
+        <v-card-text v-show="showSignalList">
+          <p v-if="signalRows.length === 0" class="muted-text">
+            Add GTSS signal lines to generate cabinet frequency controls.
+          </p>
+          <v-table v-else class="cabinet-table">
+            <thead>
+              <tr>
+                <th>Signal</th>
+                <th>Agency</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Frequency</th>
+                <th>Map</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="signal in signalRows" :key="signal.key">
+                <td class="signal-id">{{ signal.signalId }}</td>
+                <td>{{ signal.agencyId }}</td>
+                <td>{{ signal.latitude }}</td>
+                <td>{{ signal.longitude }}</td>
+                <td class="frequency-cell">
+                  <v-select
+                    v-model.number="frequencyOverrides[signal.key]"
+                    :items="frequencyOptions"
+                    item-title="label"
+                    item-value="value"
+                    label="Frequency"
+                    density="comfortable"
+                    variant="outlined"
+                    hide-details
+                  />
+                </td>
+                <td>
+                  <div class="map-box">
+                    <iframe
+                      :src="signal.mapUrl"
+                      loading="lazy"
+                      title="Signal map"
+                    ></iframe>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+      </v-expand-transition>
+    </v-card>
+
+    <v-card class="tool-card" elevation="2">
+      <v-card-title class="section-title">
+        Technician Summary (Annual & Monthly Load)
+      </v-card-title>
       <v-card-text>
-        <p v-if="signalRows.length === 0" class="muted-text">
-          Add GTSS signal lines to generate cabinet frequency controls.
+        <p v-if="technicianSummary.length === 0" class="muted-text">
+          Generate a schedule to see technician workload summaries.
         </p>
-        <v-table v-else class="cabinet-table">
+        <v-table v-else class="summary-table">
           <thead>
             <tr>
-              <th>Signal</th>
-              <th>Agency</th>
-              <th>Latitude</th>
-              <th>Longitude</th>
-              <th>Frequency</th>
-              <th>Map</th>
+              <th>Technician</th>
+              <th>Cabinets / year</th>
+              <th>Avg / month</th>
+              <th>Min / month</th>
+              <th>Max / month</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="signal in signalRows" :key="signal.key">
-              <td class="signal-id">{{ signal.signalId }}</td>
-              <td>{{ signal.agencyId }}</td>
-              <td>{{ signal.latitude }}</td>
-              <td>{{ signal.longitude }}</td>
-              <td class="frequency-cell">
-                <v-select
-                  v-model.number="frequencyOverrides[signal.key]"
-                  :items="frequencyOptions"
-                  item-title="label"
-                  item-value="value"
-                  label="Frequency"
-                  density="comfortable"
-                  variant="outlined"
-                  hide-details
-                />
-              </td>
-              <td>
-                <div class="map-box">
-                  <iframe
-                    :src="signal.mapUrl"
-                    loading="lazy"
-                    title="Signal map"
-                  ></iframe>
-                </div>
-              </td>
+            <tr v-for="summary in technicianSummary" :key="summary.name">
+              <td class="tech-name">{{ summary.name }}</td>
+              <td>{{ summary.yearly }}</td>
+              <td>{{ summary.average }}</td>
+              <td>{{ summary.min }}</td>
+              <td>{{ summary.max }}</td>
             </tr>
           </tbody>
         </v-table>
@@ -191,6 +234,7 @@ export default {
       technicianCount: 3,
       defaultFrequency: 3,
       frequencyOverrides: {},
+      showSignalList: true,
       scheduleRows: [],
       selectedTechnician: "Technician 1",
       months: [
@@ -258,10 +302,31 @@ export default {
       });
       return weeks;
     },
+    technicianSummary() {
+      if (this.scheduleRows.length === 0) {
+        return [];
+      }
+      return this.scheduleRows.map((row) => {
+        const monthlyCounts = this.months.map(
+          (month) => row.assignments[month].length
+        );
+        const yearly = monthlyCounts.reduce((sum, count) => sum + count, 0);
+        const average = (yearly / this.months.length).toFixed(1);
+        const min = Math.min(...monthlyCounts);
+        const max = Math.max(...monthlyCounts);
+        return {
+          name: row.name,
+          yearly,
+          average,
+          min,
+          max,
+        };
+      });
+    },
   },
   watch: {
     defaultFrequency() {
-      this.rebuildSchedule();
+      this.applyDefaultFrequency();
     },
     technicianCount() {
       this.rebuildSchedule();
@@ -330,6 +395,14 @@ export default {
       this.signalRows.forEach((signal) => {
         updated[signal.key] =
           this.frequencyOverrides[signal.key] ?? this.defaultFrequency;
+      });
+      this.frequencyOverrides = updated;
+      this.rebuildSchedule();
+    },
+    applyDefaultFrequency() {
+      const updated = {};
+      this.signalRows.forEach((signal) => {
+        updated[signal.key] = this.defaultFrequency;
       });
       this.frequencyOverrides = updated;
       this.rebuildSchedule();
@@ -483,6 +556,12 @@ export default {
   font-weight: 600;
 }
 
+.cabinet-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .cabinet-table {
   width: 100%;
 }
@@ -518,6 +597,10 @@ export default {
 .schedule-table {
   width: 100%;
   overflow-x: auto;
+}
+
+.summary-table {
+  width: 100%;
 }
 
 .tech-name {

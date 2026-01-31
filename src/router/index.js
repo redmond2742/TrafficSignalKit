@@ -34,6 +34,7 @@ import BasicTimingSeeker from '../views/BasicTimingSeeker'
 import StartUpLossAverage from '../views/StartUpLossAverage'
 import TimeToReduce from '../views/TimeToReduce'
 import SkippedPhaseFinder from '../views/SkippedPhaseFinder'
+import TrafficSignalCabinetPMScheduler from '../views/TrafficSignalCabinetPMScheduler'
 
 
 
@@ -204,6 +205,11 @@ const routes = [
         path: '/skipped-phase-finder',
         name: 'skippedPhaseFinder',
         component: SkippedPhaseFinder,
+    },
+    {
+        path: '/cabinet-pm-scheduler',
+        name: 'cabinetPMScheduler',
+        component: TrafficSignalCabinetPMScheduler,
     },
     {
         path: '/PracticeExam',

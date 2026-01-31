@@ -8,7 +8,9 @@
           <a href="https://gtss.dev" target="_blank" rel="noopener">gtss.dev</a>),
           set the technician count, and choose default preventative maintenance
           frequencies. Adjust individual cabinet frequencies, then rebuild the
-          schedule to assign each visit by month.
+          schedule to assign each visit by month. The scheduler balances monthly
+          workloads so every technician gets cabinet assignments each month when
+          possible.
         </p>
         <v-row>
           <v-col cols="12" md="6">
@@ -260,25 +262,60 @@ export default {
         return;
       }
 
-      const visits = [];
-      signals.forEach((signal) => {
-        const frequency = this.getFrequencyForSignal(signal.key);
-        const monthsToVisit = this.months.filter((_, index) => {
-          return index % frequency === 0;
-        });
-        monthsToVisit.forEach((month) => {
-          visits.push({ month, signal: signal.displayName });
-        });
-      });
-
       const technicians = Array.from({ length: techCount }, (_, index) => ({
         name: `Technician ${index + 1}`,
         assignments: Object.fromEntries(this.months.map((month) => [month, []])),
       }));
 
-      visits.forEach((visit, index) => {
-        const techIndex = index % techCount;
-        technicians[techIndex].assignments[visit.month].push(visit.signal);
+      const monthlyVisits = Object.fromEntries(
+        this.months.map((month) => [month, []])
+      );
+
+      signals.forEach((signal) => {
+        const frequency = this.getFrequencyForSignal(signal.key);
+        for (let index = 0; index < this.months.length; index += frequency) {
+          monthlyVisits[this.months[index]].push(signal.displayName);
+        }
+      });
+
+      const yearlyLoad = Array.from({ length: techCount }, () => 0);
+
+      this.months.forEach((month) => {
+        const visits = monthlyVisits[month].slice();
+        const monthLoad = Array.from({ length: techCount }, () => 0);
+        if (visits.length === 0) {
+          return;
+        }
+
+        if (visits.length >= techCount) {
+          const orderedTechs = Array.from({ length: techCount }, (_, index) => index).sort(
+            (a, b) => yearlyLoad[a] - yearlyLoad[b]
+          );
+          orderedTechs.forEach((techIndex) => {
+            const visit = visits.shift();
+            if (visit) {
+              technicians[techIndex].assignments[month].push(visit);
+              monthLoad[techIndex] += 1;
+              yearlyLoad[techIndex] += 1;
+            }
+          });
+        }
+
+        while (visits.length > 0) {
+          const nextTech = Array.from({ length: techCount }, (_, index) => index).sort(
+            (a, b) =>
+              monthLoad[a] - monthLoad[b] ||
+              yearlyLoad[a] - yearlyLoad[b] ||
+              a - b
+          )[0];
+          const visit = visits.shift();
+          if (!visit) {
+            break;
+          }
+          technicians[nextTech].assignments[month].push(visit);
+          monthLoad[nextTech] += 1;
+          yearlyLoad[nextTech] += 1;
+        }
       });
 
       this.scheduleRows = technicians;

@@ -133,6 +133,45 @@
         </v-table>
       </v-card-text>
     </v-card>
+
+    <v-card class="tool-card" elevation="2">
+      <v-card-title class="section-title">Weekly Cabinet Calendar</v-card-title>
+      <v-card-text>
+        <div class="calendar-controls">
+          <v-select
+            v-model="selectedTechnician"
+            :items="technicianOptions"
+            label="Select technician"
+            variant="outlined"
+            density="comfortable"
+          />
+        </div>
+        <p v-if="weeklyCalendar.length === 0" class="muted-text">
+          Add signals and rebuild the schedule to see weekly assignments.
+        </p>
+        <v-table v-else class="calendar-table">
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>Cabinet Assignments</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="week in weeklyCalendar" :key="week.label">
+              <td class="week-label">{{ week.label }}</td>
+              <td>
+                <ul v-if="week.cabinets.length" class="assignment-list">
+                  <li v-for="cabinet in week.cabinets" :key="cabinet">
+                    {{ cabinet }}
+                  </li>
+                </ul>
+                <span v-else class="muted-text">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-card-text>
+    </v-card>
   </v-container>
 </template>
 
@@ -153,6 +192,7 @@ export default {
       defaultFrequency: 3,
       frequencyOverrides: {},
       scheduleRows: [],
+      selectedTechnician: "Technician 1",
       months: [
         "Jan",
         "Feb",
@@ -187,6 +227,37 @@ export default {
         mapUrl: this.buildMapUrl(row.latitude, row.longitude),
       }));
     },
+    technicianOptions() {
+      return this.scheduleRows.map((row) => row.name);
+    },
+    weeklyCalendar() {
+      if (!this.selectedTechnician) {
+        return [];
+      }
+      const tech = this.scheduleRows.find(
+        (row) => row.name === this.selectedTechnician
+      );
+      if (!tech) {
+        return [];
+      }
+      const weeks = [];
+      const weeksPerMonth = 4;
+      this.months.forEach((month) => {
+        const monthlyAssignments = tech.assignments[month] || [];
+        const bucketed = Array.from({ length: weeksPerMonth }, () => []);
+        monthlyAssignments.forEach((assignment, index) => {
+          const weekIndex = index % weeksPerMonth;
+          bucketed[weekIndex].push(assignment);
+        });
+        bucketed.forEach((cabinets, index) => {
+          weeks.push({
+            label: `${month} W${index + 1}`,
+            cabinets,
+          });
+        });
+      });
+      return weeks;
+    },
   },
   watch: {
     defaultFrequency() {
@@ -197,6 +268,18 @@ export default {
     },
     signalsInput() {
       this.initializeOverrides();
+    },
+    scheduleRows: {
+      handler(newRows) {
+        if (newRows.length === 0) {
+          this.selectedTechnician = "";
+          return;
+        }
+        if (!newRows.find((row) => row.name === this.selectedTechnician)) {
+          this.selectedTechnician = newRows[0].name;
+        }
+      },
+      immediate: true,
     },
   },
   mounted() {
@@ -445,6 +528,20 @@ export default {
 .assignment-list {
   padding-left: 16px;
   margin: 0;
+}
+
+.calendar-controls {
+  max-width: 320px;
+  margin-bottom: 16px;
+}
+
+.calendar-table {
+  width: 100%;
+}
+
+.week-label {
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .muted-text {

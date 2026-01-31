@@ -24,6 +24,7 @@
     type="text"
     rows="10"
     v-model="inputData"
+    @input="emitInput"
     @blur="emitInput"
     @focus="clearText"
     class="input-box"

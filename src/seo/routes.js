@@ -77,6 +77,12 @@ export const routeMeta = {
       "Simulate basic intersection operations to understand gap-out/max-out behavior.",
     path: "/traffic-simulator",
   },
+  cabinetPMScheduler: {
+    title: "Traffic Signal Cabinet PM Scheduler | Preventative Maintenance",
+    description:
+      "Schedule preventative maintenance visits for signal cabinets with technician assignments and adjustable frequencies.",
+    path: "/cabinet-pm-scheduler",
+  },
   phasePlotter: {
     title: "Signal Phase Plotter | Red-Green-Yellow Visualization",
     description:

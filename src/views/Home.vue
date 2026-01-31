@@ -134,6 +134,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Offset+Calculation.png",
+          title: "Traffic Signal Cabinet PM Scheduler",
+          description:
+            "Plan preventative maintenance visits by technician and frequency.",
+          link: "/cabinet-pm-scheduler",
+          topics: ["Maintenance", "Scheduling", "Cabinets"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+split+history+phase+termination+table.png",
           title: "High Resolution Split History",
           description: "Calculate Phase Durations from High Resolution Data",

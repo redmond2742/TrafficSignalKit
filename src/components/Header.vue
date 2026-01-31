@@ -193,6 +193,7 @@ export default {
         { title: "Message Sign Designer", path: "/message-sign-designer" },
         { title: "Video Frame Extractor", path: "/video-frame-extractor" },
         { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
+        { title: "Cabinet PM Scheduler", path: "/cabinet-pm-scheduler" },
         { title: "Reference", path: "/reference" },
         { title: "Practice Exam", path: "/practice-exam" },
         { title: "About", path: "/about" },
@@ -222,6 +223,7 @@ export default {
         { title: "Time to Reduce", path: "/time-to-reduce" },
         { title: "Skipped Phase Finder", path: "/skipped-phase-finder" },
         { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
+        { title: "Cabinet PM Scheduler", path: "/cabinet-pm-scheduler" },
       ],
       TSgpxTools: [
         { title: "Time Space Visualizer", path: "/gpx" },
@@ -238,6 +240,7 @@ export default {
         { title: "Message Sign Designer", path: "/message-sign-designer" },
         { title: "Video Frame Extractor", path: "/video-frame-extractor" },
         { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
+        { title: "Cabinet PM Scheduler", path: "/cabinet-pm-scheduler" },
         { title: "Reference", path: "/reference" },
         { title: "Practice Exam", path: "/practice-exam" },
       ],

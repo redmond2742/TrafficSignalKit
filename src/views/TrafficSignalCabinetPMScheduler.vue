@@ -147,7 +147,7 @@ export default {
   data() {
     return {
       defaultSignals:
-        "signal_id,agency_id,latitude,longitude\n16,WC,37.92745102883522,-122.01467865377727\n2,WC,37.90499423048438,-122.06572811915521\n3,WC,37.906184628902054,-122.06432758290217\n28,WC,37.89260882839668,-122.06111411892594\n43,WC,37.89737707796012,-122.05995082855226\n36,WC,37.91166672982153,-122.06015467643739",
+        "signal_id,agency_id,latitude,longitude\n16,SF,37.92745102883522,-122.01467865377727\n2,SF,37.90499423048438,-122.06572811915521\n3,SF,37.906184628902054,-122.06432758290217\n28,SF,37.89260882839668,-122.06111411892594\n43,SF,37.89737707796012,-122.05995082855226\n36,SF,37.91166672982153,-122.06015467643739",
       signalsInput: "",
       technicianCount: 3,
       defaultFrequency: 3,
@@ -270,11 +270,54 @@ export default {
       const monthlyVisits = Object.fromEntries(
         this.months.map((month) => [month, []])
       );
+      const monthlyCounts = Object.fromEntries(
+        this.months.map((month) => [month, 0])
+      );
 
-      signals.forEach((signal) => {
-        const frequency = this.getFrequencyForSignal(signal.key);
-        for (let index = 0; index < this.months.length; index += frequency) {
-          monthlyVisits[this.months[index]].push(signal.displayName);
+      const sortedSignals = signals
+        .map((signal) => ({
+          ...signal,
+          frequency: Math.max(1, this.getFrequencyForSignal(signal.key)),
+        }))
+        .sort(
+          (a, b) =>
+            a.frequency - b.frequency ||
+            a.displayName.localeCompare(b.displayName)
+        );
+
+      const scoreOffset = (offset, frequency) => {
+        let max = -Infinity;
+        let min = Infinity;
+        this.months.forEach((month, index) => {
+          const visits =
+            index >= offset && (index - offset) % frequency === 0 ? 1 : 0;
+          const count = monthlyCounts[month] + visits;
+          max = Math.max(max, count);
+          min = Math.min(min, count);
+        });
+        return { spread: max - min, max };
+      };
+
+      sortedSignals.forEach((signal) => {
+        const { frequency } = signal;
+        let bestOffset = 0;
+        let bestScore = { spread: Infinity, max: Infinity };
+
+        for (let offset = 0; offset < frequency; offset += 1) {
+          const score = scoreOffset(offset, frequency);
+          if (
+            score.spread < bestScore.spread ||
+            (score.spread === bestScore.spread && score.max < bestScore.max)
+          ) {
+            bestScore = score;
+            bestOffset = offset;
+          }
+        }
+
+        for (let index = bestOffset; index < this.months.length; index += frequency) {
+          const month = this.months[index];
+          monthlyVisits[month].push(signal.displayName);
+          monthlyCounts[month] += 1;
         }
       });
 

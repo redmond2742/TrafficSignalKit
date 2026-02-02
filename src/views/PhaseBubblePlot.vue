@@ -62,17 +62,44 @@ Det 3\t0
       :coordPatternData="coordPatternEvents"
       :coordCycleStateData="coordCycleStateEvents"
     ></PlotDetectionTimeSeries>
+
+    <section class="left-justify-text mt-6">
+      <h2>Split Failure Bubble Plot</h2>
+      <p class="muted">
+        Use the split history input to size bubbles by average split served and
+        compare split failures to red-light runner exposure.
+      </p>
+      <ProcessSplitHistory
+        @phaseSplitAggregates="storePhaseAggregates"
+      ></ProcessSplitHistory>
+      <div v-if="phaseAggregates.length" class="bubble-chart">
+        <Bubble :data="bubbleChartData" :options="bubbleChartOptions" />
+      </div>
+    </section>
   </div>
 </template>
 
 <script>
+import { Bubble } from "vue-chartjs";
+import {
+  Chart as ChartJS,
+  PointElement,
+  LinearScale,
+  Tooltip,
+  Legend,
+} from "chart.js";
 import ProcessDetectionEvents from "../components/ProcessDetectionEvents.vue";
+import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
 import PlotDetectionTimeSeries from "../components/foundational/PlotDetectionTimeSeries.vue";
+
+ChartJS.register(PointElement, LinearScale, Tooltip, Legend);
 
 export default {
   name: "PhaseBubblePlot",
   components: {
+    Bubble,
     ProcessDetectionEvents,
+    ProcessSplitHistory,
     PlotDetectionTimeSeries,
   },
   data() {
@@ -82,7 +109,92 @@ export default {
       phaseEvents: [],
       coordPatternEvents: [],
       coordCycleStateEvents: [],
+      phaseAggregates: [],
     };
+  },
+  computed: {
+    bubbleChartData() {
+      const palette = [
+        "#1565c0",
+        "#2e7d32",
+        "#ef6c00",
+        "#6a1b9a",
+        "#00838f",
+        "#c2185b",
+        "#5d4037",
+        "#0277bd",
+        "#558b2f",
+        "#ad1457",
+      ];
+      const phaseColors = new Map();
+      this.phaseAggregates.forEach((row, index) => {
+        phaseColors.set(row.phase, palette[index % palette.length]);
+      });
+      const bubbleScale = 1.4;
+      return {
+        datasets: this.phaseAggregates.map((row) => {
+          const radius = Math.max(
+            4,
+            Math.sqrt(Number(row.avgSplitServed) || 0) * bubbleScale,
+          );
+          const color = phaseColors.get(row.phase);
+          return {
+            label: `Phase ${row.phase}`,
+            data: [
+              {
+                x: Number(row.splitFailures) || 0,
+                y: Number(row.redRunnerSeconds) || 0,
+                r: radius,
+                phase: row.phase,
+                avgSplitServed: row.avgSplitServed,
+              },
+            ],
+            backgroundColor: color,
+            borderColor: color,
+          };
+        }),
+      };
+    },
+    bubbleChartOptions() {
+      return {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: "bottom",
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const raw = context.raw || {};
+                const phase = raw.phase ?? context.dataset.label;
+                return [
+                  `Phase: ${phase}`,
+                  `Split failures: ${raw.x ?? 0}`,
+                  `Red-runner seconds: ${raw.y ?? 0}`,
+                  `Avg split served: ${raw.avgSplitServed ?? "—"}`,
+                ];
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: "Split Failures",
+            },
+            beginAtZero: true,
+          },
+          y: {
+            title: {
+              display: true,
+              text: "Red-light runner seconds since yellow start (summed)",
+            },
+            beginAtZero: true,
+          },
+        },
+      };
+    },
   },
   methods: {
     processDetection() {
@@ -100,8 +212,20 @@ export default {
     storeCoordCycleStateEvents(events) {
       this.coordCycleStateEvents = events;
     },
+    storePhaseAggregates(data) {
+      this.phaseAggregates = data;
+    },
   },
 };
 </script>
 
-<style scoped></style>
+<style scoped>
+.bubble-chart {
+  min-height: 320px;
+  margin-top: 16px;
+}
+.muted {
+  color: rgba(0, 0, 0, 0.6);
+  margin-top: 4px;
+}
+</style>

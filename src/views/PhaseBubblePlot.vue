@@ -53,6 +53,7 @@ Det 3\t0
         <v-col cols="12" md="7">
           <ProcessSplitHistory
             @phaseSplitAggregates="storePhaseAggregates"
+            @phaseSplitPatternAggregates="storePatternAggregates"
           ></ProcessSplitHistory>
         </v-col>
         <v-col cols="12" md="5">
@@ -60,7 +61,22 @@ Det 3\t0
         </v-col>
       </v-row>
       <div v-if="phaseAggregates.length" class="bubble-chart">
-        <Bubble :data="bubbleChartData" :options="bubbleChartOptions" />
+        <div class="bubble-chart__controls">
+          <v-select
+            v-if="patternOptions.length"
+            v-model="selectedPattern"
+            :items="patternOptions"
+            label="Coordination pattern"
+            variant="outlined"
+            density="comfortable"
+          />
+          <v-btn color="info" @click="resetZoom">Reset Zoom</v-btn>
+        </div>
+        <Bubble
+          ref="bubbleChart"
+          :data="bubbleChartData"
+          :options="bubbleChartOptions"
+        />
       </div>
     </section>
   </div>
@@ -68,6 +84,7 @@ Det 3\t0
 
 <script>
 import { Bubble } from "vue-chartjs";
+import zoom from "chartjs-plugin-zoom";
 import {
   Chart as ChartJS,
   PointElement,
@@ -78,7 +95,7 @@ import {
 import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
 import PlotDetectionTimeSeries from "../components/foundational/PlotDetectionTimeSeries.vue";
 
-ChartJS.register(PointElement, LinearScale, Tooltip, Legend);
+ChartJS.register(PointElement, LinearScale, Tooltip, Legend, zoom);
 
 export default {
   name: "PhaseBubblePlot",
@@ -91,9 +108,35 @@ export default {
     return {
       panel: [],
       phaseAggregates: [],
+      patternAggregates: [],
+      selectedPattern: null,
     };
   },
   computed: {
+    patternOptions() {
+      if (!this.patternAggregates.length) {
+        return [];
+      }
+      return [
+        { title: "All patterns", value: null },
+        ...this.patternAggregates.map((entry) => ({
+          title: `Pattern ${entry.pattern}`,
+          value: entry.pattern,
+        })),
+      ];
+    },
+    displayedPhaseAggregates() {
+      if (!this.patternAggregates.length) {
+        return this.phaseAggregates;
+      }
+      if (this.selectedPattern === null || this.selectedPattern === undefined) {
+        return this.phaseAggregates;
+      }
+      const selected = this.patternAggregates.find(
+        (entry) => entry.pattern === this.selectedPattern
+      );
+      return selected ? selected.aggregates : this.phaseAggregates;
+    },
     bubbleChartData() {
       const palette = [
         "#1565c0",
@@ -108,12 +151,12 @@ export default {
         "#ad1457",
       ];
       const phaseColors = new Map();
-      this.phaseAggregates.forEach((row, index) => {
+      this.displayedPhaseAggregates.forEach((row, index) => {
         phaseColors.set(row.phase, palette[index % palette.length]);
       });
       const bubbleScale = 1.4;
       return {
-        datasets: this.phaseAggregates.map((row) => {
+        datasets: this.displayedPhaseAggregates.map((row) => {
           const radius = Math.max(
             4,
             Math.sqrt(Number(row.avgSplitServed) || 0) * bubbleScale,
@@ -140,6 +183,21 @@ export default {
       return {
         responsive: true,
         plugins: {
+          zoom: {
+            zoom: {
+              wheel: {
+                enabled: true,
+              },
+              pinch: {
+                enabled: true,
+              },
+              mode: "xy",
+            },
+            pan: {
+              enabled: true,
+              mode: "xy",
+            },
+          },
           legend: {
             position: "bottom",
           },
@@ -183,6 +241,26 @@ export default {
     storePhaseAggregates(data) {
       this.phaseAggregates = data;
     },
+    storePatternAggregates(data) {
+      this.patternAggregates = Array.isArray(data) ? data : [];
+      if (!this.patternAggregates.length) {
+        this.selectedPattern = null;
+        return;
+      }
+      if (
+        this.selectedPattern !== null &&
+        !this.patternAggregates.some(
+          (entry) => entry.pattern === this.selectedPattern
+        )
+      ) {
+        this.selectedPattern = null;
+      }
+    },
+    resetZoom() {
+      if (this.$refs.bubbleChart?.chart?.resetZoom) {
+        this.$refs.bubbleChart.chart.resetZoom();
+      }
+    },
   },
 };
 </script>
@@ -191,6 +269,16 @@ export default {
 .bubble-chart {
   min-height: 320px;
   margin-top: 16px;
+}
+.bubble-chart__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.bubble-chart__controls :deep(.v-input) {
+  max-width: 280px;
 }
 .muted {
   color: rgba(0, 0, 0, 0.6);

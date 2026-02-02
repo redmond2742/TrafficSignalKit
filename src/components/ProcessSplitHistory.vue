@@ -82,10 +82,7 @@ export default {
       this.processedData = [];
       this.eventStates = {};
       this.totalPhaseCalls = [];
-      this.previousYellowChangeState = false;
-      this.previousRedClearState = false;
-      this.previousPhaseState = false;
-      this.previousDetectorState = false;
+      this.resetEventTrackingState();
     },
     calculatePhaseDurations() {
       if (!this.localInputData.trim()) {
@@ -96,6 +93,11 @@ export default {
       this.resetPhaseState();
       this.hdDataObj = this.loadCsv2JsonObj(this.localInputData); //load all the enumerations into JSON obj.
       let allHDData = this.buildCycleItem(this.hdDataObj);
+      const phaseAggregates = this.aggregatePhaseSplitMetrics(
+        this.rowData,
+        this.hdDataObj
+      );
+      this.$emit("phaseSplitAggregates", phaseAggregates);
       //emit here not necessary because buildCycleItem emit's the phase data
       console.log(allHDData);
       //this.rowData = this.fillInEndTime(this.rowData);

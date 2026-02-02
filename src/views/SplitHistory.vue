@@ -118,9 +118,32 @@
 
     <ProcessSplitHistory
       @phaseDurations="displayPhaseDuration"
+      @phaseSplitAggregates="displayPhaseAggregates"
     ></ProcessSplitHistory>
 
     <TableDisplaySplit :tableData="emittedData"></TableDisplaySplit>
+
+    <section v-if="phaseAggregates.length" class="left-justify-text">
+      <h2>Phase Split Performance Summary</h2>
+      <v-table>
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>Avg Split Served (s)</th>
+            <th>Split Failures</th>
+            <th>Red Runner Seconds</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in phaseAggregates" :key="`phase-${row.phase}`">
+            <td>{{ row.phase }}</td>
+            <td>{{ row.avgSplitServed }}</td>
+            <td>{{ row.splitFailures }}</td>
+            <td>{{ row.redRunnerSeconds }}</td>
+          </tr>
+        </tbody>
+      </v-table>
+    </section>
   </div>
 </template>
 
@@ -139,12 +162,16 @@ export default {
       panel: [],
       emittedData: [],
       emittedPhaseData: [],
+      phaseAggregates: [],
     };
   },
   methods: {
     displayPhaseDuration(data) {
       this.emittedData = data;
       this.emittedPhaseData = data;
+    },
+    displayPhaseAggregates(data) {
+      this.phaseAggregates = data;
     },
     handleProcessedData(data) {
       this.processedData = data;

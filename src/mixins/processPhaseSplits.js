@@ -45,6 +45,7 @@ export default {
             previousPhaseState: false,
             previousDetectorState: false,
             eventStates: {},
+            detectorStates: {},
             totalPhaseCalls:[],
             yellowStartTS: null,
             allRedStartTS: null,
@@ -273,21 +274,109 @@ export default {
         },
 
         isDetectorOn(logEvent, detChannel){
-          let detChannelState = this.previousDetectorState;
-          let prevDetState = this.previousDetectorState;
+          const key = `detector-${detChannel}`;
+          let detChannelState = this.detectorStates[key] ?? false;
+          let prevDetState = detChannelState;
 
-          if(this.determineParameterState(logEvent, 82, detChannel)){ // detector ON
+          if (logEvent.eventCode === 82 && logEvent.parameterCode === detChannel) {
             detChannelState = true;
           }
-          if (this.determineParameterState(logEvent, 81, detChannel)){ // detector OFF
+          if (logEvent.eventCode === 81 && logEvent.parameterCode === detChannel) {
             detChannelState = false;
           }
-          this.previousDetectorState = detChannelState;
+          this.detectorStates[key] = detChannelState;
           return {
             State: detChannelState,
             Timestamp: logEvent.timestamp,
             prevState: prevDetState,
           }
+        },
+
+        resetEventTrackingState() {
+          this.previousYellowChangeState = false;
+          this.previousRedClearState = false;
+          this.previousPhaseState = false;
+          this.previousDetectorState = false;
+          this.eventStates = {};
+          this.detectorStates = {};
+          this.yellowStartTS = null;
+          this.allRedStartTS = null;
+          this.phaseEndTS = null;
+        },
+
+        countSplitFailuresForPhase(hdData, phase) {
+          this.resetEventTrackingState();
+          let failures = 0;
+          let detectorState = false;
+
+          hdData.forEach((event) => {
+            this.isYellowChangeActive(event, phase);
+            this.isRedClearActive(event, phase);
+            const phaseInactive = this.isPhaseInactive(event, phase);
+
+            if (
+              (event.eventCode === 81 || event.eventCode === 82) &&
+              event.parameterCode === phase
+            ) {
+              detectorState = this.isDetectorOn(event, phase).State;
+            }
+
+            if (phaseInactive.State && !phaseInactive.PrevState) {
+              if (detectorState) {
+                failures += 1;
+              }
+            }
+          });
+
+          return failures;
+        },
+
+        sumRedRunnerSecondsForPhase(hdData, phase) {
+          this.resetEventTrackingState();
+          const events = this.detectYRCrossings(hdData, phase, phase);
+          return events.reduce((sum, event) => sum + event.Elapse, 0);
+        },
+
+        aggregatePhaseSplitMetrics(phaseSplits, hdData) {
+          const totals = new Map();
+
+          phaseSplits.forEach((split) => {
+            if (!split || !split.phase) {
+              return;
+            }
+            const phase = split.phase;
+            if (!totals.has(phase)) {
+              totals.set(phase, {
+                phase,
+                splitFailures: 0,
+                redRunnerSeconds: 0,
+                splitServedTotal: 0,
+                splitServedCount: 0,
+              });
+            }
+            const entry = totals.get(phase);
+            entry.splitServedTotal += split.duration || 0;
+            entry.splitServedCount += 1;
+          });
+
+          totals.forEach((entry) => {
+            entry.splitFailures = this.countSplitFailuresForPhase(hdData, entry.phase);
+            entry.redRunnerSeconds = this.sumRedRunnerSecondsForPhase(
+              hdData,
+              entry.phase
+            );
+          });
+
+          return Array.from(totals.values())
+            .sort((a, b) => a.phase - b.phase)
+            .map((entry) => ({
+              phase: entry.phase,
+              splitFailures: entry.splitFailures,
+              redRunnerSeconds: Number(entry.redRunnerSeconds.toFixed(2)),
+              avgSplitServed: entry.splitServedCount
+                ? Number((entry.splitServedTotal / entry.splitServedCount).toFixed(2))
+                : 0,
+            }));
         },
 
         detectYRCrossings(hdData, channelNumber, activePhase){

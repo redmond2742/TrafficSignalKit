@@ -35,6 +35,7 @@ import StartUpLossAverage from '../views/StartUpLossAverage'
 import TimeToReduce from '../views/TimeToReduce'
 import SkippedPhaseFinder from '../views/SkippedPhaseFinder'
 import TrafficSignalCabinetPMScheduler from '../views/TrafficSignalCabinetPMScheduler'
+import PhaseBubblePlot from '../views/PhaseBubblePlot'
 
 
 
@@ -130,6 +131,11 @@ const routes = [
         path: '/detection-plotter',
         name: 'detectionPlotter',
         component: HighResDetectionPlotter,
+    },
+    {
+        path: '/phase-bubble-plot',
+        name: 'phaseBubblePlot',
+        component: PhaseBubblePlot,
     },
     {
         path: '/delay-estimator',

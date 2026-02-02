@@ -16,6 +16,7 @@
 <script>
 //mixins
 import processPhaseSplits from "../mixins/processPhaseSplits";
+import { DateTime } from "luxon";
 // components
 import InputBox from "./foundational/InputBox.vue";
 import TableDisplaySplit from "./foundational/TableDisplaySplit.vue";
@@ -93,14 +94,125 @@ export default {
       this.resetPhaseState();
       this.hdDataObj = this.loadCsv2JsonObj(this.localInputData); //load all the enumerations into JSON obj.
       let allHDData = this.buildCycleItem(this.hdDataObj);
-      const phaseAggregates = this.aggregatePhaseSplitMetrics(
+      const patternChanges = this.getPatternChanges(this.hdDataObj);
+      const phaseSplitsWithPattern = this.addPatternToPhaseSplits(
         this.rowData,
+        patternChanges
+      );
+      const phaseAggregates = this.aggregatePhaseSplitMetrics(
+        phaseSplitsWithPattern,
         this.hdDataObj
       );
+      const patternAggregates = this.buildPatternAggregates(
+        phaseSplitsWithPattern,
+        this.hdDataObj,
+        patternChanges
+      );
       this.$emit("phaseSplitAggregates", phaseAggregates);
+      this.$emit("phaseSplitPatternAggregates", patternAggregates);
       //emit here not necessary because buildCycleItem emit's the phase data
       console.log(allHDData);
       //this.rowData = this.fillInEndTime(this.rowData);
+    },
+    getPatternChanges(hdData) {
+      return hdData
+        .filter((event) => event.eventCode === 131)
+        .map((event) => ({
+          pattern: event.parameterCode,
+          timestampMs: event.timestamp?.MillisecFromEpoch,
+        }))
+        .filter(
+          (event) =>
+            typeof event.timestampMs === "number" &&
+            Number.isFinite(event.pattern)
+        )
+        .sort((a, b) => a.timestampMs - b.timestampMs);
+    },
+    getPatternAtTime(patternChanges, timestampMs) {
+      if (!patternChanges.length || typeof timestampMs !== "number") {
+        return null;
+      }
+      let selected = null;
+      for (const change of patternChanges) {
+        if (change.timestampMs <= timestampMs) {
+          selected = change.pattern;
+        } else {
+          break;
+        }
+      }
+      return selected;
+    },
+    addPatternToPhaseSplits(phaseSplits, patternChanges) {
+      if (!patternChanges.length) {
+        return phaseSplits.map((split) => ({
+          ...split,
+          pattern: null,
+        }));
+      }
+
+      return phaseSplits.map((split) => {
+        const timestampMs = split.timestampStartISO
+          ? DateTime.fromISO(split.timestampStartISO).toMillis()
+          : null;
+        const pattern = this.getPatternAtTime(patternChanges, timestampMs);
+        return {
+          ...split,
+          pattern,
+        };
+      });
+    },
+    buildPatternAggregates(phaseSplits, hdData, patternChanges) {
+      if (!patternChanges.length) {
+        return [];
+      }
+
+      const patternSegments = [];
+      for (let index = 0; index < patternChanges.length; index += 1) {
+        const current = patternChanges[index];
+        const next = patternChanges[index + 1];
+        patternSegments.push({
+          pattern: current.pattern,
+          startMs: current.timestampMs,
+          endMs: next ? next.timestampMs : Number.POSITIVE_INFINITY,
+        });
+      }
+
+      const patternMap = new Map();
+      patternSegments.forEach((segment) => {
+        if (!patternMap.has(segment.pattern)) {
+          patternMap.set(segment.pattern, []);
+        }
+        patternMap.get(segment.pattern).push(segment);
+      });
+
+      return Array.from(patternMap.entries())
+        .map(([pattern, segments]) => {
+          const patternSplits = phaseSplits.filter(
+            (split) => split.pattern === pattern
+          );
+          if (!patternSplits.length) {
+            return null;
+          }
+          const patternHdData = hdData.filter((event) => {
+            const timestampMs = event.timestamp?.MillisecFromEpoch;
+            if (typeof timestampMs !== "number") {
+              return false;
+            }
+            return segments.some(
+              (segment) =>
+                timestampMs >= segment.startMs && timestampMs < segment.endMs
+            );
+          });
+          return {
+            pattern,
+            aggregates: this.aggregatePhaseSplitMetrics(
+              patternSplits,
+              patternHdData
+            ),
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.pattern - b.pattern);
     },
   },
 };

@@ -331,6 +331,54 @@ export default {
           return failures;
         },
 
+        collectSplitFailureEventsForPhase(hdData, phase) {
+          this.resetEventTrackingState();
+          let detectorState = false;
+          let lastDetectorOnTS = null;
+          const events = [];
+
+          hdData.forEach((event) => {
+            this.isYellowChangeActive(event, phase);
+            this.isRedClearActive(event, phase);
+            const phaseInactive = this.isPhaseInactive(event, phase);
+
+            if (
+              (event.eventCode === 81 || event.eventCode === 82) &&
+              event.parameterCode === phase
+            ) {
+              const detectorEvent = this.isDetectorOn(event, phase);
+              detectorState = detectorEvent.State;
+              if (detectorState) {
+                lastDetectorOnTS = detectorEvent.Timestamp;
+              }
+            }
+
+            if (phaseInactive.State && !phaseInactive.PrevState) {
+              if (detectorState) {
+                events.push({
+                  phase,
+                  timestamp: phaseInactive.Timestamp || event.timestamp,
+                  detectorOnTimestamp: lastDetectorOnTS,
+                  yellowStartTimestamp: this.yellowStartTS,
+                  redClearStartTimestamp: this.allRedStartTS,
+                });
+              }
+            }
+          });
+
+          return events;
+        },
+
+        collectSplitFailureEvents(hdData, phases) {
+          if (!Array.isArray(phases) || !phases.length) {
+            return [];
+          }
+
+          return phases.flatMap((phase) =>
+            this.collectSplitFailureEventsForPhase(hdData, phase)
+          );
+        },
+
         sumRedRunnerSecondsForPhase(hdData, phase) {
           this.resetEventTrackingState();
           const events = this.detectYRCrossings(hdData, phase, phase);

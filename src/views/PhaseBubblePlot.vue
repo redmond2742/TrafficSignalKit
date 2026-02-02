@@ -67,7 +67,11 @@ Det 3\t0
       <h2>Split Failure Bubble Plot</h2>
       <p class="muted">
         Use the split history input to size bubbles by average split served and
-        compare split failures to red-light runner exposure.
+        compare split failures to red-light runner exposure. The Y-axis sums
+        elapsed seconds from yellow start for each red-light runner event; time
+        during all-red continues incrementing beyond yellow. If you prefer an
+        average or count instead of a sum, adjust the aggregation logic and
+        update the labels and tooltip text accordingly.
       </p>
       <ProcessSplitHistory
         @phaseSplitAggregates="storePhaseAggregates"
@@ -170,7 +174,9 @@ export default {
                 return [
                   `Phase: ${phase}`,
                   `Split failures: ${raw.x ?? 0}`,
-                  `Red-runner seconds: ${raw.y ?? 0}`,
+                  `Red-runner seconds since yellow start (summed; includes all-red): ${
+                    raw.y ?? 0
+                  }`,
                   `Avg split served: ${raw.avgSplitServed ?? "—"}`,
                 ];
               },
@@ -188,7 +194,7 @@ export default {
           y: {
             title: {
               display: true,
-              text: "Red-light runner seconds since yellow start (summed)",
+              text: "Red-light runner seconds since yellow start (summed; includes all-red)",
             },
             beginAtZero: true,
           },

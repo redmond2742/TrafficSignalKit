@@ -54,6 +54,7 @@ Det 3\t0
           <ProcessSplitHistory
             @phaseSplitAggregates="storePhaseAggregates"
             @phaseSplitPatternAggregates="storePatternAggregates"
+            @splitFailureEvents="storeSplitFailureEvents"
           ></ProcessSplitHistory>
         </v-col>
         <v-col cols="12" md="5">
@@ -77,6 +78,29 @@ Det 3\t0
           :data="bubbleChartData"
           :options="bubbleChartOptions"
         />
+      </div>
+      <div v-if="splitFailureRows.length" class="split-failure-table">
+        <h3>Split Failure Event Details</h3>
+        <v-table density="compact">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Failure timestamp</th>
+              <th>Detector on timestamp</th>
+              <th>Yellow start</th>
+              <th>Red-clear start</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, index) in splitFailureRows" :key="`${row.phase}-${index}`">
+              <td>{{ row.phase }}</td>
+              <td>{{ row.timestamp }}</td>
+              <td>{{ row.detectorOnTimestamp }}</td>
+              <td>{{ row.yellowStartTimestamp }}</td>
+              <td>{{ row.redClearStartTimestamp }}</td>
+            </tr>
+          </tbody>
+        </v-table>
       </div>
     </section>
   </div>
@@ -110,6 +134,7 @@ export default {
       phaseAggregates: [],
       patternAggregates: [],
       selectedPattern: null,
+      splitFailureEvents: [],
     };
   },
   computed: {
@@ -236,6 +261,25 @@ export default {
         },
       };
     },
+    splitFailureRows() {
+      return this.splitFailureEvents
+        .map((event) => ({
+          phase: event.phase,
+          timestampMs: event.timestamp?.MillisecFromEpoch ?? 0,
+          timestamp: this.formatTimestamp(event.timestamp),
+          detectorOnTimestamp: this.formatTimestamp(event.detectorOnTimestamp),
+          yellowStartTimestamp: this.formatTimestamp(event.yellowStartTimestamp),
+          redClearStartTimestamp: this.formatTimestamp(
+            event.redClearStartTimestamp
+          ),
+        }))
+        .sort((a, b) => {
+          if (a.phase === b.phase) {
+            return a.timestampMs - b.timestampMs;
+          }
+          return a.phase - b.phase;
+        });
+    },
   },
   methods: {
     storePhaseAggregates(data) {
@@ -256,10 +300,22 @@ export default {
         this.selectedPattern = null;
       }
     },
+    storeSplitFailureEvents(data) {
+      this.splitFailureEvents = Array.isArray(data) ? data : [];
+    },
     resetZoom() {
       if (this.$refs.bubbleChart?.chart?.resetZoom) {
         this.$refs.bubbleChart.chart.resetZoom();
       }
+    },
+    formatTimestamp(timestamp) {
+      if (!timestamp) {
+        return "—";
+      }
+      if (typeof timestamp === "string") {
+        return timestamp;
+      }
+      return timestamp.humanReadable || timestamp.iso || timestamp.OGtimestamp || "—";
     },
   },
 };
@@ -279,6 +335,9 @@ export default {
 }
 .bubble-chart__controls :deep(.v-input) {
   max-width: 280px;
+}
+.split-failure-table {
+  margin-top: 24px;
 }
 .muted {
   color: rgba(0, 0, 0, 0.6);

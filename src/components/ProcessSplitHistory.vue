@@ -108,8 +108,13 @@ export default {
         this.hdDataObj,
         patternChanges
       );
+      const splitFailureEvents = this.collectSplitFailureEvents(
+        this.hdDataObj,
+        phaseAggregates.map((entry) => entry.phase)
+      );
       this.$emit("phaseSplitAggregates", phaseAggregates);
       this.$emit("phaseSplitPatternAggregates", patternAggregates);
+      this.$emit("splitFailureEvents", splitFailureEvents);
       //emit here not necessary because buildCycleItem emit's the phase data
       console.log(allHDData);
       //this.rowData = this.fillInEndTime(this.rowData);

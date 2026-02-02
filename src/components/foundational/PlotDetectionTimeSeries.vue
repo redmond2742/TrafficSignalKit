@@ -26,14 +26,16 @@
       </v-expansion-panel-text>
     </v-expansion-panel>
   </v-expansion-panels>
-  <br />
-  <v-btn @click="resetZoom">Reset Zoom</v-btn>
-  <br />
-  <Scatter
-    :data="chartData"
-    :options="chartOptions"
-    ref="scatterChart"
-  ></Scatter>
+  <template v-if="showChart">
+    <br />
+    <v-btn @click="resetZoom">Reset Zoom</v-btn>
+    <br />
+    <Scatter
+      :data="chartData"
+      :options="chartOptions"
+      ref="scatterChart"
+    ></Scatter>
+  </template>
 </template>
 
 <script>
@@ -67,6 +69,10 @@ export default {
     plotData: {
       type: Array,
       required: true,
+    },
+    showChart: {
+      type: Boolean,
+      default: true,
     },
     phaseData: {
       type: Array,

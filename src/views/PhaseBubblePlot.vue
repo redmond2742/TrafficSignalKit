@@ -7,62 +7,38 @@
       <v-expansion-panels v-model="panel" multiple>
         <v-expansion-panel title="About: Phase Bubble Plot" value="about">
           <v-expansion-panel-text>
-            This tool combines detector-to-phase mappings with high-resolution
-            controller events to visualize detector activity aligned to phase
-            service. Use the mapping box to assign detector channels to phases,
-            then plot the detection events against the phase timeline.
+            This tool combines detector-to-phase mappings with split history
+            input so split failure and red-light running metrics can be
+            summarized by phase. Use the mapping box to assign detector
+            channels to phases before running the split failure bubble plot.
           </v-expansion-panel-text>
         </v-expansion-panel>
 
         <v-expansion-panel title="What You Need" value="requirements">
           <v-expansion-panel-text>
             <ul>
-              <li>High-resolution CSV data (timestamp, event code, parameter)</li>
               <li>Detector-to-phase mapping table (detector channel, phase)</li>
+              <li>Split history data for split failures and red-light running</li>
             </ul>
           </v-expansion-panel-text>
         </v-expansion-panel>
 
         <v-expansion-panel title="Example: Using This Tool" value="example">
           <v-expansion-panel-text>
-            Paste high resolution controller data as CSV lines in the format:
-            <pre>
-16764339605, 82, 7
-16764339625, 81, 7
-16764339705, 90, 12
-            </pre>
-            Then paste detector mappings like:
+            Paste detector mappings like:
             <pre>
 Det 1\t6
 Det 2\t2
 Det 3\t0
             </pre>
-            Click <b>Process Bubble Plot</b> to render the visualization.
+            Then load split history data and click <b>Process</b> to review the
+            split failure bubble plot below.
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
     </div>
 
     <br />
-    <ProcessDetectionEvents
-      ref="processDetectionEvents"
-      @detectionEvents="storeDetectionEvents"
-      @phaseEvents="storePhaseEvents"
-      @coordPatternEvents="storeCoordPatternEvents"
-      @coordCycleStateEvents="storeCoordCycleStateEvents"
-    ></ProcessDetectionEvents>
-    <div>
-      <v-btn @click="processDetection" color="primary">
-        Process Bubble Plot
-      </v-btn>
-    </div>
-    <PlotDetectionTimeSeries
-      :plotData="detectionEvents"
-      :phaseData="phaseEvents"
-      :coordPatternData="coordPatternEvents"
-      :coordCycleStateData="coordCycleStateEvents"
-    ></PlotDetectionTimeSeries>
-
     <section class="left-justify-text mt-6">
       <h2>Split Failure Bubble Plot</h2>
       <p class="muted">
@@ -73,9 +49,16 @@ Det 3\t0
         average or count instead of a sum, adjust the aggregation logic and
         update the labels and tooltip text accordingly.
       </p>
-      <ProcessSplitHistory
-        @phaseSplitAggregates="storePhaseAggregates"
-      ></ProcessSplitHistory>
+      <v-row>
+        <v-col cols="12" md="7">
+          <ProcessSplitHistory
+            @phaseSplitAggregates="storePhaseAggregates"
+          ></ProcessSplitHistory>
+        </v-col>
+        <v-col cols="12" md="5">
+          <PlotDetectionTimeSeries :plotData="[]" :showChart="false" />
+        </v-col>
+      </v-row>
       <div v-if="phaseAggregates.length" class="bubble-chart">
         <Bubble :data="bubbleChartData" :options="bubbleChartOptions" />
       </div>
@@ -92,7 +75,6 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import ProcessDetectionEvents from "../components/ProcessDetectionEvents.vue";
 import ProcessSplitHistory from "../components/ProcessSplitHistory.vue";
 import PlotDetectionTimeSeries from "../components/foundational/PlotDetectionTimeSeries.vue";
 
@@ -102,17 +84,12 @@ export default {
   name: "PhaseBubblePlot",
   components: {
     Bubble,
-    ProcessDetectionEvents,
     ProcessSplitHistory,
     PlotDetectionTimeSeries,
   },
   data() {
     return {
       panel: [],
-      detectionEvents: [],
-      phaseEvents: [],
-      coordPatternEvents: [],
-      coordCycleStateEvents: [],
       phaseAggregates: [],
     };
   },
@@ -203,21 +180,6 @@ export default {
     },
   },
   methods: {
-    processDetection() {
-      this.$refs.processDetectionEvents?.processDetectionEvents?.();
-    },
-    storeDetectionEvents(events) {
-      this.detectionEvents = events;
-    },
-    storePhaseEvents(events) {
-      this.phaseEvents = events;
-    },
-    storeCoordPatternEvents(events) {
-      this.coordPatternEvents = events;
-    },
-    storeCoordCycleStateEvents(events) {
-      this.coordCycleStateEvents = events;
-    },
     storePhaseAggregates(data) {
       this.phaseAggregates = data;
     },

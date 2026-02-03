@@ -23,9 +23,9 @@
                 <code>1/6/2024 15:00:03.3, 7, 4</code>
               </li>
               <li>
-                Stop bar detector assignments as <b>phase, detector channel</b>.
-                Labels like <code>Det 1</code> are accepted. Example:
-                <code>4, 12</code>
+                Stop bar detector assignments as <b>phase, detector channel</b> or
+                <b>detector, phase</b>. Labels like <code>Det 1</code> are
+                accepted. Example: <code>4, 12</code> or <code>Det 12, 4</code>
               </li>
             </ul>
           </v-expansion-panel-text>
@@ -125,7 +125,7 @@ export default {
       processed: false,
       defaultText: "Paste high-resolution data: timestamp, event code, parameter",
       assignmentPlaceholder:
-        "Paste stop bar detector assignments: phase, detector channel. Labels like 'Det 1' are supported.",
+        "Paste stop bar detector assignments: phase, detector channel (or detector, phase). Labels like 'Det 1' are supported.",
     };
   },
   computed: {
@@ -201,8 +201,11 @@ export default {
           if (parts.length < 2) {
             return;
           }
-          const phase = this.parseNumberFromText(parts[0]);
-          const detector = this.parseNumberFromText(parts[1]);
+          const detectorFirst = /det/i.test(parts[0]);
+          const phase = this.parseNumberFromText(detectorFirst ? parts[1] : parts[0]);
+          const detector = this.parseNumberFromText(
+            detectorFirst ? parts[0] : parts[1]
+          );
           if (Number.isNaN(phase) || Number.isNaN(detector)) {
             return;
           }

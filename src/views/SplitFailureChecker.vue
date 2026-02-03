@@ -105,6 +105,7 @@ import convertTime from "../mixins/convertTime";
 
 const EVENT_CODES = {
   GREEN_TERMINATION: 7,
+  END_RED: 11,
   PHASE_GAP_OUT: 4,
   PHASE_MAX_OUT: 5,
   PHASE_FORCE_OFF: 6,
@@ -226,6 +227,7 @@ export default {
     findSplitFailures(events, assignments) {
       const detectorState = new Map();
       const phaseEndReason = new Map();
+      const pendingTerminations = new Map();
       const results = [];
 
       events.forEach((event) => {
@@ -272,9 +274,21 @@ export default {
         if (event.eventCode === EVENT_CODES.GREEN_TERMINATION) {
           const endReason = phaseEndReason.get(event.parameter);
           phaseEndReason.delete(event.parameter);
-          if (endReason?.reason !== "MAX_OUT") {
+          if (!["MAX_OUT", "FORCE_OFF"].includes(endReason?.reason)) {
             return;
           }
+          pendingTerminations.set(event.parameter, {
+            millis: event.millis,
+            displayTime: event.displayTime,
+          });
+          return;
+        }
+        if (event.eventCode === EVENT_CODES.END_RED) {
+          const pending = pendingTerminations.get(event.parameter);
+          if (!pending) {
+            return;
+          }
+          pendingTerminations.delete(event.parameter);
           const detectors = assignments.get(event.parameter) || [];
           detectors.forEach((detector) => {
             const state = detectorState.get(detector);
@@ -286,8 +300,8 @@ export default {
               : null;
             results.push({
               id: `${event.millis}-${event.parameter}-${detector}`,
-              terminationTime: event.displayTime,
-              terminationMillis: event.millis,
+              terminationTime: pending.displayTime,
+              terminationMillis: pending.millis,
               phase: event.parameter,
               detector,
               detectorOn: state.lastOnDisplay || "—",
@@ -295,9 +309,10 @@ export default {
               description: this.buildDescription({
                 phase: event.parameter,
                 detector,
-                termination: event.displayTime,
+                termination: pending.displayTime,
                 detectorOn: state.lastOnDisplay,
                 secondsOn,
+                allRedEnd: event.displayTime,
               }),
             });
           });
@@ -306,12 +321,20 @@ export default {
 
       return results.sort((a, b) => a.terminationMillis - b.terminationMillis);
     },
-    buildDescription({ phase, detector, termination, detectorOn, secondsOn }) {
+    buildDescription({
+      phase,
+      detector,
+      termination,
+      detectorOn,
+      secondsOn,
+      allRedEnd,
+    }) {
       const durationText =
         secondsOn === null
           ? ""
           : ` for ${secondsOn.toFixed(1)} sec`;
-      return `Phase ${phase} terminated at ${termination} while Detector ${detector} was still on${durationText}. Call began at ${
+      const allRedText = allRedEnd ? ` after all-red ended at ${allRedEnd}` : "";
+      return `Phase ${phase} terminated at ${termination} while Detector ${detector} was still on${durationText}${allRedText}. Call began at ${
         detectorOn || "an unknown time"
       }.`;
     },

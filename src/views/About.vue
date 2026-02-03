@@ -134,6 +134,12 @@ export default {
               path: "/skipped-phase-finder",
             },
             {
+              title: "Split Failure Checker",
+              description:
+                "Identify green terminations where stop bar detectors remain on, indicating unmet demand.",
+              path: "/split-failure-checker",
+            },
+            {
               title: "High Resolution Data Explainer",
               description:
                 "Explore event enumerations and how they map to controller behavior.",

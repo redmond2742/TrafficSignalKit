@@ -43,11 +43,12 @@ Det 3\t0
       <h2>Split Failure Bubble Plot</h2>
       <p class="muted">
         Use the split history input to size bubbles by average split served and
-        compare split failures to red-light runner exposure. The Y-axis sums
-        elapsed seconds from yellow start for each red-light runner event; time
-        during all-red continues incrementing beyond yellow. If you prefer an
-        average or count instead of a sum, adjust the aggregation logic and
-        update the labels and tooltip text accordingly.
+        compare split failures (split failure algorithm) to red-light runner
+        exposure. The Y-axis sums elapsed seconds from yellow start for each
+        red-light runner event; time during all-red continues incrementing
+        beyond yellow. If you prefer an average or count instead of a sum,
+        adjust the aggregation logic and update the labels and tooltip text
+        accordingly.
       </p>
       <v-row>
         <v-col cols="12" md="7">
@@ -191,7 +192,7 @@ export default {
             label: `Phase ${row.phase}`,
             data: [
               {
-                x: Number(row.splitFailures) || 0,
+                x: Number(row.splitFailuresAlgorithm ?? row.splitFailures) || 0,
                 y: Number(row.redRunnerSeconds) || 0,
                 r: radius,
                 phase: row.phase,
@@ -233,7 +234,7 @@ export default {
                 const phase = raw.phase ?? context.dataset.label;
                 return [
                   `Phase: ${phase}`,
-                  `Split failures: ${raw.x ?? 0}`,
+                  `Split failures (algorithm): ${raw.x ?? 0}`,
                   `Red-runner seconds since yellow start (summed; includes all-red): ${
                     raw.y ?? 0
                   }`,
@@ -247,7 +248,7 @@ export default {
           x: {
             title: {
               display: true,
-              text: "Split Failures",
+              text: "Split Failures (Algorithm)",
             },
             beginAtZero: true,
           },

@@ -99,6 +99,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
+          title: "Split Failure Checker",
+          description:
+            "Flag green terminations with stop bar detectors still on",
+          link: "/split-failure-checker",
+          topics: ["Controller Data", "Detection", "Diagnostics"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+All+Enumerations+Plot.png",
           title: "Timeseries Plot All Enumerations",
           description: "Plot preemption (101-119) enumeration events over time",

@@ -36,6 +36,7 @@ import TimeToReduce from '../views/TimeToReduce'
 import SkippedPhaseFinder from '../views/SkippedPhaseFinder'
 import TrafficSignalCabinetPMScheduler from '../views/TrafficSignalCabinetPMScheduler'
 import PhaseBubblePlot from '../views/PhaseBubblePlot'
+import SplitFailureChecker from '../views/SplitFailureChecker'
 
 
 
@@ -211,6 +212,11 @@ const routes = [
         path: '/skipped-phase-finder',
         name: 'skippedPhaseFinder',
         component: SkippedPhaseFinder,
+    },
+    {
+        path: '/split-failure-checker',
+        name: 'splitFailureChecker',
+        component: SplitFailureChecker,
     },
     {
         path: '/cabinet-pm-scheduler',

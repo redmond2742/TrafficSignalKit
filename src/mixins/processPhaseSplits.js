@@ -331,6 +331,39 @@ export default {
           return failures;
         },
 
+        countSplitFailuresAlgorithmForPhase(hdData, phase) {
+          const detectorState = new Map();
+          const phaseEndReason = new Map();
+          let failures = 0;
+
+          hdData.forEach((event) => {
+            if (event.eventCode === 4 || event.eventCode === 5 || event.eventCode === 6) {
+              phaseEndReason.set(event.parameterCode, event.eventCode);
+              return;
+            }
+            if (event.eventCode === 82 && event.parameterCode === phase) {
+              detectorState.set(phase, true);
+              return;
+            }
+            if (event.eventCode === 81 && event.parameterCode === phase) {
+              detectorState.set(phase, false);
+              return;
+            }
+            if (event.eventCode === 7 && event.parameterCode === phase) {
+              const endReason = phaseEndReason.get(phase);
+              phaseEndReason.delete(phase);
+              if (endReason !== 5) {
+                return;
+              }
+              if (detectorState.get(phase)) {
+                failures += 1;
+              }
+            }
+          });
+
+          return failures;
+        },
+
         collectSplitFailureEventsForPhase(hdData, phase) {
           this.resetEventTrackingState();
           let detectorState = false;
@@ -397,6 +430,7 @@ export default {
               totals.set(phase, {
                 phase,
                 splitFailures: 0,
+                splitFailuresAlgorithm: 0,
                 redRunnerSeconds: 0,
                 splitServedTotal: 0,
                 splitServedCount: 0,
@@ -409,6 +443,10 @@ export default {
 
           totals.forEach((entry) => {
             entry.splitFailures = this.countSplitFailuresForPhase(hdData, entry.phase);
+            entry.splitFailuresAlgorithm = this.countSplitFailuresAlgorithmForPhase(
+              hdData,
+              entry.phase
+            );
             entry.redRunnerSeconds = this.sumRedRunnerSecondsForPhase(
               hdData,
               entry.phase
@@ -420,6 +458,7 @@ export default {
             .map((entry) => ({
               phase: entry.phase,
               splitFailures: entry.splitFailures,
+              splitFailuresAlgorithm: entry.splitFailuresAlgorithm,
               redRunnerSeconds: Number(entry.redRunnerSeconds.toFixed(2)),
               avgSplitServed: entry.splitServedCount
                 ? Number((entry.splitServedTotal / entry.splitServedCount).toFixed(2))

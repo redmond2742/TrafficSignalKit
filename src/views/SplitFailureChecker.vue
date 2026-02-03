@@ -105,6 +105,9 @@ import convertTime from "../mixins/convertTime";
 
 const EVENT_CODES = {
   GREEN_TERMINATION: 7,
+  PHASE_GAP_OUT: 4,
+  PHASE_MAX_OUT: 5,
+  PHASE_FORCE_OFF: 6,
   DETECTOR_OFF: 81,
   DETECTOR_ON: 82,
 };
@@ -222,9 +225,34 @@ export default {
     },
     findSplitFailures(events, assignments) {
       const detectorState = new Map();
+      const phaseEndReason = new Map();
       const results = [];
 
       events.forEach((event) => {
+        if (event.eventCode === EVENT_CODES.PHASE_GAP_OUT) {
+          phaseEndReason.set(event.parameter, {
+            reason: "GAP_OUT",
+            millis: event.millis,
+            displayTime: event.displayTime,
+          });
+          return;
+        }
+        if (event.eventCode === EVENT_CODES.PHASE_MAX_OUT) {
+          phaseEndReason.set(event.parameter, {
+            reason: "MAX_OUT",
+            millis: event.millis,
+            displayTime: event.displayTime,
+          });
+          return;
+        }
+        if (event.eventCode === EVENT_CODES.PHASE_FORCE_OFF) {
+          phaseEndReason.set(event.parameter, {
+            reason: "FORCE_OFF",
+            millis: event.millis,
+            displayTime: event.displayTime,
+          });
+          return;
+        }
         if (event.eventCode === EVENT_CODES.DETECTOR_ON) {
           detectorState.set(event.parameter, {
             isOn: true,
@@ -242,6 +270,11 @@ export default {
           return;
         }
         if (event.eventCode === EVENT_CODES.GREEN_TERMINATION) {
+          const endReason = phaseEndReason.get(event.parameter);
+          phaseEndReason.delete(event.parameter);
+          if (endReason?.reason !== "MAX_OUT") {
+            return;
+          }
           const detectors = assignments.get(event.parameter) || [];
           detectors.forEach((detector) => {
             const state = detectorState.get(detector);

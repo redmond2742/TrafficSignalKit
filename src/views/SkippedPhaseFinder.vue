@@ -91,7 +91,76 @@
       </v-card-text>
     </v-card>
 
-    <v-card v-else-if="processed" class="mt-6" variant="outlined">
+    <v-card v-if="phaseSkippedEvents.length" class="mt-6" variant="outlined">
+      <v-card-text>
+        <h2>Phase Skipped Events (Event Code 14)</h2>
+        <p class="muted">
+          Phase skipped events logged by the controller, with timestamps and
+          summary statistics by phase.
+        </p>
+
+        <v-table density="compact" class="mt-4">
+          <thead>
+            <tr>
+              <th>Total Events</th>
+              <th>Unique Phases</th>
+              <th>First Occurrence</th>
+              <th>Last Occurrence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ phaseSkippedSummary.total }}</td>
+              <td>{{ phaseSkippedSummary.uniquePhases }}</td>
+              <td>{{ phaseSkippedSummary.firstOccurrence || "—" }}</td>
+              <td>{{ phaseSkippedSummary.lastOccurrence || "—" }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+
+        <h3 class="mt-6">Phase Summary</h3>
+        <v-table density="compact" class="mt-2">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Count</th>
+              <th>First Occurrence</th>
+              <th>Last Occurrence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in phaseSkippedSummary.byPhase" :key="row.phase">
+              <td>{{ row.phase }}</td>
+              <td>{{ row.count }}</td>
+              <td>{{ row.firstOccurrence }}</td>
+              <td>{{ row.lastOccurrence }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+
+        <h3 class="mt-6">Event Details</h3>
+        <v-table density="compact" class="mt-2">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Phase</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in phaseSkippedEvents" :key="row.id">
+              <td>{{ row.timestamp }}</td>
+              <td>{{ row.phase }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-card-text>
+    </v-card>
+
+    <v-card
+      v-else-if="processed && !results.length"
+      class="mt-6"
+      variant="outlined"
+    >
       <v-card-text>
         <p class="empty-state">
           No skipped phase events were found in the current inputs.
@@ -108,6 +177,7 @@ import convertTime from "../mixins/convertTime";
 const EVENT_CODES = {
   BEGIN_GREEN: 1,
   DETECTOR_ON: 82,
+  PHASE_SKIPPED: 14,
 };
 
 export default {
@@ -122,6 +192,14 @@ export default {
       inputData: "",
       assignmentData: "",
       results: [],
+      phaseSkippedEvents: [],
+      phaseSkippedSummary: {
+        total: 0,
+        uniquePhases: 0,
+        firstOccurrence: "",
+        lastOccurrence: "",
+        byPhase: [],
+      },
       errorMessage: "",
       processed: false,
       defaultText:
@@ -140,12 +218,26 @@ export default {
       this.processed = true;
       this.errorMessage = "";
       this.results = [];
+      this.phaseSkippedEvents = [];
+      this.phaseSkippedSummary = {
+        total: 0,
+        uniquePhases: 0,
+        firstOccurrence: "",
+        lastOccurrence: "",
+        byPhase: [],
+      };
 
       const events = this.parseEvents();
       if (!events.length) {
         this.errorMessage = "No valid high-resolution events were found.";
         return;
       }
+
+      const phaseSkippedEvents = this.collectPhaseSkippedEvents(events);
+      this.phaseSkippedEvents = phaseSkippedEvents;
+      this.phaseSkippedSummary = this.buildPhaseSkippedSummary(
+        phaseSkippedEvents,
+      );
 
       const assignments = this.parseAssignments();
       if (!assignments.size) {
@@ -203,7 +295,8 @@ export default {
       if (!this.inputData) {
         return [];
       }
-      return this.inputData
+      const normalizedInput = this.inputData.replace(/\\n/g, "\n");
+      return normalizedInput
         .split(/\r?\n/)
         .map((line) => line.trim())
         .filter(Boolean)
@@ -305,6 +398,61 @@ export default {
       }
       const match = trimmed.match(/-?\d+(\.\d+)?/);
       return match ? Number(match[0]) : Number.NaN;
+    },
+    collectPhaseSkippedEvents(events) {
+      return events
+        .filter((event) => event.eventCode === EVENT_CODES.PHASE_SKIPPED)
+        .map((event, index) => ({
+          id: `${event.millis}-${event.parameter}-${index}`,
+          millis: event.millis,
+          timestamp: event.displayTime,
+          phase: event.parameter,
+        }))
+        .sort((a, b) => a.millis - b.millis);
+    },
+    buildPhaseSkippedSummary(events) {
+      if (!events.length) {
+        return {
+          total: 0,
+          uniquePhases: 0,
+          firstOccurrence: "",
+          lastOccurrence: "",
+          byPhase: [],
+        };
+      }
+      const byPhaseMap = new Map();
+      events.forEach((event) => {
+        if (!byPhaseMap.has(event.phase)) {
+          byPhaseMap.set(event.phase, {
+            phase: event.phase,
+            count: 0,
+            firstOccurrence: event.timestamp,
+            lastOccurrence: event.timestamp,
+            firstMillis: event.millis,
+            lastMillis: event.millis,
+          });
+        }
+        const entry = byPhaseMap.get(event.phase);
+        entry.count += 1;
+        if (event.millis < entry.firstMillis) {
+          entry.firstMillis = event.millis;
+          entry.firstOccurrence = event.timestamp;
+        }
+        if (event.millis > entry.lastMillis) {
+          entry.lastMillis = event.millis;
+          entry.lastOccurrence = event.timestamp;
+        }
+      });
+      const byPhase = Array.from(byPhaseMap.values()).sort(
+        (a, b) => a.phase - b.phase,
+      );
+      return {
+        total: events.length,
+        uniquePhases: byPhase.length,
+        firstOccurrence: events[0].timestamp,
+        lastOccurrence: events[events.length - 1].timestamp,
+        byPhase,
+      };
     },
   },
 };

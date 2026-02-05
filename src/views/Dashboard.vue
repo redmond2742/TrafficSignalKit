@@ -42,6 +42,30 @@
                   {{ detectorStatusText }}
                 </v-chip>
               </div>
+              <div class="preemption-status">
+                <div class="preemption-title">Preemption events</div>
+                <div
+                  v-if="preemptionEvents.length"
+                  class="preemption-box preemption-box--alert"
+                >
+                  <div class="preemption-summary">Preemption detected</div>
+                  <div class="preemption-chips">
+                    <v-chip
+                      v-for="event in preemptionEvents"
+                      :key="event.id"
+                      class="preemption-chip"
+                      color="red"
+                      variant="tonal"
+                      size="small"
+                    >
+                      {{ event.timestamp }} · Phase/Channel {{ event.parameter }}
+                    </v-chip>
+                  </div>
+                </div>
+                <div v-else class="preemption-box preemption-box--clear">
+                  No preemptions detected.
+                </div>
+              </div>
               <div v-if="failedDetectorRows.length" class="failed-detectors">
                 <div class="failed-detectors-title">Failed detectors</div>
                 <v-table density="compact">
@@ -218,6 +242,7 @@ export default {
       phaseEvents: [],
       eventRows: [],
       splitHistoryRows: [],
+      preemptionEvents: [],
       filters: {
         timestamp: "",
         eventCode: "",
@@ -269,6 +294,14 @@ export default {
         lookup[code] = item.eventDescriptor.trim();
         return lookup;
       }, {});
+    },
+    preemptionEventCodes() {
+      const codes = [];
+      for (let code = 100; code <= 111; code += 1) {
+        codes.push(code);
+      }
+      codes.push(116);
+      return codes;
     },
     hasDetectorFailure() {
       return this.eventRows.some(
@@ -324,6 +357,7 @@ export default {
       const detectionEvents = [];
       const phaseEvents = [];
       const eventRows = [];
+      const preemptionEvents = [];
 
       lines.forEach((line, index) => {
         const trimmedLine = line.trim();
@@ -359,6 +393,15 @@ export default {
           description,
         });
 
+        if (this.preemptionEventCodes.includes(eventCode)) {
+          preemptionEvents.push({
+            id: `${timestampInfo.MillisecFromEpoch}-${eventCode}-${parameterCode}`,
+            timestamp: timestampInfo.humanReadable,
+            timestampMs: timestampInfo.MillisecFromEpoch,
+            parameter: parameterCode.toString(),
+          });
+        }
+
         if (this.detectionEventCodes.includes(eventCode)) {
           detectionEvents.push({
             timestampISO: timestampInfo.iso,
@@ -386,10 +429,12 @@ export default {
 
       detectionEvents.sort((a, b) => a.timestampMs - b.timestampMs);
       phaseEvents.sort((a, b) => a.timestampMs - b.timestampMs);
+      preemptionEvents.sort((a, b) => a.timestampMs - b.timestampMs);
 
       this.detectionEvents = detectionEvents;
       this.phaseEvents = phaseEvents;
       this.eventRows = eventRows;
+      this.preemptionEvents = preemptionEvents;
       this.dashboardReady = true;
       this.$nextTick(() => {
         if (this.$refs.splitHistory) {
@@ -479,6 +524,49 @@ export default {
 .failed-detectors-title {
   font-weight: 600;
   margin-bottom: 6px;
+}
+
+.preemption-status {
+  margin-top: 10px;
+}
+
+.preemption-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.preemption-box {
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
+.preemption-box--clear {
+  border: 1px solid rgba(46, 125, 50, 0.4);
+  background: rgba(46, 125, 50, 0.08);
+  color: #1b5e20;
+  font-weight: 600;
+}
+
+.preemption-box--alert {
+  border: 1px solid rgba(211, 47, 47, 0.35);
+  background: rgba(211, 47, 47, 0.06);
+}
+
+.preemption-summary {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #b71c1c;
+}
+
+.preemption-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preemption-chip {
+  font-weight: 600;
 }
 
 .label {

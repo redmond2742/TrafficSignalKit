@@ -24,6 +24,7 @@ import Blog from '../views/Blog'
 import OffsetsAreThePoint from '../views/OffsetsAreThePoint'
 import HighResDataExplainerPost from '../views/HighResDataExplainerPost'
 import TimeseriesAllEnumerationsPost from '../views/TimeseriesAllEnumerationsPost'
+import GPXMapperKnowledgeHubPost from '../views/GPXMapperKnowledgeHubPost'
 import StuckDetectors from '../views/StuckDetectors'
 import SignalOffsetCalculator from '../views/SignalOffsetCalculator'
 import YellowRedRunning from '../views/YellowRedRunning'
@@ -74,6 +75,11 @@ const routes = [
         path: '/blog/timeseries-plot-all-enumerations',
         name: 'TimeseriesAllEnumerationsPost',
         component: TimeseriesAllEnumerationsPost,
+    },
+    {
+        path: '/blog/gpx-mapper-guide',
+        name: 'GPXMapperKnowledgeHubPost',
+        component: GPXMapperKnowledgeHubPost,
     },
     {  
         path: '/terms-of-service',

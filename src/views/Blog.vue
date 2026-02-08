@@ -64,6 +64,7 @@
     <v-card
       class="blog-card blog-card--link"
       variant="outlined"
+
       to="/blog/timeseries-plot-all-enumerations"
       link
     >
@@ -86,6 +87,25 @@
           variant="text"
           to="/blog/timeseries-plot-all-enumerations"
         >
+
+      to="/blog/gpx-mapper-guide"
+      link
+    >
+      <v-card-title>
+        GPX Mapper Guide: Turn Field Tracks into Map-Ready Insight
+      </v-card-title>
+      <v-card-subtitle>
+        Knowledge Hub walkthrough for GPX inputs, map review, and Street View
+        validation.
+      </v-card-subtitle>
+      <v-card-text>
+        <p>
+          Learn how the GPX Mapper turns track points into a Leaflet map, plus a
+          coordinate table with Street View links for validation.
+        </p>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn color="primary" variant="text" to="/blog/gpx-mapper-guide">
           Read the article
         </v-btn>
       </v-card-actions>

@@ -17,6 +17,13 @@ export const routeMeta = {
       "Updates, experiments, and explainers on ATSPM metrics, high-resolution controller data, and signal timing workflows.",
     path: "/blog",
   },
+  HighResDataExplainerPost: {
+    title:
+      "High-Resolution Data Explainer Guide | Indiana Enumeration Walkthrough",
+    description:
+      "Learn how to load high-resolution controller CSVs, decode Indiana enumerations, and follow event timestamps using the explainer tool.",
+    path: "/blog/high-resolution-data-explainer",
+  },
   TermsOfService: {
     title: "Terms of Service | Traffic Signal Kit",
     description:

@@ -32,6 +32,35 @@
         </v-btn>
       </v-card-actions>
     </v-card>
+    <v-card
+      class="blog-card blog-card--link"
+      variant="outlined"
+      to="/blog/high-resolution-data-explainer"
+      link
+    >
+      <v-card-title>
+        High-Resolution Data Explainer: Decode Indiana Enumerations in Minutes
+      </v-card-title>
+      <v-card-subtitle>
+        Tool-linked guide to loading CSV logs and tracking timestamps with the
+        explainer.
+      </v-card-subtitle>
+      <v-card-text>
+        <p>
+          Learn the inputs the explainer expects, how Indiana enumerations map
+          to controller behavior, and how to follow a specific event over time.
+        </p>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn
+          color="primary"
+          variant="text"
+          to="/blog/high-resolution-data-explainer"
+        >
+          Read the article
+        </v-btn>
+      </v-card-actions>
+    </v-card>
   </v-container>
 </template>
 

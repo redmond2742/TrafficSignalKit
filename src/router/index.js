@@ -72,6 +72,11 @@ const routes = [
         component: HighResDataExplainerPost,
     },
     {
+        path: '/blog/high-resolution-split-history',
+        name: 'HighResSplitHistoryPost',
+        component: HighResSplitHistoryPost,
+    },
+    {
         path: '/blog/timeseries-plot-all-enumerations',
         name: 'TimeseriesAllEnumerationsPost',
         component: TimeseriesAllEnumerationsPost,

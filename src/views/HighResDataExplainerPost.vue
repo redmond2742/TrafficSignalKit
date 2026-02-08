@@ -15,7 +15,8 @@
     <section class="article-body">
       <p class="article-lead">
         High-resolution controller logs can feel like a wall of numbers until
-        you translate them into signal behavior. The High Resolution Data
+        you translate them into signal behavior. The
+        <a href="/">Traffic Signal Kit</a> High Resolution Data
         Explainer turns Indiana’s standardized enumerations into readable,
         timestamped events so you can answer the questions that matter: What
         happened, when did it happen, and which phase or channel did it involve?
@@ -88,7 +89,9 @@
 
       <p class="article-callout">
         Tool-linked blog content means you can read the explanation and run the
-        exact example in the explainer—no copy-and-paste hunting required.
+        exact example in the
+        <a href="/explainer">High Resolution Data Explainer tool</a>—no
+        copy-and-paste hunting required.
       </p>
 
       <h2>Why this matters in the Traffic Signal Knowledge Hub</h2>

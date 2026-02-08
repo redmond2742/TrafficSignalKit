@@ -14,7 +14,12 @@
         </p>
       </v-card-text>
     </v-card>
-    <v-card class="blog-card blog-card--link" variant="outlined" to="/blog/offsets-are-the-point" link>
+    <v-card
+      class="blog-card blog-card--link"
+      variant="outlined"
+      to="/blog/offsets-are-the-point"
+      link
+    >
       <v-card-title>Offsets Are the Point</v-card-title>
       <v-card-subtitle>
         Why Cycle Length, Splits, and TOD Schedules Exist Only to Serve the Green Wave
@@ -78,7 +83,21 @@
           Learn what counts as a split, how green/yellow/all-red roll into each
           cycle, and how to filter the report to the timing patterns that
           matter.
-
+        </p>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn
+          color="primary"
+          variant="text"
+          to="/blog/high-resolution-split-history"
+        >
+          Read the article
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+    <v-card
+      class="blog-card blog-card--link"
+      variant="outlined"
       to="/blog/timeseries-plot-all-enumerations"
       link
     >
@@ -99,11 +118,15 @@
         <v-btn
           color="primary"
           variant="text"
-          to="/blog/high-resolution-split-history"
-        >
           to="/blog/timeseries-plot-all-enumerations"
         >
-
+          Read the article
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+    <v-card
+      class="blog-card blog-card--link"
+      variant="outlined"
       to="/blog/gpx-mapper-guide"
       link
     >

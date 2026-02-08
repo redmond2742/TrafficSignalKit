@@ -61,6 +61,35 @@
         </v-btn>
       </v-card-actions>
     </v-card>
+    <v-card
+      class="blog-card blog-card--link"
+      variant="outlined"
+      to="/blog/high-resolution-split-history"
+      link
+    >
+      <v-card-title>
+        High-Resolution Split History: Turn Cycle Data into Actionable Splits
+      </v-card-title>
+      <v-card-subtitle>
+        Knowledge Hub guide to splits, enumerations, and table filtering.
+      </v-card-subtitle>
+      <v-card-text>
+        <p>
+          Learn what counts as a split, how green/yellow/all-red roll into each
+          cycle, and how to filter the report to the timing patterns that
+          matter.
+        </p>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn
+          color="primary"
+          variant="text"
+          to="/blog/high-resolution-split-history"
+        >
+          Read the article
+        </v-btn>
+      </v-card-actions>
+    </v-card>
   </v-container>
 </template>
 

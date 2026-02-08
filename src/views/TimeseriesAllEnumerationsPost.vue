@@ -77,6 +77,23 @@
         </li>
       </ol>
 
+      <h2>Sample output snapshot</h2>
+      <p>
+        Replace the placeholder below with a real plot screenshot once you have
+        a representative dataset. The intent is to show how enumerations stack
+        up across the timeline.
+      </p>
+      <figure class="article-figure">
+        <img
+          src="https://placehold.co/900x500?text=Timeseries+Plot+All+Enumerations"
+          alt="Placeholder for a Timeseries Plot All Enumerations screenshot"
+        />
+        <figcaption>
+          Placeholder image for a future Timeseries Plot All Enumerations
+          snapshot.
+        </figcaption>
+      </figure>
+
       <p class="article-callout">
         If you can describe the question as “What events happened around this
         time?” the Timeseries Plot All Enumerations tool gives you the answer
@@ -189,6 +206,24 @@ export default {
   margin-top: 16px;
 }
 
+.article-figure {
+  margin: 16px 0 20px;
+  text-align: center;
+}
+
+.article-figure img {
+  max-width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.article-figure figcaption {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: rgba(0, 0, 0, 0.7);
+}
+
 .article-lead::first-letter {
   float: left;
   font-size: 3rem;
@@ -226,6 +261,10 @@ export default {
 
   .article-body {
     column-rule-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .article-figure figcaption {
+    color: rgba(255, 255, 255, 0.7);
   }
 }
 

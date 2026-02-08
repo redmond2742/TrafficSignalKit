@@ -64,6 +64,30 @@
     <v-card
       class="blog-card blog-card--link"
       variant="outlined"
+
+      to="/blog/timeseries-plot-all-enumerations"
+      link
+    >
+      <v-card-title>
+        Timeseries Plot All Enumerations: See Every Event on One Timeline
+      </v-card-title>
+      <v-card-subtitle>
+        Tool-linked guide to plotting high-resolution logs and tracing
+        preemption or TSP events.
+      </v-card-subtitle>
+      <v-card-text>
+        <p>
+          Load a CSV slice, zoom to the moment that matters, and verify exactly
+          which controller events fired over time.
+        </p>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn
+          color="primary"
+          variant="text"
+          to="/blog/timeseries-plot-all-enumerations"
+        >
+
       to="/blog/gpx-mapper-guide"
       link
     >

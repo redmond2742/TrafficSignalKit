@@ -23,6 +23,7 @@ import MessageSignDesigner from '../views/MessageSignDesigner'
 import Blog from '../views/Blog'
 import OffsetsAreThePoint from '../views/OffsetsAreThePoint'
 import HighResDataExplainerPost from '../views/HighResDataExplainerPost'
+import TimeseriesAllEnumerationsPost from '../views/TimeseriesAllEnumerationsPost'
 import GPXMapperKnowledgeHubPost from '../views/GPXMapperKnowledgeHubPost'
 import StuckDetectors from '../views/StuckDetectors'
 import SignalOffsetCalculator from '../views/SignalOffsetCalculator'
@@ -69,6 +70,11 @@ const routes = [
         path: '/blog/high-resolution-data-explainer',
         name: 'HighResDataExplainerPost',
         component: HighResDataExplainerPost,
+    },
+    {
+        path: '/blog/timeseries-plot-all-enumerations',
+        name: 'TimeseriesAllEnumerationsPost',
+        component: TimeseriesAllEnumerationsPost,
     },
     {
         path: '/blog/gpx-mapper-guide',

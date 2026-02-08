@@ -24,6 +24,12 @@ export const routeMeta = {
       "Learn how to load high-resolution controller CSVs, decode Indiana enumerations, and follow event timestamps using the explainer tool.",
     path: "/blog/high-resolution-data-explainer",
   },
+  GPXMapperKnowledgeHubPost: {
+    title: "GPX Mapper Guide | Map GPX Tracks with Street View Validation",
+    description:
+      "Learn GPX input guidance, map workflow steps, and coordinate validation using the GPX Mapper tool.",
+    path: "/blog/gpx-mapper-guide",
+  },
   TermsOfService: {
     title: "Terms of Service | Traffic Signal Kit",
     description:

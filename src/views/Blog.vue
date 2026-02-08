@@ -78,6 +78,21 @@
           Learn what counts as a split, how green/yellow/all-red roll into each
           cycle, and how to filter the report to the timing patterns that
           matter.
+
+      to="/blog/timeseries-plot-all-enumerations"
+      link
+    >
+      <v-card-title>
+        Timeseries Plot All Enumerations: See Every Event on One Timeline
+      </v-card-title>
+      <v-card-subtitle>
+        Tool-linked guide to plotting high-resolution logs and tracing
+        preemption or TSP events.
+      </v-card-subtitle>
+      <v-card-text>
+        <p>
+          Load a CSV slice, zoom to the moment that matters, and verify exactly
+          which controller events fired over time.
         </p>
       </v-card-text>
       <v-card-actions>
@@ -86,6 +101,27 @@
           variant="text"
           to="/blog/high-resolution-split-history"
         >
+          to="/blog/timeseries-plot-all-enumerations"
+        >
+
+      to="/blog/gpx-mapper-guide"
+      link
+    >
+      <v-card-title>
+        GPX Mapper Guide: Turn Field Tracks into Map-Ready Insight
+      </v-card-title>
+      <v-card-subtitle>
+        Knowledge Hub walkthrough for GPX inputs, map review, and Street View
+        validation.
+      </v-card-subtitle>
+      <v-card-text>
+        <p>
+          Learn how the GPX Mapper turns track points into a Leaflet map, plus a
+          coordinate table with Street View links for validation.
+        </p>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn color="primary" variant="text" to="/blog/gpx-mapper-guide">
           Read the article
         </v-btn>
       </v-card-actions>

@@ -22,6 +22,7 @@ import DelayEstimator from '../views/DelayEstimator'
 import MessageSignDesigner from '../views/MessageSignDesigner'
 import Blog from '../views/Blog'
 import OffsetsAreThePoint from '../views/OffsetsAreThePoint'
+import HighResDataExplainerPost from '../views/HighResDataExplainerPost'
 import StuckDetectors from '../views/StuckDetectors'
 import SignalOffsetCalculator from '../views/SignalOffsetCalculator'
 import YellowRedRunning from '../views/YellowRedRunning'
@@ -62,6 +63,11 @@ const routes = [
         path: '/blog/offsets-are-the-point',
         name: 'OffsetsAreThePoint',
         component: OffsetsAreThePoint,
+    },
+    {
+        path: '/blog/high-resolution-data-explainer',
+        name: 'HighResDataExplainerPost',
+        component: HighResDataExplainerPost,
     },
     {  
         path: '/terms-of-service',

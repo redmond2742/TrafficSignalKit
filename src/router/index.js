@@ -41,6 +41,7 @@ import SkippedPhaseFinder from '../views/SkippedPhaseFinder'
 import TrafficSignalCabinetPMScheduler from '../views/TrafficSignalCabinetPMScheduler'
 import PhaseBubblePlot from '../views/PhaseBubblePlot'
 import SplitFailureChecker from '../views/SplitFailureChecker'
+import DetectorEventHeatMap from '../views/DetectorEventHeatMap'
 
 
 
@@ -241,6 +242,11 @@ const routes = [
         path: '/split-failure-checker',
         name: 'splitFailureChecker',
         component: SplitFailureChecker,
+    },
+    {
+        path: '/detector-event-heat-map',
+        name: 'detectorEventHeatMap',
+        component: DetectorEventHeatMap,
     },
     {
         path: '/cabinet-pm-scheduler',

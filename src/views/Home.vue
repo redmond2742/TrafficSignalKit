@@ -134,6 +134,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
+          title: "Detector Event Heat Map",
+          description:
+            "Heat map detector activity by time of day and phase/channel mappings",
+          link: "/detector-event-heat-map",
+          topics: ["Controller Data", "Detection", "Heat Map"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
           title: "Start Up Loss Average",
           description:

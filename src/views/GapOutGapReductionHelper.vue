@@ -7,13 +7,16 @@
         <div class="layout-grid">
           <div>
             <h3>High-Resolution CSV Input</h3>
-            <v-btn-toggle v-model="inputMode" mandatory color="primary" class="mb-3">
-              <v-btn value="paste">Paste CSV</v-btn>
-              <v-btn value="upload">Upload CSV</v-btn>
-            </v-btn-toggle>
+            <v-switch
+              v-model="useFileUpload"
+              color="primary"
+              inset
+              :label="useFileUpload ? 'Input Mode: File Upload' : 'Input Mode: Text Paste'"
+              class="mb-3"
+            />
 
             <InputBox
-              v-if="inputMode === 'paste'"
+              v-if="!useFileUpload"
               v-model="hrCsvText"
               :default-text="csvPlaceholder"
             />
@@ -129,7 +132,7 @@ export default {
   components: { Line, InputBox },
   data() {
     return {
-      inputMode: "paste",
+      useFileUpload: false,
       uploadedFile: null,
       hrCsvText: "",
       csvPlaceholder:

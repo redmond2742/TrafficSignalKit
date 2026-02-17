@@ -90,6 +90,13 @@ export const routeMeta = {
       "Simulate basic intersection operations to understand gap-out/max-out behavior.",
     path: "/traffic-simulator",
   },
+
+  gapOutGapReductionHelper: {
+    title: "Gap-Out & Gap Reduction Helper | Traffic Signal Kit",
+    description:
+      "Upload high-resolution controller CSV data and detector mappings to estimate min green, passage time, and optional gap-reduction parameters.",
+    path: "/gap-out-gap-reduction-helper",
+  },
   cabinetPMScheduler: {
     title: "Traffic Signal Cabinet PM Scheduler | Preventative Maintenance",
     description:

@@ -1,6 +1,13 @@
 <template>
   <div class="dashboard-view">
-    <h1 class="h1-center-text dashboard-title">Signal Data Dashboard</h1>
+    <h1 class="h1-center-text dashboard-title">{{ dashboardTitle }}</h1>
+
+    <div v-if="dashboardReady" class="file-summary">
+      <div class="file-summary-item">
+        <span class="label">File date/time range:</span>
+        <span>{{ fileDateRangeText }}</span>
+      </div>
+    </div>
 
     <div v-if="!dashboardReady" class="input-panel">
       <InputBox
@@ -236,6 +243,9 @@ export default {
     return {
       inputData: "",
       dashboardReady: false,
+      dashboardTitle: "Signal Data Dashboard",
+      fileRangeStart: null,
+      fileRangeEnd: null,
       signals: [],
       selectedSignal: "",
       detectionEvents: [],
@@ -342,6 +352,13 @@ export default {
         );
       });
     },
+    fileDateRangeText() {
+      if (!this.fileRangeStart || !this.fileRangeEnd) {
+        return "Unavailable";
+      }
+
+      return `${this.fileRangeStart} - ${this.fileRangeEnd}`;
+    },
   },
   methods: {
     updateSplitHistory(data) {
@@ -358,6 +375,16 @@ export default {
       const phaseEvents = [];
       const eventRows = [];
       const preemptionEvents = [];
+      const parsedTimestamps = [];
+
+      this.dashboardTitle = "Signal Data Dashboard";
+      this.fileRangeStart = null;
+      this.fileRangeEnd = null;
+
+      const intersectionId = this.extractIntersectionId(lines);
+      if (intersectionId) {
+        this.dashboardTitle = `Intersection ${intersectionId} Dashboard`;
+      }
 
       lines.forEach((line, index) => {
         const trimmedLine = line.trim();
@@ -369,6 +396,13 @@ export default {
           .split(",")
           .map((value) => value.trim());
 
+        const timestampInfo = this.convertTimestamp(timestamp);
+        if (!timestampInfo || Number.isNaN(timestampInfo.MillisecFromEpoch)) {
+          return;
+        }
+
+        parsedTimestamps.push(timestampInfo);
+
         const eventCode = parseInt(eventCodeRaw, 10);
         if (Number.isNaN(eventCode)) {
           return;
@@ -376,11 +410,6 @@ export default {
 
         const parameterCode = parameterRaw ? parseInt(parameterRaw, 10) : null;
         if (parameterCode === null || Number.isNaN(parameterCode)) {
-          return;
-        }
-
-        const timestampInfo = this.convertTimestamp(timestamp);
-        if (!timestampInfo || Number.isNaN(timestampInfo.MillisecFromEpoch)) {
           return;
         }
 
@@ -431,6 +460,12 @@ export default {
       phaseEvents.sort((a, b) => a.timestampMs - b.timestampMs);
       preemptionEvents.sort((a, b) => a.timestampMs - b.timestampMs);
 
+      if (parsedTimestamps.length) {
+        parsedTimestamps.sort((a, b) => a.MillisecFromEpoch - b.MillisecFromEpoch);
+        this.fileRangeStart = parsedTimestamps[0].humanReadable;
+        this.fileRangeEnd = parsedTimestamps[parsedTimestamps.length - 1].humanReadable;
+      }
+
       this.detectionEvents = detectionEvents;
       this.phaseEvents = phaseEvents;
       this.eventRows = eventRows;
@@ -460,6 +495,19 @@ export default {
         .map((entry) => entry.trim())
         .filter(Boolean);
     },
+    extractIntersectionId(lines) {
+      const intersectionLine = lines.find((line) => {
+        const parts = line.split(",").map((value) => value.trim().toLowerCase());
+        return parts[2] === "intersection#";
+      });
+
+      if (!intersectionLine) {
+        return "";
+      }
+
+      const parts = intersectionLine.split(",").map((value) => value.trim());
+      return parts[3] || "";
+    },
   },
 };
 </script>
@@ -472,7 +520,19 @@ export default {
 
 .dashboard-title {
   font-size: 1.2rem;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.file-summary {
+  max-width: 900px;
+  margin: 0 auto 10px;
+  font-size: 0.85rem;
+}
+
+.file-summary-item {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .input-panel {

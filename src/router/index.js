@@ -42,6 +42,7 @@ import TrafficSignalCabinetPMScheduler from '../views/TrafficSignalCabinetPMSche
 import PhaseBubblePlot from '../views/PhaseBubblePlot'
 import SplitFailureChecker from '../views/SplitFailureChecker'
 import DetectorEventHeatMap from '../views/DetectorEventHeatMap'
+import GapOutGapReductionHelper from '../views/GapOutGapReductionHelper'
 
 
 
@@ -247,6 +248,12 @@ const routes = [
         path: '/detector-event-heat-map',
         name: 'detectorEventHeatMap',
         component: DetectorEventHeatMap,
+    },
+
+    {
+        path: '/gap-out-gap-reduction-helper',
+        name: 'gapOutGapReductionHelper',
+        component: GapOutGapReductionHelper,
     },
     {
         path: '/cabinet-pm-scheduler',

@@ -150,6 +150,16 @@ export default {
           link: "/startup-loss-average",
           topics: ["Controller Data", "Detection", "Performance"],
         },
+
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
+          title: "Gap-Out & Gap Reduction Helper",
+          description:
+            "Estimate min green, passage, and optional gap-reduction settings from high-resolution detector headways.",
+          link: "/gap-out-gap-reduction-helper",
+          topics: ["Controller Data", "Detection", "Timing"],
+        },
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Offset+Calculation.png",

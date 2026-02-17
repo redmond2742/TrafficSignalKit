@@ -6,8 +6,19 @@
       <v-card-text>
         <div class="layout-grid">
           <div>
-            <h3>High-Resolution CSV Upload</h3>
+            <h3>High-Resolution CSV Input</h3>
+            <v-btn-toggle v-model="inputMode" mandatory color="primary" class="mb-3">
+              <v-btn value="paste">Paste CSV</v-btn>
+              <v-btn value="upload">Upload CSV</v-btn>
+            </v-btn-toggle>
+
+            <InputBox
+              v-if="inputMode === 'paste'"
+              v-model="hrCsvText"
+              :default-text="csvPlaceholder"
+            />
             <v-file-input
+              v-else
               v-model="uploadedFile"
               label="Upload HR CSV"
               accept=".csv,text/csv,.txt"
@@ -102,6 +113,7 @@ import {
   PointElement,
   LinearScale,
 } from "chart.js";
+import InputBox from "../components/foundational/InputBox.vue";
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, LinearScale);
 
@@ -114,11 +126,14 @@ const EVENT_CODES = {
 
 export default {
   name: "GapOutGapReductionHelper",
-  components: { Line },
+  components: { Line, InputBox },
   data() {
     return {
+      inputMode: "paste",
       uploadedFile: null,
       hrCsvText: "",
+      csvPlaceholder:
+        "Paste high-resolution CSV rows: timestamp, event code, parameter\n2024-03-14T08:00:00.100, 1, 6\n2024-03-14T08:00:02.200, 82, 1",
       mappingText: "DET 1 1\nDET 2 6",
       selectedPhase: null,
       profile: "balanced",

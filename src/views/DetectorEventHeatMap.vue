@@ -1,16 +1,15 @@
 <template>
   <div>
     &nbsp;
-    <h1 class="h1-center-text">Detector Event Heat Map</h1>
+    <h1 class="h1-center-text">Detector Occupancy Duration Heat Map</h1>
 
     <div class="left-justify-text">
       <v-expansion-panels v-model="panel" multiple>
-        <v-expansion-panel title="About: Detector Event Heat Map" value="about">
+        <v-expansion-panel title="About: Detector Occupancy Duration Heat Map" value="about">
           <v-expansion-panel-text>
-            Build a heat map from high-resolution detector events. Time of day is
-            plotted on the x-axis and either phases or detector channels are shown
-            on the y-axis. Color intensity can represent event counts or detector
-            ON-to-OFF occupancy duration.
+            Plot detector occupancy cycles from high-resolution controller logs. The x-axis is
+            detector channel and each y-axis row is a cycle of detector activations that overlap in
+            time. Box color shows occupancy duration from detector ON to detector OFF.
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -18,17 +17,14 @@
           <v-expansion-panel-text>
             <ol>
               <li>
-                Paste CSV lines (timestamp, event code, channel) or use file upload
-                in the input box.
+                Paste CSV lines (timestamp, event code, channel) or use file upload in the input
+                box.
               </li>
+              <li>Click <b>Build Occupancy Heat Map</b>.</li>
               <li>
-                Add detector channel mappings such as <b>2,6</b> (channel 2 to
-                phase 6).
+                Use detector channel sorting to switch between highest- and lowest-utilization views.
               </li>
-              <li>
-                Choose count or duration mode, then click
-                <b>Build Heat Map</b>.
-              </li>
+              <li>Hover any square to see start time, end time, and occupancy duration.</li>
             </ol>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -37,6 +33,23 @@
 
     <br />
     <DetectorEventHeatMapTool />
+
+    <v-card class="mt-6" variant="outlined">
+      <v-card-title>Why this matters</v-card-title>
+      <v-card-text>
+        <p>
+          This occupancy-cycle heat map makes it easy to spot detector behavior patterns that are
+          hard to see in raw event logs. Long-duration boxes concentrated on one channel can flag
+          stuck calls, while unusually short pulses can indicate detector sensitivity or pulse-width
+          configuration issues.
+        </p>
+        <p>
+          Comparing channel utilization and cycle placement also helps infer detector purpose. Stop
+          bar detectors often show different occupancy signatures than advanced detectors, so this
+          visual can support field validation and timing plan diagnostics.
+        </p>
+      </v-card-text>
+    </v-card>
   </div>
 </template>
 

@@ -1,61 +1,22 @@
 <template>
   <div>
     <v-card class="mb-4" variant="outlined">
-      <v-card-title>Detector Event Heat Map Inputs</v-card-title>
+      <v-card-title>Detector Occupancy Cycle Heat Map Inputs</v-card-title>
       <v-card-text>
         <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
 
-        <v-textarea
-          v-model="mappingInput"
-          class="mt-4"
-          label="Detector Channel to Phase Mapping"
-          rows="5"
-          placeholder="Examples:\nDet 1, Phase 2\n2,6\nChannel 7 -> Phase 4"
-        />
-
-        <v-row>
+        <v-row class="mt-2">
           <v-col cols="12" md="4">
             <v-select
-              v-model="metricMode"
-              :items="metricOptions"
+              v-model="sortMode"
+              :items="sortOptions"
               item-title="label"
               item-value="value"
-              label="Heat map metric"
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-select
-              v-model="eventFilter"
-              :items="eventFilterOptions"
-              item-title="label"
-              item-value="value"
-              label="Count mode event type"
-              :disabled="metricMode === 'duration'"
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-select
-              v-model="rowMode"
-              :items="rowModeOptions"
-              item-title="label"
-              item-value="value"
-              label="Y-axis focus toggle"
-            />
-          </v-col>
-        </v-row>
-
-        <v-row>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model.number="binMinutes"
-              type="number"
-              min="1"
-              max="120"
-              label="Time bin size (minutes)"
+              label="Detector channel sort"
             />
           </v-col>
           <v-col cols="12" md="4" class="d-flex align-center">
-            <v-btn color="primary" @click="processHeatMap">Build Heat Map</v-btn>
+            <v-btn color="primary" @click="buildCycleHeatMap">Build Occupancy Heat Map</v-btn>
           </v-col>
         </v-row>
 
@@ -63,43 +24,36 @@
       </v-card-text>
     </v-card>
 
-    <v-card v-if="heatGrid.length" variant="outlined">
-      <v-card-title>
-        Detector Event Heat Map
-        <span class="text-subtitle-2 ml-2">
-          ({{ metricMode === "count" ? "Event count" : "Detector occupancy duration" }})
-        </span>
-      </v-card-title>
+    <v-card v-if="cycleRows.length" variant="outlined">
+      <v-card-title>Detector Occupancy Duration by Cycle</v-card-title>
       <v-card-text>
-        <div class="heat-map-scroll">
-          <div class="heat-map" :style="gridStyle">
-            <div class="axis-header left">{{ leftAxisTitle }}</div>
-            <div class="axis-header x">
-              <div class="x-axis-grid" :style="xAxisStyle">
-                <div
-                  v-for="(label, index) in xAxisLabels"
-                  :key="`x-label-${index}`"
-                  class="x-label"
-                >
-                  {{ label }}
-                </div>
-              </div>
-            </div>
-            <div class="axis-header right">{{ rightAxisTitle }}</div>
+        <div class="cycle-legend mb-4">
+          <span>Short occupancy</span>
+          <div class="legend-bar"></div>
+          <span>Long occupancy</span>
+        </div>
 
-            <template v-for="row in heatGrid" :key="row.id">
-              <div class="row-label left">{{ row.leftLabel }}</div>
-              <div class="row-cells" :style="xAxisStyle">
+        <div class="heat-map-shell">
+          <div class="channel-axis" :style="channelAxisStyle">
+            <div class="axis-header-cell">Cycle</div>
+            <div v-for="channel in orderedChannels" :key="`head-${channel}`" class="channel-header">
+              Ch {{ channel }}
+            </div>
+          </div>
+
+          <div class="heat-map-scroll-y">
+            <div class="heat-map-grid" :style="gridStyle">
+              <template v-for="row in cycleRows" :key="`cycle-${row.cycleNumber}`">
+                <div class="cycle-label">Cycle {{ row.cycleNumber }}</div>
                 <div
-                  v-for="cell in row.cells"
-                  :key="`${row.id}-${cell.binIndex}`"
-                  class="cell"
-                  :style="{ backgroundColor: getHeatColor(cell.value) }"
-                  :title="buildCellTitle(row, cell)"
+                  v-for="channel in orderedChannels"
+                  :key="`cell-${row.cycleNumber}-${channel}`"
+                  class="cycle-cell"
+                  :style="{ backgroundColor: getHeatColor(getCellDuration(row, channel)) }"
+                  :title="buildCellTitle(row, channel)"
                 ></div>
-              </div>
-              <div class="row-label right">{{ row.rightLabel }}</div>
-            </template>
+              </template>
+            </div>
           </div>
         </div>
       </v-card-text>
@@ -123,27 +77,14 @@ export default {
       inputData: "",
       textboxDefaultText:
         "Paste in High-Resolution CSV data or switch to file upload in the input control.",
-      mappingInput: "",
-      metricMode: "count",
-      eventFilter: "all",
-      rowMode: "phase",
-      binMinutes: 15,
-      heatGrid: [],
-      xAxisLabels: [],
-      maxValue: 0,
+      sortMode: "highest",
+      cycleRows: [],
+      orderedChannels: [],
+      maxDuration: 0,
       errorMessage: "",
-      metricOptions: [
-        { label: "Count detector on/off events", value: "count" },
-        { label: "Sum detector on-to-off durations", value: "duration" },
-      ],
-      eventFilterOptions: [
-        { label: "Count ON + OFF events", value: "all" },
-        { label: "Count only ON events", value: "on" },
-        { label: "Count only OFF events", value: "off" },
-      ],
-      rowModeOptions: [
-        { label: "Primary Y-axis = Phase", value: "phase" },
-        { label: "Primary Y-axis = Detector Channel", value: "channel" },
+      sortOptions: [
+        { label: "Highest utilized channels first", value: "highest" },
+        { label: "Lowest utilized channels first", value: "lowest" },
       ],
     };
   },
@@ -164,103 +105,50 @@ export default {
           .filter((value) => !Number.isNaN(value)),
       );
     },
-    parsedMappings() {
-      return this.mappingInput
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => {
-          const numbers = line.match(/\d+/g);
-          if (!numbers || numbers.length < 2) {
-            return null;
-          }
-          const channel = parseInt(numbers[0], 10);
-          const phase = parseInt(numbers[1], 10);
-          if (Number.isNaN(channel) || Number.isNaN(phase)) {
-            return null;
-          }
-          return { channel, phase };
-        })
-        .filter(Boolean);
-    },
-    mappingByChannel() {
-      return this.parsedMappings.reduce((lookup, mapping) => {
-        lookup[mapping.channel] = mapping.phase;
-        return lookup;
-      }, {});
-    },
-    channelsByPhase() {
-      return this.parsedMappings.reduce((lookup, mapping) => {
-        if (!lookup[mapping.phase]) {
-          lookup[mapping.phase] = [];
-        }
-        lookup[mapping.phase].push(mapping.channel);
-        return lookup;
-      }, {});
-    },
-    leftAxisTitle() {
-      return this.rowMode === "phase" ? "Phase" : "Detector Channel";
-    },
-    rightAxisTitle() {
-      return this.rowMode === "phase"
-        ? "Mapped Detector Channels"
-        : "Mapped Phase";
+    channelAxisStyle() {
+      return {
+        gridTemplateColumns: `120px repeat(${this.orderedChannels.length || 1}, minmax(48px, 1fr))`,
+      };
     },
     gridStyle() {
       return {
-        gridTemplateColumns: "150px 1fr 180px",
-      };
-    },
-    xAxisStyle() {
-      return {
-        gridTemplateColumns: `repeat(${this.xAxisLabels.length || 1}, minmax(12px, 1fr))`,
+        gridTemplateColumns: `120px repeat(${this.orderedChannels.length || 1}, minmax(48px, 1fr))`,
       };
     },
   },
   methods: {
-    processHeatMap() {
+    buildCycleHeatMap() {
       this.errorMessage = "";
-      this.heatGrid = [];
-      this.xAxisLabels = [];
-      this.maxValue = 0;
+      this.cycleRows = [];
+      this.orderedChannels = [];
+      this.maxDuration = 0;
 
-      const parsedEvents = this.parseDetectorEvents();
-      if (!parsedEvents.length) {
+      const events = this.parseDetectorEvents();
+      if (!events.length) {
         this.errorMessage = "No detector ON/OFF events were found in the input CSV data.";
         return;
       }
 
-      const binSizeMinutes = Number(this.binMinutes);
-      const safeBinMinutes = Number.isFinite(binSizeMinutes)
-        ? Math.max(1, Math.min(120, Math.floor(binSizeMinutes)))
-        : 15;
-
-      const timeRange = this.getRange(parsedEvents.map((event) => event.timestampMs));
-      if (!timeRange) {
-        this.errorMessage = "Unable to compute event timestamps from the CSV input.";
+      const occupancyIntervals = this.pairDetectorOccupancy(events);
+      if (!occupancyIntervals.length) {
+        this.errorMessage = "No valid ON-to-OFF detector occupancy intervals were found.";
         return;
       }
 
-      const binSizeMs = safeBinMinutes * 60 * 1000;
-      const binCount = Math.max(
-        1,
-        Math.ceil((timeRange.max - timeRange.min + 1) / binSizeMs),
-      );
-      this.xAxisLabels = Array.from({ length: binCount }, (_, index) => {
-        const labelTimeMs = timeRange.min + index * binSizeMs;
-        return new Date(labelTimeMs).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      });
-
-      const matrix = this.buildMatrix(parsedEvents, timeRange.min, binSizeMs, binCount);
-      this.heatGrid = matrix.rows;
-      this.maxValue = matrix.maxValue;
-      if (!this.heatGrid.length) {
-        this.errorMessage =
-          "No rows available. Add detector-to-phase mappings and verify detector events are present.";
+      const cycleRows = this.buildCyclesFromIntervals(occupancyIntervals);
+      if (!cycleRows.length) {
+        this.errorMessage = "Unable to build cycle rows from detector occupancy intervals.";
+        return;
       }
+
+      this.cycleRows = cycleRows;
+      this.orderedChannels = this.sortChannelsByUtilization(occupancyIntervals);
+      this.maxDuration = Math.max(
+        0,
+        ...cycleRows.flatMap((row) =>
+          this.orderedChannels.map((channel) => this.getCellDuration(row, channel)),
+        ),
+      );
     },
     parseDetectorEvents() {
       return this.inputData
@@ -292,7 +180,6 @@ export default {
           return {
             timestampMs,
             channel,
-            eventCode,
             isOn,
             isOff,
           };
@@ -300,62 +187,9 @@ export default {
         .filter(Boolean)
         .sort((a, b) => a.timestampMs - b.timestampMs);
     },
-    getRange(values) {
-      const filteredValues = values.filter((value) => Number.isFinite(value));
-      if (!filteredValues.length) {
-        return null;
-      }
-      return {
-        min: Math.min(...filteredValues),
-        max: Math.max(...filteredValues),
-      };
-    },
-    buildMatrix(events, startMs, binSizeMs, binCount) {
-      if (this.metricMode === "duration") {
-        return this.buildDurationMatrix(events, startMs, binSizeMs, binCount);
-      }
-      return this.buildCountMatrix(events, startMs, binSizeMs, binCount);
-    },
-    buildCountMatrix(events, startMs, binSizeMs, binCount) {
-      const getRowKey = (event) => {
-        if (this.rowMode === "phase") {
-          return this.mappingByChannel[event.channel] ?? null;
-        }
-        return event.channel;
-      };
-
-      const rowValues = new Map();
-
-      events.forEach((event) => {
-        const includeEvent =
-          this.eventFilter === "all" ||
-          (this.eventFilter === "on" && event.isOn) ||
-          (this.eventFilter === "off" && event.isOff);
-        if (!includeEvent) {
-          return;
-        }
-
-        const rowKey = getRowKey(event);
-        if (rowKey === null || rowKey === undefined) {
-          return;
-        }
-
-        const binIndex = Math.floor((event.timestampMs - startMs) / binSizeMs);
-        if (binIndex < 0 || binIndex >= binCount) {
-          return;
-        }
-
-        if (!rowValues.has(rowKey)) {
-          rowValues.set(rowKey, Array.from({ length: binCount }, () => 0));
-        }
-        rowValues.get(rowKey)[binIndex] += 1;
-      });
-
-      return this.finalizeRows(rowValues);
-    },
-    buildDurationMatrix(events, startMs, binSizeMs, binCount) {
+    pairDetectorOccupancy(events) {
       const onStartByChannel = new Map();
-      const rowValues = new Map();
+      const occupancyIntervals = [];
 
       events.forEach((event) => {
         if (event.isOn) {
@@ -372,85 +206,95 @@ export default {
           return;
         }
 
-        const durationSeconds = (event.timestampMs - startTime) / 1000;
+        occupancyIntervals.push({
+          channel: event.channel,
+          startMs: startTime,
+          endMs: event.timestampMs,
+          durationSeconds: (event.timestampMs - startTime) / 1000,
+        });
         onStartByChannel.delete(event.channel);
-
-        const rowKey =
-          this.rowMode === "phase"
-            ? this.mappingByChannel[event.channel] ?? null
-            : event.channel;
-
-        if (rowKey === null || rowKey === undefined) {
-          return;
-        }
-
-        const binIndex = Math.floor((event.timestampMs - startMs) / binSizeMs);
-        if (binIndex < 0 || binIndex >= binCount) {
-          return;
-        }
-
-        if (!rowValues.has(rowKey)) {
-          rowValues.set(rowKey, Array.from({ length: binCount }, () => 0));
-        }
-        rowValues.get(rowKey)[binIndex] += durationSeconds;
       });
 
-      return this.finalizeRows(rowValues);
+      return occupancyIntervals.sort((a, b) => a.startMs - b.startMs);
     },
-    finalizeRows(rowValues) {
-      const rowKeys = Array.from(rowValues.keys()).sort((a, b) => a - b);
-      const rows = rowKeys.map((rowKey) => {
-        const values = rowValues.get(rowKey) || [];
-        return {
-          id: rowKey,
-          leftLabel: this.rowMode === "phase" ? `Phase ${rowKey}` : `Ch ${rowKey}`,
-          rightLabel:
-            this.rowMode === "phase"
-              ? this.getChannelListForPhase(rowKey)
-              : this.getPhaseForChannel(rowKey),
-          cells: values.map((value, binIndex) => ({ binIndex, value })),
-        };
+    buildCyclesFromIntervals(intervals) {
+      const cycles = [];
+      let activeIntervals = [];
+      let currentCycle = null;
+
+      intervals.forEach((interval) => {
+        activeIntervals = activeIntervals.filter((item) => item.endMs > interval.startMs);
+
+        if (!currentCycle || activeIntervals.length === 0) {
+          currentCycle = {
+            cycleNumber: cycles.length + 1,
+            cellsByChannel: {},
+          };
+          cycles.push(currentCycle);
+        }
+
+        if (!currentCycle.cellsByChannel[interval.channel]) {
+          currentCycle.cellsByChannel[interval.channel] = [];
+        }
+        currentCycle.cellsByChannel[interval.channel].push(interval);
+        activeIntervals.push(interval);
       });
 
-      const maxValue = Math.max(
-        0,
-        ...rows.flatMap((row) => row.cells.map((cell) => Number(cell.value) || 0)),
-      );
-
-      return { rows, maxValue };
+      return cycles;
     },
-    getChannelListForPhase(phase) {
-      const channels = this.channelsByPhase[phase] || [];
-      if (!channels.length) {
-        return "Unmapped";
+    sortChannelsByUtilization(intervals) {
+      const durationByChannel = intervals.reduce((lookup, interval) => {
+        lookup[interval.channel] = (lookup[interval.channel] || 0) + interval.durationSeconds;
+        return lookup;
+      }, {});
+
+      return Object.keys(durationByChannel)
+        .map((value) => parseInt(value, 10))
+        .sort((a, b) => {
+          const delta = (durationByChannel[a] || 0) - (durationByChannel[b] || 0);
+          if (delta === 0) {
+            return a - b;
+          }
+          return this.sortMode === "highest" ? -delta : delta;
+        });
+    },
+    getCellDuration(row, channel) {
+      const intervals = row.cellsByChannel[channel] || [];
+      return intervals.reduce((sum, interval) => sum + interval.durationSeconds, 0);
+    },
+    formatTime(timestampMs) {
+      return new Date(timestampMs).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    },
+    buildCellTitle(row, channel) {
+      const intervals = row.cellsByChannel[channel] || [];
+      if (!intervals.length) {
+        return `Cycle ${row.cycleNumber}\nChannel ${channel}\nNo occupancy in this cycle`;
       }
-      return channels
-        .slice()
-        .sort((a, b) => a - b)
-        .map((channel) => `Ch ${channel}`)
-        .join(", ");
-    },
-    getPhaseForChannel(channel) {
-      const phase = this.mappingByChannel[channel];
-      return Number.isFinite(phase) ? `Phase ${phase}` : "Unmapped";
+
+      const intervalLines = intervals
+        .map((interval, index) => {
+          return `${index + 1}. ${this.formatTime(interval.startMs)} to ${this.formatTime(
+            interval.endMs,
+          )} (${interval.durationSeconds.toFixed(2)} sec)`;
+        })
+        .join("\n");
+
+      return `Cycle ${row.cycleNumber}\nChannel ${channel}\n${intervalLines}`;
     },
     getHeatColor(value) {
-      if (!this.maxValue || value <= 0) {
-        return "#f4f6f8";
+      if (!this.maxDuration || value <= 0) {
+        return "#f3f5f7";
       }
 
-      const ratio = Math.min(1, value / this.maxValue);
-      const hue = 120 - ratio * 120;
-      const saturation = 85;
-      const lightness = 92 - ratio * 42;
+      const ratio = Math.min(1, value / this.maxDuration);
+      const hue = 210 - ratio * 210;
+      const saturation = 82;
+      const lightness = 96 - ratio * 46;
       return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-    },
-    buildCellTitle(row, cell) {
-      const metricLabel =
-        this.metricMode === "count"
-          ? `${cell.value.toFixed(0)} detector events`
-          : `${cell.value.toFixed(2)} seconds occupied`;
-      return `${row.leftLabel}\n${this.xAxisLabels[cell.binIndex] || "Time bin"}\n${metricLabel}`;
     },
   },
 };
@@ -462,55 +306,64 @@ export default {
   font-weight: 600;
 }
 
-.heat-map-scroll {
-  overflow-x: auto;
+.heat-map-shell {
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
 }
 
-.heat-map {
-  min-width: 980px;
+.channel-axis,
+.heat-map-grid {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   align-items: stretch;
 }
 
-.axis-header {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #333;
+.channel-axis {
+  background: #f7f9fb;
+  border-bottom: 1px solid #d7dee6;
   padding: 4px;
 }
 
-.x-axis-grid,
-.row-cells {
-  display: grid;
-  gap: 1px;
-}
-
-.x-label {
-  font-size: 0.7rem;
-  text-align: center;
-  color: #444;
-  white-space: nowrap;
-  transform: rotate(-45deg);
-  transform-origin: center;
-  height: 34px;
-}
-
-.row-label {
+.axis-header-cell,
+.channel-header,
+.cycle-label {
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
+  min-height: 28px;
   display: flex;
   align-items: center;
-  min-height: 16px;
+  justify-content: center;
+  text-align: center;
 }
 
-.row-label.right {
-  justify-content: flex-start;
-  color: #555;
+.heat-map-scroll-y {
+  max-height: 520px;
+  overflow-y: auto;
+  padding: 4px;
 }
 
-.cell {
-  min-height: 16px;
+.cycle-label {
+  font-weight: 600;
+  color: #2f3b48;
+}
+
+.cycle-cell {
+  min-height: 32px;
   border: 1px solid #e2e8ee;
+  border-radius: 3px;
+}
+
+.cycle-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.legend-bar {
+  width: 160px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(to right, hsl(210, 82%, 96%), hsl(0, 82%, 50%));
 }
 </style>

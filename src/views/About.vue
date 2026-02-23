@@ -86,6 +86,12 @@ export default {
               path: "/detection-plotter",
             },
             {
+              title: "Detector Bubble Chart",
+              description:
+                "Plot off-to-on detector gaps by cycle with bubble size based on detector on duration.",
+              path: "/detector-bubble-chart",
+            },
+            {
               title: "Delay & Count Estimator",
               description:
                 "Estimate call delay between detector actuations and phase service.",

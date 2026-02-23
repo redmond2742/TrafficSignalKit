@@ -169,6 +169,12 @@ export const routeMeta = {
       "Visualize detection events by channel to validate detector performance.",
     path: "/detection-plotter",
   },
+  detectorBubbleChart: {
+    title: "Detector Bubble Chart | Gap and Duration by Cycle",
+    description:
+      "Plot detector off-to-on gaps by cycle with bubble size scaled to detector on duration and phase color coding.",
+    path: "/detector-bubble-chart",
+  },
   delayEstimator: {
     title: "Detector Call Delay Estimator | Phase Service Timing",
     description:

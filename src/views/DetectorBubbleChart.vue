@@ -21,10 +21,20 @@
               <li>High-resolution CSV rows: timestamp, event code, parameter</li>
               <li>Detector on/off events (81/82 or other detector toggles)</li>
               <li>Optional phase and coordinated cycle events for richer context</li>
+              <li>Optional detector map lines like <code>DET 1 1</code> (channel, phase)</li>
             </ul>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
+    </div>
+
+    <br />
+    <div class="mapping-wrap">
+      <h3>Detector Channel to Phase Mapping (Optional)</h3>
+      <InputBox
+        v-model="detectorPhaseMapInput"
+        :defaultText="detectorPhaseMapPlaceholder"
+      />
     </div>
 
     <br />
@@ -61,6 +71,7 @@ import {
   Legend,
 } from "chart.js";
 import ProcessDetectionEvents from "../components/ProcessDetectionEvents.vue";
+import InputBox from "../components/foundational/InputBox.vue";
 
 ChartJS.register(PointElement, LinearScale, Tooltip, Legend, zoom);
 
@@ -69,10 +80,13 @@ export default {
   components: {
     Bubble,
     ProcessDetectionEvents,
+    InputBox,
   },
   data() {
     return {
       panel: [],
+      detectorPhaseMapInput: "",
+      detectorPhaseMapPlaceholder: "DET 1 1\nDET 2 2",
       detectionEvents: [],
       phaseEvents: [],
       coordCycleStateEvents: [],
@@ -211,6 +225,9 @@ export default {
       const cycleAnchors = this.buildCycleAnchors();
       const detectorIntervalsByChannel = this.buildDetectorIntervalsByChannel();
       const phaseLookup = this.buildPhaseLookup();
+      const mappedPhaseByChannel = this.parseDetectorPhaseMap(
+        this.detectorPhaseMapInput
+      );
       const rows = [];
 
       detectorIntervalsByChannel.forEach((intervals, channel) => {
@@ -225,7 +242,8 @@ export default {
             cycleAnchors,
             interval.onTimestampMs
           );
-          const phase = phaseLookup(interval.onTimestampMs);
+          const phase =
+            mappedPhaseByChannel.get(channel) ?? phaseLookup(interval.onTimestampMs);
 
           rows.push({
             channel,
@@ -241,6 +259,36 @@ export default {
       });
 
       this.bubbleRows = rows.sort((a, b) => a.cycleNumber - b.cycleNumber);
+    },
+    parseDetectorPhaseMap(input) {
+      const map = new Map();
+
+      String(input || "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .forEach((line) => {
+          const numbers = line.match(/\d+/g);
+          if (!numbers || numbers.length < 2) {
+            return;
+          }
+
+          const detectorChannel = Number(numbers[0]);
+          const phase = Number(numbers[1]);
+
+          if (
+            Number.isNaN(detectorChannel) ||
+            Number.isNaN(phase) ||
+            detectorChannel <= 0 ||
+            phase <= 0
+          ) {
+            return;
+          }
+
+          map.set(detectorChannel, phase);
+        });
+
+      return map;
     },
     buildDetectorIntervalsByChannel() {
       const intervalsByChannel = new Map();

@@ -135,6 +135,15 @@ export default {
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
+          title: "Detector Bubble Chart",
+          description:
+            "Bubble chart of detector on-duration and off-to-on gaps by cycle",
+          link: "/detector-bubble-chart",
+          topics: ["Controller Data", "Detection", "Cycles"],
+        },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
           title: "Detector Event Heat Map",
           description:
             "Heat map detector activity by time of day and phase/channel mappings",

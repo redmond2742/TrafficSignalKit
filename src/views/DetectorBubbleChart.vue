@@ -10,8 +10,8 @@
             This tool parses detector on/off events from high-resolution controller
             data and plots each detector actuation as a bubble. The X-axis is the
             cycle number, the Y-axis is the gap from detector off to the next detector
-            on for the same channel, and bubble size is scaled to detector on duration
-            using a square-root transform.
+            on for the same channel, and bubble size is scaled to detector on duration.
+            You can choose square-root (default) or linear radius scaling.
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -48,6 +48,18 @@
     <div class="actions-row">
       <v-btn color="primary" @click="processDetection">Process Detector Bubble Chart</v-btn>
       <v-btn color="info" variant="outlined" @click="resetZoom">Reset Zoom</v-btn>
+    </div>
+
+    <div class="mt-4">
+      <v-btn-toggle
+        v-model="bubbleSizeScale"
+        color="primary"
+        mandatory
+        density="comfortable"
+      >
+        <v-btn value="sqrt">Bubble Size: Square Root</v-btn>
+        <v-btn value="linear">Bubble Size: Linear</v-btn>
+      </v-btn-toggle>
     </div>
 
     <div v-if="bubbleChartData.datasets.length" class="chart-wrap">
@@ -92,6 +104,7 @@ export default {
       coordCycleStateEvents: [],
       bubbleRows: [],
       hasProcessed: false,
+      bubbleSizeScale: "sqrt",
     };
   },
   computed: {
@@ -237,7 +250,11 @@ export default {
           }
 
           const duration = interval.durationSec;
-          const radius = Math.max(4, Math.sqrt(Math.max(duration, 0)) * 3.4);
+          const safeDuration = Math.max(duration, 0);
+          const radius =
+            this.bubbleSizeScale === "linear"
+              ? Math.max(4, safeDuration * 1.6)
+              : Math.max(4, Math.sqrt(safeDuration) * 3.4);
           const cycleNumber = this.lookupCycleNumber(
             cycleAnchors,
             interval.onTimestampMs
@@ -415,6 +432,11 @@ export default {
 
         return activeYellow.length ? activeYellow[0] : null;
       };
+    },
+  },
+  watch: {
+    bubbleSizeScale() {
+      this.rebuildBubbleRows();
     },
   },
 };

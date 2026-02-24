@@ -144,6 +144,15 @@ export default {
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
+          title: "Phase Bubble Scatter",
+          description:
+            "Bubble scatter of phase split, time since last ON, and detector OFF behavior",
+          link: "/phase-bubble-scatter",
+          topics: ["Controller Data", "Detection", "Phase"],
+        },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
           title: "Detector Event Heat Map",
           description:
             "Heat map detector activity by time of day and phase/channel mappings",

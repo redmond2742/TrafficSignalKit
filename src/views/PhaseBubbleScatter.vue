@@ -29,7 +29,6 @@
     </v-row>
 
     <v-row>
-      <v-col cols="12" md="2"><v-select :items="phaseOptions" v-model="phase" label="Phase" /></v-col>
       <v-col cols="12" md="2"><v-switch v-model="useAllDetectorsForPhase" label="Use all detectors for phase" /></v-col>
       <v-col cols="12" md="2"><v-text-field v-model.number="ignoreFirstMinutes" type="number" label="Ignore first N minutes" /></v-col>
       <v-col cols="12" md="2"><v-select :items="['keep-first','aggregate']" v-model="cycleHandling" label="Within-cycle handling" /></v-col>
@@ -58,10 +57,10 @@
     </div>
 
     <v-table density="compact" class="mt-4" v-if="points.length">
-      <thead><tr><th>cycle</th><th>start</th><th>split_s</th><th>time_since_last_on_s</th><th>off_count</th><th>alpha</th><th>fill</th></tr></thead>
+      <thead><tr><th>phase</th><th>cycle</th><th>start</th><th>split_s</th><th>time_since_last_on_s</th><th>off_count</th><th>alpha</th><th>fill</th></tr></thead>
       <tbody>
-        <tr v-for="row in pagedPoints" :key="row.cycle_index + '-' + row.service_start_ts">
-          <td>{{ row.cycle_index }}</td><td>{{ row.service_start_iso }}</td><td>{{ row.split_s.toFixed(2) }}</td><td>{{ fmt(row.time_since_last_on_s) }}</td><td>{{ row.off_count }}</td><td>{{ row.alpha.toFixed(2) }}</td><td>{{ row.fill_factor.toFixed(2) }}</td>
+        <tr v-for="row in pagedPoints" :key="row.phase + '-' + row.cycle_index + '-' + row.service_start_ts">
+          <td>{{ row.phase }}</td><td>{{ row.cycle_index }}</td><td>{{ row.service_start_iso }}</td><td>{{ row.split_s.toFixed(2) }}</td><td>{{ fmt(row.time_since_last_on_s) }}</td><td>{{ row.off_count }}</td><td>{{ row.alpha.toFixed(2) }}</td><td>{{ row.fill_factor.toFixed(2) }}</td>
         </tr>
       </tbody>
     </v-table>
@@ -81,7 +80,7 @@ export default {
   components: { Bubble },
   data() {
     return {
-      csvText: '', detectorText: 'DET 1 1', phase: 1, phaseOptions: Array.from({ length: 16 }, (_, i) => i + 1),
+      csvText: '', detectorText: 'DET 1 1',
       useAllDetectorsForPhase: true, ignoreFirstMinutes: 0, cycleHandling: 'keep-first', bubbleMode: 'scaled', scaledMode: 'sqrt',
       minAlpha: 0.15, maxAlpha: 0.9, capP95: true, includeFirst: false, points: [], loading: false, page: 1, pageSize: 25,
       worker: null,
@@ -89,14 +88,25 @@ export default {
   },
   computed: {
     chartData() {
-      const splits = this.points.map((p) => p.split_s);
+      const pointsByPhase = this.points.reduce((acc, point) => {
+        if (!acc.has(point.phase)) acc.set(point.phase, []);
+        acc.get(point.phase).push(point);
+        return acc;
+      }, new Map());
+
+      const datasets = [...pointsByPhase.entries()].sort((a, b) => a[0] - b[0]).map(([phase, phasePoints]) => {
+        const splits = phasePoints.map((p) => p.split_s);
+        const hue = (phase * 43) % 360;
+        return {
+          label: `Phase ${phase}`,
+          data: phasePoints.map((p) => ({ x: p.cycle_index, y: p.time_since_last_on_s ?? 0, r: bubbleRadius(p.split_s, { mode: this.bubbleMode, scaledMode: this.scaledMode, capP95: this.capP95, splits }), meta: p })),
+          pointBackgroundColor: phasePoints.map((p) => `hsla(${hue}, ${35 + p.fill_factor * 50}%, ${72 - p.fill_factor * 28}%, ${p.alpha})`),
+          pointBorderColor: `hsl(${hue}, 75%, 35%)`,
+        };
+      });
+
       return {
-        datasets: [{
-          label: 'Phase service points',
-          data: this.points.map((p) => ({ x: p.cycle_index, y: p.time_since_last_on_s ?? 0, r: bubbleRadius(p.split_s, { mode: this.bubbleMode, scaledMode: this.scaledMode, capP95: this.capP95, splits }), meta: p })),
-          pointBackgroundColor: this.points.map((p) => `hsla(210, ${20 + p.fill_factor * 70}%, ${80 - p.fill_factor * 40}%, ${p.alpha})`),
-          pointBorderColor: '#0d47a1',
-        }],
+        datasets,
       };
     },
     chartOptions() {
@@ -113,7 +123,7 @@ export default {
             callbacks: {
               label: (ctx) => {
                 const m = ctx.raw.meta;
-                return [`cycle: ${m.cycle_index}`, `start: ${m.service_start_iso}`, `split_s: ${m.split_s.toFixed(2)}`, `time_since_last_on_s: ${m.time_since_last_on_s ?? 'NA'}`, `off_count: ${m.off_count}`];
+                return [`phase: ${m.phase}`, `cycle: ${m.cycle_index}`, `start: ${m.service_start_iso}`, `split_s: ${m.split_s.toFixed(2)}`, `time_since_last_on_s: ${m.time_since_last_on_s ?? 'NA'}`, `off_count: ${m.off_count}`];
               },
             },
           },
@@ -139,7 +149,6 @@ export default {
         this.worker.onmessage = (evt) => {
           if (evt.data.type === 'result') {
             this.points = evt.data.payload.points;
-            if (evt.data.payload.phases.length) this.phaseOptions = evt.data.payload.phases;
             this.page = 1;
             this.loading = false;
           }
@@ -148,11 +157,11 @@ export default {
           }
         };
       }
-      this.worker.postMessage({ type: 'process', payload: { csvText: this.csvText, detectorText: this.detectorText, phase: this.phase, useAllDetectorsForPhase: this.useAllDetectorsForPhase, cycleHandling: this.cycleHandling, includeFirst: this.includeFirst, minAlpha: this.minAlpha, maxAlpha: this.maxAlpha, ignoreFirstMinutes: this.ignoreFirstMinutes } });
+      this.worker.postMessage({ type: 'process', payload: { csvText: this.csvText, detectorText: this.detectorText, useAllDetectorsForPhase: this.useAllDetectorsForPhase, cycleHandling: this.cycleHandling, includeFirst: this.includeFirst, minAlpha: this.minAlpha, maxAlpha: this.maxAlpha, ignoreFirstMinutes: this.ignoreFirstMinutes } });
     },
     downloadCsv() {
-      const header = 'cycle_index,service_start_iso,service_start_ts,split_s,time_since_last_on_s,off_count,assigned_detectors,alpha,fill_factor';
-      const rows = this.points.map((p) => [p.cycle_index, p.service_start_iso, p.service_start_ts, p.split_s, p.time_since_last_on_s ?? '', p.off_count, `"${p.assigned_detectors.join('|')}"`, p.alpha, p.fill_factor].join(','));
+      const header = 'phase,cycle_index,service_start_iso,service_start_ts,split_s,time_since_last_on_s,off_count,assigned_detectors,alpha,fill_factor';
+      const rows = this.points.map((p) => [p.phase, p.cycle_index, p.service_start_iso, p.service_start_ts, p.split_s, p.time_since_last_on_s ?? '', p.off_count, `"${p.assigned_detectors.join('|')}"`, p.alpha, p.fill_factor].join(','));
       this.downloadBlob([header, ...rows].join('\n'), 'phase-bubble-scatter-points.csv', 'text/csv');
     },
     downloadPng() {
@@ -165,7 +174,7 @@ export default {
       link.click();
     },
     downloadSvg() {
-      const circles = this.chartData.datasets[0].data.map((pt, idx) => `<circle cx="${pt.x * 12 + 40}" cy="${400 - pt.y * 4}" r="${pt.r}" fill="${this.chartData.datasets[0].pointBackgroundColor[idx]}" stroke="#0d47a1"/>`).join('');
+      const circles = this.chartData.datasets.map((dataset) => dataset.data.map((pt, idx) => `<circle cx="${pt.x * 12 + 40}" cy="${400 - pt.y * 4}" r="${pt.r}" fill="${dataset.pointBackgroundColor[idx]}" stroke="${dataset.pointBorderColor}"/>`).join('')).join('');
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420"><rect width="100%" height="100%" fill="white"/>${circles}</svg>`;
       this.downloadBlob(svg, 'phase-bubble-scatter.svg', 'image/svg+xml');
     },

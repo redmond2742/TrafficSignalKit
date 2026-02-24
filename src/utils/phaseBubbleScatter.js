@@ -152,6 +152,7 @@ export function buildPhaseBubblePoints({ events, selectedPhase, assignedDetector
     const fillFactor = maxOff > 0 ? row.offCount / maxOff : 0;
     const alpha = maxOff > 0 ? Math.max(minAlpha, Math.min(maxAlpha, maxAlpha - fillFactor * (maxAlpha - minAlpha))) : maxAlpha;
     return {
+      phase: selectedPhase,
       cycle_index: row.cycleIndex,
       service_start_ts: row.startTs,
       service_start_iso: new Date(row.startTs).toISOString(),

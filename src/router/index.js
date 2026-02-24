@@ -44,6 +44,7 @@ import SplitFailureChecker from '../views/SplitFailureChecker'
 import DetectorEventHeatMap from '../views/DetectorEventHeatMap'
 import GapOutGapReductionHelper from '../views/GapOutGapReductionHelper'
 import DetectorBubbleChart from '../views/DetectorBubbleChart'
+import PhaseBubbleScatter from '../views/PhaseBubbleScatter'
 
 
 
@@ -254,6 +255,11 @@ const routes = [
         path: '/detector-bubble-chart',
         name: 'detectorBubbleChart',
         component: DetectorBubbleChart,
+    },
+    {
+        path: '/phase-bubble-scatter',
+        name: 'phaseBubbleScatter',
+        component: PhaseBubbleScatter,
     },
 
     {

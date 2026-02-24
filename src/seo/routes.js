@@ -175,6 +175,12 @@ export const routeMeta = {
       "Plot detector off-to-on gaps by cycle with bubble size scaled to detector on duration and phase color coding.",
     path: "/detector-bubble-chart",
   },
+  phaseBubbleScatter: {
+    title: "Phase Bubble Scatter | Phase Service by Unique Cycle",
+    description:
+      "Analyze phase service splits with bubble size, transparency, and fill intensity tied to detector OFF transitions.",
+    path: "/phase-bubble-scatter",
+  },
   delayEstimator: {
     title: "Detector Call Delay Estimator | Phase Service Timing",
     description:

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDetectorAssignments, buildServiceWindows, computeDetectorOffCounts, assignCycles } from '../src/utils/phaseBubbleScatter.js';
+import { parseDetectorAssignments, buildServiceWindows, computeDetectorOffCounts, assignCycles, bubbleRadius } from '../src/utils/phaseBubbleScatter.js';
 
 test('parseDetectorAssignments supports flexible input', () => {
   const map = parseDetectorAssignments('DET 1 1\n det   2   1\n#comment\nDET 2 1\nBAD');
@@ -40,4 +40,21 @@ test('assignCycles keeps first service or aggregates', () => {
   assert.equal(keep.length, 2);
   assert.equal(keep[0].splitS, 10);
   assert.equal(agg[0].splitS, 16);
+});
+
+
+test('bubbleRadius increases with split time in linear mode', () => {
+  const options = { mode: 'linear', splits: [5, 10, 20], capP95: false, minRadius: 4, maxRadius: 20 };
+  const small = bubbleRadius(5, options);
+  const large = bubbleRadius(20, options);
+  assert.ok(large > small);
+  assert.equal(large, 20);
+});
+
+test('bubbleRadius supports scaled sizing mode', () => {
+  const options = { mode: 'scaled', scaledMode: 'log', splits: [1, 5, 30], capP95: false, minRadius: 4, maxRadius: 20 };
+  const tiny = bubbleRadius(1, options);
+  const big = bubbleRadius(30, options);
+  assert.ok(big > tiny);
+  assert.equal(big, 20);
 });

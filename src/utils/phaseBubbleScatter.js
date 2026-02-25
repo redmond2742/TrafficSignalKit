@@ -167,12 +167,31 @@ export function buildPhaseBubblePoints({ events, selectedPhase, assignedDetector
 }
 
 export function bubbleRadius(splitS, options) {
-  const { mode = 'linear', scaledMode = 'sqrt', capP95 = true, splits = [] } = options;
-  const p95 = capP95 ? percentile(splits, 0.95) : Infinity;
-  const capped = Math.min(splitS, p95 || splitS);
-  if (mode === 'linear') return Math.max(3, capped * 1.4);
-  if (scaledMode === 'log') return Math.max(3, Math.log10(capped + 1) * 10);
-  return Math.max(3, Math.sqrt(capped) * 4);
+  const {
+    mode = 'linear',
+    scaledMode = 'sqrt',
+    capP95 = true,
+    splits = [],
+    minRadius = 4,
+    maxRadius = 20,
+  } = options;
+
+  const finiteSplits = splits.filter((value) => Number.isFinite(value) && value >= 0);
+  const cap = capP95 ? percentile(finiteSplits, 0.95) : Math.max(...finiteSplits, 0);
+  const upper = Number.isFinite(cap) && cap > 0 ? cap : Math.max(...finiteSplits, 0);
+  const capped = Math.max(0, Math.min(splitS, upper || splitS || 0));
+
+  const transform = (value) => {
+    if (mode === 'linear') return value;
+    if (scaledMode === 'log') return Math.log1p(value);
+    return Math.sqrt(value);
+  };
+
+  const transformedMax = transform(upper || capped || 1);
+  const transformedValue = transform(capped);
+  const fraction = transformedMax > 0 ? transformedValue / transformedMax : 0;
+
+  return minRadius + fraction * (maxRadius - minRadius);
 }
 
 export function parseCsvRows(csvText) {

@@ -88,6 +88,7 @@ export default {
   },
   computed: {
     chartData() {
+      const allSplits = this.points.map((point) => point.split_s);
       const pointsByPhase = this.points.reduce((acc, point) => {
         if (!acc.has(point.phase)) acc.set(point.phase, []);
         acc.get(point.phase).push(point);
@@ -95,11 +96,10 @@ export default {
       }, new Map());
 
       const datasets = [...pointsByPhase.entries()].sort((a, b) => a[0] - b[0]).map(([phase, phasePoints]) => {
-        const splits = phasePoints.map((p) => p.split_s);
         const hue = (phase * 43) % 360;
         return {
           label: `Phase ${phase}`,
-          data: phasePoints.map((p) => ({ x: p.cycle_index, y: p.time_since_last_on_s ?? 0, r: bubbleRadius(p.split_s, { mode: this.bubbleMode, scaledMode: this.scaledMode, capP95: this.capP95, splits }), meta: p })),
+          data: phasePoints.map((p) => ({ x: p.cycle_index, y: p.time_since_last_on_s ?? 0, r: bubbleRadius(p.split_s, { mode: this.bubbleMode, scaledMode: this.scaledMode, capP95: this.capP95, splits: allSplits }), meta: p })),
           pointBackgroundColor: phasePoints.map((p) => `hsla(${hue}, ${35 + p.fill_factor * 50}%, ${72 - p.fill_factor * 28}%, ${p.alpha})`),
           pointBorderColor: `hsl(${hue}, 75%, 35%)`,
         };

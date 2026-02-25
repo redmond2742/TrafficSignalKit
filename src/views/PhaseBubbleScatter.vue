@@ -113,7 +113,6 @@ export default {
       return {
         responsive: true,
         animation: false,
-        parsing: false,
         scales: {
           x: { title: { display: true, text: 'Cycle (unique per cycle, phase not repeated)' } },
           y: { title: { display: true, text: 'Time since the last time the phase was ON (s)' } },

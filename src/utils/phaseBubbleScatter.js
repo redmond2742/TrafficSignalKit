@@ -72,6 +72,23 @@ export function computeDetectorOffCounts(events, windows, detectors) {
   });
 }
 
+export function computeDetectorDelayToGreen(events, windows, detectors) {
+  const detectorSet = new Set(detectors);
+  if (!detectorSet.size || windows.length === 0) return windows.map(() => null);
+
+  return windows.map((window, index) => {
+    const previousEnd = index > 0 ? windows[index - 1].endTs : -Infinity;
+    let firstDetectorOn = null;
+    for (const evt of events) {
+      if (!detectorSet.has(evt.param) || !DETECTOR_ON_CODES.has(evt.code)) continue;
+      if (evt.tsMs <= previousEnd || evt.tsMs > window.startTs) continue;
+      if (firstDetectorOn == null || evt.tsMs < firstDetectorOn) firstDetectorOn = evt.tsMs;
+    }
+    if (firstDetectorOn == null) return null;
+    return Math.max(0, (window.startTs - firstDetectorOn) / 1000);
+  });
+}
+
 function percentile(values, p) {
   if (!values.length) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -132,11 +149,17 @@ export function assignCycles(windows, coordCycleEvents = [], mode = 'keep-first'
 export function buildPhaseBubblePoints({ events, selectedPhase, assignedDetectors, cycleHandling = 'keep-first', includeFirst = false, minAlpha = 0.15, maxAlpha = 0.9, startTs = null, endTs = null, ignoreFirstMinutes = 0 }) {
   const windows = buildServiceWindows(events, selectedPhase);
   const offCounts = computeDetectorOffCounts(events, windows, assignedDetectors);
-  const merged = windows.map((w, i) => ({ ...w, offCount: offCounts[i] || 0 }));
+  const delaysToGreen = computeDetectorDelayToGreen(events, windows, assignedDetectors);
+  const merged = windows.map((w, i) => ({ ...w, offCount: offCounts[i] || 0, delayToGreenS: delaysToGreen[i] }));
   const boundaries = events.filter((evt) => evt.code === COORD_CYCLE_EVENT_CODE).map((evt) => evt.tsMs);
   const cycled = assignCycles(merged, boundaries, cycleHandling).map((row) => {
     const matches = merged.filter((src) => src.startTs >= row.startTs && src.endTs <= row.endTs);
-    return { ...row, offCount: matches.reduce((acc, item) => acc + item.offCount, 0) };
+    const cycleDelays = matches.map((item) => item.delayToGreenS).filter((value) => Number.isFinite(value));
+    return {
+      ...row,
+      offCount: matches.reduce((acc, item) => acc + item.offCount, 0),
+      detectorDelayS: cycleDelays.length ? Math.min(...cycleDelays) : null,
+    };
   });
 
   const minTs = startTs ?? -Infinity;
@@ -158,6 +181,7 @@ export function buildPhaseBubblePoints({ events, selectedPhase, assignedDetector
       service_start_iso: new Date(row.startTs).toISOString(),
       split_s: row.splitS,
       time_since_last_on_s: since,
+      detector_delay_s: row.detectorDelayS,
       off_count: row.offCount,
       assigned_detectors: assignedDetectors,
       alpha,

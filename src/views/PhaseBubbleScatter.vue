@@ -6,8 +6,8 @@
       <v-expansion-panel title="About this tool">
         <v-expansion-panel-text>
           Visualizes one bubble per unique phase service cycle. X is cycle index (phase not repeated), Y is
-          <b>Time since the last time the phase was ON (s)</b>, bubble size is split, alpha is OFF-transition transparency,
-          and fill intensity is normalized OFF count.
+          <b>Detector OFF transitions per served phase</b> (or detector delay to green, via toggle), bubble size is split,
+          alpha is OFF-transition transparency, and fill intensity is normalized OFF count.
         </v-expansion-panel-text>
       </v-expansion-panel>
       <v-expansion-panel title="Cycle rule used (no-repeat in same cycle)">
@@ -29,11 +29,10 @@
     </v-row>
 
     <v-row>
-      <v-col cols="12" md="2"><v-switch v-model="useAllDetectorsForPhase" label="Use all detectors for phase" /></v-col>
       <v-col cols="12" md="2"><v-text-field v-model.number="ignoreFirstMinutes" type="number" label="Ignore first N minutes" /></v-col>
       <v-col cols="12" md="2"><v-select :items="['keep-first','aggregate']" v-model="cycleHandling" label="Within-cycle handling" /></v-col>
-      <v-col cols="12" md="2"><v-select :items="['linear','scaled']" v-model="bubbleMode" label="Bubble sizing" /></v-col>
-      <v-col cols="12" md="2" v-if="bubbleMode==='scaled'"><v-select :items="['sqrt','log']" v-model="scaledMode" label="Scaled mode" /></v-col>
+      <v-col cols="12" md="3"><v-select :items="bubbleSizingOptions" item-title="title" item-value="value" v-model="bubbleSizing" label="Bubble sizing" /></v-col>
+      <v-col cols="12" md="3"><v-switch v-model="useDetectorDelayYAxis" label="Y-axis: Detector delay to green" /></v-col>
     </v-row>
 
     <v-row>
@@ -43,24 +42,23 @@
       <v-col cols="12" md="2"><v-switch v-model="includeFirst" label="Include first (0/NA)" /></v-col>
       <v-col cols="12" md="4" class="d-flex ga-2">
         <v-btn color="primary" :loading="loading" @click="process">Process</v-btn>
-        <v-btn color="secondary" :disabled="!points.length" @click="downloadCsv">Download points CSV</v-btn>
-        <v-btn color="secondary" :disabled="!points.length" @click="downloadPng">PNG</v-btn>
-        <v-btn color="secondary" :disabled="!points.length" @click="downloadSvg">SVG</v-btn>
+        <v-select :items="downloadFormats" item-title="title" item-value="value" v-model="downloadFormat" label="Download format" density="compact" hide-details class="download-format" :disabled="!points.length" />
+        <v-btn color="secondary" :disabled="!points.length" @click="download">Download</v-btn>
       </v-col>
     </v-row>
 
     <div v-if="points.length" class="legend-note">
-      <p><b>Legend:</b> size = split, alpha = OFF transitions transparency, fill intensity = normalized OFF transitions.</p>
+      <p><b>Legend:</b> size = split, y-axis = {{ useDetectorDelayYAxis ? "detector delay to green" : "detector OFF transitions" }}, alpha = OFF transitions transparency, fill intensity = normalized OFF transitions.</p>
     </div>
     <div class="chart-wrap" v-if="points.length">
       <Bubble ref="bubbleChart" :data="chartData" :options="chartOptions" />
     </div>
 
     <v-table density="compact" class="mt-4" v-if="points.length">
-      <thead><tr><th>phase</th><th>cycle</th><th>start</th><th>split_s</th><th>time_since_last_on_s</th><th>off_count</th><th>alpha</th><th>fill</th></tr></thead>
+      <thead><tr><th>phase</th><th>cycle</th><th>start</th><th>split_s</th><th>time_since_last_on_s</th><th>detector_delay_s</th><th>off_count</th><th>alpha</th><th>fill</th></tr></thead>
       <tbody>
         <tr v-for="row in pagedPoints" :key="row.phase + '-' + row.cycle_index + '-' + row.service_start_ts">
-          <td>{{ row.phase }}</td><td>{{ row.cycle_index }}</td><td>{{ row.service_start_iso }}</td><td>{{ row.split_s.toFixed(2) }}</td><td>{{ fmt(row.time_since_last_on_s) }}</td><td>{{ row.off_count }}</td><td>{{ row.alpha.toFixed(2) }}</td><td>{{ row.fill_factor.toFixed(2) }}</td>
+          <td>{{ row.phase }}</td><td>{{ row.cycle_index }}</td><td>{{ row.service_start_iso }}</td><td>{{ row.split_s.toFixed(2) }}</td><td>{{ fmt(row.time_since_last_on_s) }}</td><td>{{ fmt(row.detector_delay_s) }}</td><td>{{ row.off_count }}</td><td>{{ row.alpha.toFixed(2) }}</td><td>{{ row.fill_factor.toFixed(2) }}</td>
         </tr>
       </tbody>
     </v-table>
@@ -81,12 +79,26 @@ export default {
   data() {
     return {
       csvText: '', detectorText: 'DET 1 1',
-      useAllDetectorsForPhase: true, ignoreFirstMinutes: 0, cycleHandling: 'keep-first', bubbleMode: 'scaled', scaledMode: 'sqrt',
+      ignoreFirstMinutes: 0, cycleHandling: 'keep-first', bubbleSizing: 'scaled-sqrt', useDetectorDelayYAxis: false, downloadFormat: 'csv',
       minAlpha: 0.15, maxAlpha: 0.9, capP95: true, includeFirst: false, points: [], loading: false, page: 1, pageSize: 25,
       worker: null,
     };
   },
   computed: {
+    bubbleSizingOptions() {
+      return [
+        { title: 'Linear', value: 'linear' },
+        { title: 'Scaled - Sqrt', value: 'scaled-sqrt' },
+        { title: 'Scaled - Log', value: 'scaled-log' },
+      ];
+    },
+    downloadFormats() {
+      return [
+        { title: 'CSV', value: 'csv' },
+        { title: 'PNG', value: 'png' },
+        { title: 'SVG', value: 'svg' },
+      ];
+    },
     chartData() {
       const allSplits = this.points.map((point) => point.split_s);
       const pointsByPhase = this.points.reduce((acc, point) => {
@@ -99,7 +111,7 @@ export default {
         const hue = (phase * 43) % 360;
         return {
           label: `Phase ${phase}`,
-          data: phasePoints.map((p) => ({ x: p.cycle_index, y: p.time_since_last_on_s ?? 0, r: bubbleRadius(p.split_s, { mode: this.bubbleMode, scaledMode: this.scaledMode, capP95: this.capP95, splits: allSplits }), meta: p })),
+          data: phasePoints.map((p) => ({ x: p.cycle_index, y: this.yValue(p), r: bubbleRadius(p.split_s, this.bubbleRadiusOptions(allSplits)), meta: p })),
           pointBackgroundColor: phasePoints.map((p) => `hsla(${hue}, ${35 + p.fill_factor * 50}%, ${72 - p.fill_factor * 28}%, ${p.alpha})`),
           pointBorderColor: `hsl(${hue}, 75%, 35%)`,
         };
@@ -115,14 +127,14 @@ export default {
         animation: false,
         scales: {
           x: { title: { display: true, text: 'Cycle (unique per cycle, phase not repeated)' } },
-          y: { title: { display: true, text: 'Time since the last time the phase was ON (s)' } },
+          y: { title: { display: true, text: this.useDetectorDelayYAxis ? 'Detector delay to green (s)' : 'Detector OFF transitions (count)' } },
         },
         plugins: {
           tooltip: {
             callbacks: {
               label: (ctx) => {
                 const m = ctx.raw.meta;
-                return [`phase: ${m.phase}`, `cycle: ${m.cycle_index}`, `start: ${m.service_start_iso}`, `split_s: ${m.split_s.toFixed(2)}`, `time_since_last_on_s: ${m.time_since_last_on_s ?? 'NA'}`, `off_count: ${m.off_count}`];
+                return [`phase: ${m.phase}`, `cycle: ${m.cycle_index}`, `start: ${m.service_start_iso}`, `split_s: ${m.split_s.toFixed(2)}`, `time_since_last_on_s: ${m.time_since_last_on_s ?? 'NA'}`, `detector_delay_s: ${m.detector_delay_s ?? 'NA'}`, `off_count: ${m.off_count}`];
               },
             },
           },
@@ -156,11 +168,24 @@ export default {
           }
         };
       }
-      this.worker.postMessage({ type: 'process', payload: { csvText: this.csvText, detectorText: this.detectorText, useAllDetectorsForPhase: this.useAllDetectorsForPhase, cycleHandling: this.cycleHandling, includeFirst: this.includeFirst, minAlpha: this.minAlpha, maxAlpha: this.maxAlpha, ignoreFirstMinutes: this.ignoreFirstMinutes } });
+      this.worker.postMessage({ type: 'process', payload: { csvText: this.csvText, detectorText: this.detectorText, cycleHandling: this.cycleHandling, includeFirst: this.includeFirst, minAlpha: this.minAlpha, maxAlpha: this.maxAlpha, ignoreFirstMinutes: this.ignoreFirstMinutes } });
+    },
+    bubbleRadiusOptions(splits) {
+      if (this.bubbleSizing === 'linear') return { mode: 'linear', scaledMode: 'sqrt', capP95: this.capP95, splits };
+      if (this.bubbleSizing === 'scaled-log') return { mode: 'scaled', scaledMode: 'log', capP95: this.capP95, splits };
+      return { mode: 'scaled', scaledMode: 'sqrt', capP95: this.capP95, splits };
+    },
+    yValue(point) {
+      return this.useDetectorDelayYAxis ? (point.detector_delay_s ?? 0) : point.off_count;
+    },
+    download() {
+      if (this.downloadFormat === 'png') return this.downloadPng();
+      if (this.downloadFormat === 'svg') return this.downloadSvg();
+      return this.downloadCsv();
     },
     downloadCsv() {
-      const header = 'phase,cycle_index,service_start_iso,service_start_ts,split_s,time_since_last_on_s,off_count,assigned_detectors,alpha,fill_factor';
-      const rows = this.points.map((p) => [p.phase, p.cycle_index, p.service_start_iso, p.service_start_ts, p.split_s, p.time_since_last_on_s ?? '', p.off_count, `"${p.assigned_detectors.join('|')}"`, p.alpha, p.fill_factor].join(','));
+      const header = 'phase,cycle_index,service_start_iso,service_start_ts,split_s,time_since_last_on_s,detector_delay_s,off_count,assigned_detectors,alpha,fill_factor';
+      const rows = this.points.map((p) => [p.phase, p.cycle_index, p.service_start_iso, p.service_start_ts, p.split_s, p.time_since_last_on_s ?? '', p.detector_delay_s ?? '', p.off_count, `"${p.assigned_detectors.join('|')}"`, p.alpha, p.fill_factor].join(','));
       this.downloadBlob([header, ...rows].join('\n'), 'phase-bubble-scatter-points.csv', 'text/csv');
     },
     downloadPng() {
@@ -193,4 +218,5 @@ export default {
 <style scoped>
 .chart-wrap { min-height: 480px; }
 .legend-note { margin-top: 8px; }
+.download-format { max-width: 180px; }
 </style>

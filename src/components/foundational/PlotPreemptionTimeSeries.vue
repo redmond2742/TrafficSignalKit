@@ -1,6 +1,20 @@
 <template>
   <br />
-  <v-btn @click="resetZoom">Reset Zoom</v-btn>
+  <div class="controls">
+    <v-btn @click="resetZoom">Reset Zoom</v-btn>
+    <v-switch
+      v-model="colorByChannel"
+      density="compact"
+      hide-details
+      label="Color dots by phase/channel"
+    ></v-switch>
+    <v-switch
+      v-model="showOnlyTriggeredEnumerations"
+      density="compact"
+      hide-details
+      label="Show only triggered enumeration rows"
+    ></v-switch>
+  </div>
   <br />
   <Scatter
     :data="chartData"
@@ -33,6 +47,22 @@ export default {
       required: true,
     },
   },
+  data() {
+    return {
+      colorByChannel: false,
+      showOnlyTriggeredEnumerations: false,
+      channelPalette: [
+        "#1565C0",
+        "#2E7D32",
+        "#6A1B9A",
+        "#EF6C00",
+        "#00838F",
+        "#AD1457",
+        "#5D4037",
+        "#3949AB",
+      ],
+    };
+  },
   computed: {
     enumerations() {
       return enumerationObj.map((item) => ({
@@ -48,6 +78,30 @@ export default {
         lookup[item.code] = item.label;
         return lookup;
       }, {});
+    },
+    activeEnumerationLabels() {
+      if (!this.showOnlyTriggeredEnumerations) {
+        return this.enumerationLabels;
+      }
+
+      const usedEventCodes = new Set(this.plotData.map((event) => event.eventCode));
+      const usedKnownLabels = this.enumerations
+        .filter((item) => usedEventCodes.has(item.code))
+        .map((item) => item.label);
+
+      const usedUnknownLabels = [...usedEventCodes]
+        .filter((code) => !this.eventLookup[code])
+        .sort((a, b) => a - b)
+        .map((code) => `Event ${code}`);
+
+      return [...usedKnownLabels, ...usedUnknownLabels];
+    },
+    pointBackgroundColors() {
+      if (!this.colorByChannel) {
+        return "#009688";
+      }
+
+      return this.plotData.map((event) => this.getColorForChannel(event.parameterCode));
     },
     chartData() {
       if (!this.plotData.length) {
@@ -73,7 +127,7 @@ export default {
               event,
             })),
             borderColor: "#009688",
-            backgroundColor: "#009688",
+            backgroundColor: this.pointBackgroundColors,
             pointRadius: 4,
           },
         ],
@@ -88,6 +142,16 @@ export default {
           },
           tooltip: {
             callbacks: {
+              afterLabel: (context) => {
+                if (!this.colorByChannel) {
+                  return undefined;
+                }
+                const event = context.raw?.event;
+                if (!event) {
+                  return undefined;
+                }
+                return `Color group: channel ${event.parameterCode ?? "N/A"}`;
+              },
               label: (context) => {
                 const event = context.raw?.event;
                 if (!event) {
@@ -137,7 +201,7 @@ export default {
           },
           y: {
             type: "category",
-            labels: this.enumerationLabels,
+            labels: this.activeEnumerationLabels,
             title: {
               display: true,
               text: "Enumeration",
@@ -148,9 +212,27 @@ export default {
     },
   },
   methods: {
+    getColorForChannel(channel) {
+      const channelNumber = Number(channel);
+      if (!Number.isFinite(channelNumber)) {
+        return "#757575";
+      }
+
+      const normalizedIndex = Math.abs(Math.trunc(channelNumber)) % this.channelPalette.length;
+      return this.channelPalette[normalizedIndex];
+    },
     resetZoom() {
       this.$refs.scatterChart.chart.resetZoom();
     },
   },
 };
 </script>
+
+<style scoped>
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+</style>

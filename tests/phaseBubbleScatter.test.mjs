@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDetectorAssignments, buildServiceWindows, computeDetectorOffCounts, assignCycles, bubbleRadius } from '../src/utils/phaseBubbleScatter.js';
+import { parseDetectorAssignments, buildServiceWindows, computeDetectorOffCounts, computeDetectorDelayToGreen, buildPhaseBubblePoints, assignCycles, bubbleRadius } from '../src/utils/phaseBubbleScatter.js';
 
 test('parseDetectorAssignments supports flexible input', () => {
   const map = parseDetectorAssignments('DET 1 1\n det   2   1\n#comment\nDET 2 1\nBAD');
@@ -29,6 +29,35 @@ test('computeDetectorOffCounts counts on->off transitions in service windows', (
   assert.deepEqual(off, [2]);
 });
 
+
+test('computeDetectorDelayToGreen finds first detector call before each green start', () => {
+  const windows = [
+    { startTs: 10000, endTs: 15000 },
+    { startTs: 30000, endTs: 36000 },
+  ];
+  const events = [
+    { tsMs: 5000, code: 82, param: 1 },
+    { tsMs: 12000, code: 82, param: 1 },
+    { tsMs: 21000, code: 82, param: 1 },
+    { tsMs: 28000, code: 82, param: 1 },
+  ];
+  const delays = computeDetectorDelayToGreen(events, windows, [1]);
+  assert.deepEqual(delays, [5, 9]);
+});
+
+test('buildPhaseBubblePoints includes detector_delay_s metric', () => {
+  const events = [
+    { tsMs: 1000, code: 1, param: 2 },
+    { tsMs: 6000, code: 8, param: 2 },
+    { tsMs: 9000, code: 82, param: 11 },
+    { tsMs: 12000, code: 1, param: 2 },
+    { tsMs: 17000, code: 12, param: 2 },
+  ];
+  const points = buildPhaseBubblePoints({ events, selectedPhase: 2, assignedDetectors: [11], includeFirst: true });
+  assert.equal(points.length, 2);
+  assert.equal(points[0].detector_delay_s, null);
+  assert.equal(points[1].detector_delay_s, 3);
+});
 test('assignCycles keeps first service or aggregates', () => {
   const windows = [
     { startTs: 0, endTs: 10000 },

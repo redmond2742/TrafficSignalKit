@@ -5,9 +5,8 @@
     <v-expansion-panels multiple>
       <v-expansion-panel title="About this tool">
         <v-expansion-panel-text>
-          Visualizes one bubble per unique phase service cycle. X is cycle index (phase not repeated), Y is
-          <b>Detector OFF transitions per served phase</b> (or detector delay to green, via toggle), bubble size is split,
-          alpha is OFF-transition transparency, and fill intensity is normalized OFF count.
+          Visualizes one bubble per unique phase service cycle. Use the controls below to select which available
+          phase-cycle metrics drive the X/Y axes, bubble size, and transparency.
         </v-expansion-panel-text>
       </v-expansion-panel>
       <v-expansion-panel title="Cycle rule used (no-repeat in same cycle)">
@@ -31,11 +30,15 @@
     <v-row>
       <v-col cols="12" md="2"><v-text-field v-model.number="ignoreFirstMinutes" type="number" label="Ignore first N minutes" /></v-col>
       <v-col cols="12" md="2"><v-select :items="['keep-first','aggregate']" v-model="cycleHandling" label="Within-cycle handling" /></v-col>
-      <v-col cols="12" md="3"><v-select :items="bubbleSizingOptions" item-title="title" item-value="value" v-model="bubbleSizing" label="Bubble sizing" /></v-col>
-      <v-col cols="12" md="3"><v-switch v-model="useDetectorDelayYAxis" label="Y-axis: Detector delay to green" /></v-col>
+      <v-col cols="12" md="3"><v-select :items="bubbleSizingOptions" item-title="title" item-value="value" v-model="bubbleSizing" label="Bubble sizing mode" /></v-col>
+      <v-col cols="12" md="3"><v-select :items="numericFieldOptions" item-title="title" item-value="value" v-model="xAxisField" label="X-axis field" /></v-col>
+      <v-col cols="12" md="3"><v-select :items="numericFieldOptions" item-title="title" item-value="value" v-model="yAxisField" label="Y-axis field" /></v-col>
     </v-row>
 
     <v-row>
+      <v-col cols="12" md="3"><v-select :items="numericFieldOptions" item-title="title" item-value="value" v-model="bubbleSizeField" label="Bubble size field" /></v-col>
+      <v-col cols="12" md="3"><v-select :items="numericFieldOptions" item-title="title" item-value="value" v-model="transparencyField" label="Transparency field" /></v-col>
+      <v-col cols="12" md="3"><v-switch v-model="invertTransparency" label="High value = darker" /></v-col>
       <v-col cols="12" md="2"><v-text-field v-model.number="minAlpha" type="number" step="0.05" label="Min alpha" /></v-col>
       <v-col cols="12" md="2"><v-text-field v-model.number="maxAlpha" type="number" step="0.05" label="Max alpha" /></v-col>
       <v-col cols="12" md="2"><v-switch v-model="capP95" label="Cap size at P95 split" /></v-col>
@@ -48,17 +51,17 @@
     </v-row>
 
     <div v-if="points.length" class="legend-note">
-      <p><b>Legend:</b> size = split, y-axis = {{ useDetectorDelayYAxis ? "detector delay to green" : "detector OFF transitions" }}, alpha = OFF transitions transparency, fill intensity = normalized OFF transitions.</p>
+      <p><b>Legend:</b> x = {{ fieldLabel(xAxisField) }}, y = {{ fieldLabel(yAxisField) }}, size = {{ fieldLabel(bubbleSizeField) }}, alpha/fill = {{ fieldLabel(transparencyField) }}.</p>
     </div>
     <div class="chart-wrap" v-if="points.length">
       <Bubble ref="bubbleChart" :data="chartData" :options="chartOptions" />
     </div>
 
     <v-table density="compact" class="mt-4" v-if="points.length">
-      <thead><tr><th>phase</th><th>cycle</th><th>start</th><th>split_s</th><th>time_since_last_on_s</th><th>detector_delay_s</th><th>off_count</th><th>alpha</th><th>fill</th></tr></thead>
+      <thead><tr><th>phase</th><th>cycle</th><th>start</th><th>split_s</th><th>time_since_last_on_s</th><th>detector_delay_s</th><th>off_count</th><th>off_per_split</th><th>delay_per_split</th><th>alpha</th><th>fill</th></tr></thead>
       <tbody>
         <tr v-for="row in pagedPoints" :key="row.phase + '-' + row.cycle_index + '-' + row.service_start_ts">
-          <td>{{ row.phase }}</td><td>{{ row.cycle_index }}</td><td>{{ row.service_start_iso }}</td><td>{{ row.split_s.toFixed(2) }}</td><td>{{ fmt(row.time_since_last_on_s) }}</td><td>{{ fmt(row.detector_delay_s) }}</td><td>{{ row.off_count }}</td><td>{{ row.alpha.toFixed(2) }}</td><td>{{ row.fill_factor.toFixed(2) }}</td>
+          <td>{{ row.phase }}</td><td>{{ row.cycle_index }}</td><td>{{ row.service_start_iso }}</td><td>{{ row.split_s.toFixed(2) }}</td><td>{{ fmt(row.time_since_last_on_s) }}</td><td>{{ fmt(row.detector_delay_s) }}</td><td>{{ row.off_count }}</td><td>{{ fmt(row.off_per_split) }}</td><td>{{ fmt(row.delay_per_split) }}</td><td>{{ row.alpha.toFixed(2) }}</td><td>{{ row.fill_factor.toFixed(2) }}</td>
         </tr>
       </tbody>
     </v-table>
@@ -79,7 +82,8 @@ export default {
   data() {
     return {
       csvText: '', detectorText: 'DET 1 1',
-      ignoreFirstMinutes: 0, cycleHandling: 'keep-first', bubbleSizing: 'scaled-sqrt', useDetectorDelayYAxis: false, downloadFormat: 'csv',
+      ignoreFirstMinutes: 0, cycleHandling: 'keep-first', bubbleSizing: 'scaled-sqrt', downloadFormat: 'csv',
+      xAxisField: 'cycle_index', yAxisField: 'off_count', bubbleSizeField: 'split_s', transparencyField: 'off_count', invertTransparency: false,
       minAlpha: 0.15, maxAlpha: 0.9, capP95: true, includeFirst: false, points: [], loading: false, page: 1, pageSize: 25,
       worker: null,
     };
@@ -99,9 +103,40 @@ export default {
         { title: 'SVG', value: 'svg' },
       ];
     },
+    numericFieldOptions() {
+      return [
+        { title: 'Cycle Index', value: 'cycle_index' },
+        { title: 'Split (s)', value: 'split_s' },
+        { title: 'Time Since Last Service (s)', value: 'time_since_last_on_s' },
+        { title: 'Detector Delay (s)', value: 'detector_delay_s' },
+        { title: 'Detector OFF Count', value: 'off_count' },
+        { title: 'OFF per Split', value: 'off_per_split' },
+        { title: 'Delay per Split', value: 'delay_per_split' },
+      ];
+    },
+    pointsWithStyle() {
+      const transparencyValues = this.points.map((point) => this.fieldValue(point, this.transparencyField)).filter((value) => Number.isFinite(value));
+      const minMetric = transparencyValues.length ? Math.min(...transparencyValues) : 0;
+      const maxMetric = transparencyValues.length ? Math.max(...transparencyValues) : 0;
+      const metricSpan = maxMetric - minMetric;
+
+      const bubbleValues = this.points.map((point) => this.fieldValue(point, this.bubbleSizeField));
+      return this.points.map((point) => {
+        const metric = this.fieldValue(point, this.transparencyField);
+        const normalized = metricSpan > 0 && Number.isFinite(metric) ? (metric - minMetric) / metricSpan : 0;
+        const fillFactor = this.invertTransparency ? normalized : 1 - normalized;
+        const alpha = this.minAlpha + fillFactor * (this.maxAlpha - this.minAlpha);
+        return {
+          ...point,
+          alpha,
+          fill_factor: fillFactor,
+          bubble_metric: this.fieldValue(point, this.bubbleSizeField),
+          radius: bubbleRadius(this.fieldValue(point, this.bubbleSizeField), this.bubbleRadiusOptions(bubbleValues)),
+        };
+      });
+    },
     chartData() {
-      const allSplits = this.points.map((point) => point.split_s);
-      const pointsByPhase = this.points.reduce((acc, point) => {
+      const pointsByPhase = this.pointsWithStyle.reduce((acc, point) => {
         if (!acc.has(point.phase)) acc.set(point.phase, []);
         acc.get(point.phase).push(point);
         return acc;
@@ -111,7 +146,7 @@ export default {
         const hue = (phase * 43) % 360;
         return {
           label: `Phase ${phase}`,
-          data: phasePoints.map((p) => ({ x: p.cycle_index, y: this.yValue(p), r: bubbleRadius(p.split_s, this.bubbleRadiusOptions(allSplits)), meta: p })),
+          data: phasePoints.map((p) => ({ x: this.fieldValue(p, this.xAxisField), y: this.fieldValue(p, this.yAxisField), r: p.radius, meta: p })),
           pointBackgroundColor: phasePoints.map((p) => `hsla(${hue}, ${35 + p.fill_factor * 50}%, ${72 - p.fill_factor * 28}%, ${p.alpha})`),
           pointBorderColor: `hsl(${hue}, 75%, 35%)`,
         };
@@ -126,15 +161,15 @@ export default {
         responsive: true,
         animation: false,
         scales: {
-          x: { title: { display: true, text: 'Cycle (unique per cycle, phase not repeated)' } },
-          y: { title: { display: true, text: this.useDetectorDelayYAxis ? 'Detector delay to green (s)' : 'Detector OFF transitions (count)' } },
+          x: { title: { display: true, text: this.fieldLabel(this.xAxisField) } },
+          y: { title: { display: true, text: this.fieldLabel(this.yAxisField) } },
         },
         plugins: {
           tooltip: {
             callbacks: {
               label: (ctx) => {
                 const m = ctx.raw.meta;
-                return [`phase: ${m.phase}`, `cycle: ${m.cycle_index}`, `start: ${m.service_start_iso}`, `split_s: ${m.split_s.toFixed(2)}`, `time_since_last_on_s: ${m.time_since_last_on_s ?? 'NA'}`, `detector_delay_s: ${m.detector_delay_s ?? 'NA'}`, `off_count: ${m.off_count}`];
+                return [`phase: ${m.phase}`, `cycle: ${m.cycle_index}`, `start: ${m.service_start_iso}`, `split_s: ${m.split_s.toFixed(2)}`, `time_since_last_on_s: ${m.time_since_last_on_s ?? 'NA'}`, `detector_delay_s: ${m.detector_delay_s ?? 'NA'}`, `off_count: ${m.off_count}`, `off_per_split: ${this.fmt(m.off_per_split)}`, `delay_per_split: ${this.fmt(m.delay_per_split)}`];
               },
             },
           },
@@ -143,11 +178,18 @@ export default {
     },
     pagedPoints() {
       const start = (this.page - 1) * this.pageSize;
-      return this.points.slice(start, start + this.pageSize);
+      return this.pointsWithStyle.slice(start, start + this.pageSize);
     },
   },
   methods: {
     fmt(v) { return Number.isFinite(v) ? v.toFixed(2) : 'NA'; },
+    fieldValue(point, field) {
+      const value = point[field];
+      return Number.isFinite(value) ? value : 0;
+    },
+    fieldLabel(field) {
+      return this.numericFieldOptions.find((option) => option.value === field)?.title || field;
+    },
     onFile(event) {
       const [file] = event.target.files || [];
       if (!file) return;
@@ -175,17 +217,14 @@ export default {
       if (this.bubbleSizing === 'scaled-log') return { mode: 'scaled', scaledMode: 'log', capP95: this.capP95, splits };
       return { mode: 'scaled', scaledMode: 'sqrt', capP95: this.capP95, splits };
     },
-    yValue(point) {
-      return this.useDetectorDelayYAxis ? (point.detector_delay_s ?? 0) : point.off_count;
-    },
     download() {
       if (this.downloadFormat === 'png') return this.downloadPng();
       if (this.downloadFormat === 'svg') return this.downloadSvg();
       return this.downloadCsv();
     },
     downloadCsv() {
-      const header = 'phase,cycle_index,service_start_iso,service_start_ts,split_s,time_since_last_on_s,detector_delay_s,off_count,assigned_detectors,alpha,fill_factor';
-      const rows = this.points.map((p) => [p.phase, p.cycle_index, p.service_start_iso, p.service_start_ts, p.split_s, p.time_since_last_on_s ?? '', p.detector_delay_s ?? '', p.off_count, `"${p.assigned_detectors.join('|')}"`, p.alpha, p.fill_factor].join(','));
+      const header = 'phase,cycle_index,service_start_iso,service_start_ts,split_s,time_since_last_on_s,detector_delay_s,off_count,off_per_split,delay_per_split,assigned_detectors,alpha,fill_factor';
+      const rows = this.pointsWithStyle.map((p) => [p.phase, p.cycle_index, p.service_start_iso, p.service_start_ts, p.split_s, p.time_since_last_on_s ?? '', p.detector_delay_s ?? '', p.off_count, p.off_per_split ?? '', p.delay_per_split ?? '', `"${p.assigned_detectors.join('|')}"`, p.alpha, p.fill_factor].join(','));
       this.downloadBlob([header, ...rows].join('\n'), 'phase-bubble-scatter-points.csv', 'text/csv');
     },
     downloadPng() {

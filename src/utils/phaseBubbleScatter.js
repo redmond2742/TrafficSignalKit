@@ -183,6 +183,8 @@ export function buildPhaseBubblePoints({ events, selectedPhase, assignedDetector
       time_since_last_on_s: since,
       detector_delay_s: row.detectorDelayS,
       off_count: row.offCount,
+      off_per_split: row.splitS > 0 ? row.offCount / row.splitS : null,
+      delay_per_split: row.splitS > 0 && Number.isFinite(row.detectorDelayS) ? row.detectorDelayS / row.splitS : null,
       assigned_detectors: assignedDetectors,
       alpha,
       fill_factor: fillFactor,

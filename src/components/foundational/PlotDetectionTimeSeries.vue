@@ -26,6 +26,23 @@
       </v-expansion-panel-text>
     </v-expansion-panel>
   </v-expansion-panels>
+  <div class="plot-mode-controls">
+    <div class="alignment-label">Plot mode</div>
+    <v-btn-toggle v-model="phasePlotMode" color="primary" mandatory>
+      <v-btn value="all">All phases</v-btn>
+      <v-btn value="single">Single phase</v-btn>
+    </v-btn-toggle>
+    <v-select
+      v-if="phasePlotMode === 'single'"
+      v-model="selectedPhase"
+      :items="phaseSelectItems"
+      item-title="title"
+      item-value="value"
+      label="Phase to align"
+      density="compact"
+      class="phase-select"
+    ></v-select>
+  </div>
   <template v-if="showChart">
     <br />
     <v-btn @click="resetZoom">Reset Zoom</v-btn>
@@ -87,10 +104,27 @@ export default {
       default: () => [],
     },
   },
+  watch: {
+    phases: {
+      immediate: true,
+      handler(phases) {
+        if (!phases.length) {
+          this.selectedPhase = null;
+          return;
+        }
+
+        if (!phases.includes(this.selectedPhase)) {
+          this.selectedPhase = phases[0];
+        }
+      },
+    },
+  },
   data() {
     return {
       mappingInput: "",
       alignmentMode: "channels",
+      phasePlotMode: "all",
+      selectedPhase: null,
       mappingPlaceholder:
         "Paste detector-to-phase mappings, e.g.\nDet 1\t6\nDet 2\t2\nDet 3\t0",
     };
@@ -189,6 +223,12 @@ export default {
         return lookup;
       }, {});
     },
+    plotRowLabels() {
+      if (this.activePhase !== null) {
+        return this.singlePhaseRows;
+      }
+      return this.channelLabels;
+    },
     phases() {
       const phaseSet = new Set();
       this.phaseData.forEach((event) => {
@@ -197,6 +237,18 @@ export default {
         }
       });
       return Array.from(phaseSet).sort((a, b) => a - b);
+    },
+    phaseSelectItems() {
+      return this.phases.map((phase) => ({
+        title: `Phase ${phase}`,
+        value: phase,
+      }));
+    },
+    activePhase() {
+      if (this.phasePlotMode !== "single") {
+        return null;
+      }
+      return typeof this.selectedPhase === "number" ? this.selectedPhase : null;
     },
     mappedPhaseCodes() {
       if (!this.hasMapping) {
@@ -295,6 +347,127 @@ export default {
         return lookup;
       }, {});
     },
+    phaseCycles() {
+      if (this.activePhase === null) {
+        return [];
+      }
+
+      const phaseEvents = this.phaseData
+        .filter((event) => event.parameterCode === this.activePhase)
+        .sort((a, b) => a.timestampMs - b.timestampMs);
+
+      const cycles = [];
+      let currentCycle = null;
+
+      phaseEvents.forEach((event) => {
+        if (event.phaseState === "green") {
+          if (currentCycle && currentCycle.end <= currentCycle.start) {
+            currentCycle.end = event.timestampMs;
+            currentCycle.duration = currentCycle.end - currentCycle.start;
+            cycles.push(currentCycle);
+          }
+          currentCycle = {
+            phase: this.activePhase,
+            start: event.timestampMs,
+            end: event.timestampMs,
+          };
+          return;
+        }
+
+        if (!currentCycle) {
+          return;
+        }
+
+        if (event.phaseState === "inactive") {
+          currentCycle.end = event.timestampMs;
+          currentCycle.duration = currentCycle.end - currentCycle.start;
+          if (currentCycle.duration > 0) {
+            cycles.push(currentCycle);
+          }
+          currentCycle = null;
+        }
+      });
+
+      return cycles.map((cycle, index) => ({
+        ...cycle,
+        rowLabel: `Run ${index + 1}`,
+      }));
+    },
+    singlePhaseRows() {
+      return this.phaseCycles.map((cycle) => cycle.rowLabel);
+    },
+    filteredDetectionEvents() {
+      if (this.activePhase === null) {
+        return this.plotData;
+      }
+
+      if (!this.hasMapping) {
+        return this.plotData;
+      }
+
+      return this.plotData.filter(
+        (event) => this.mappingByChannel[event.parameterCode] === this.activePhase
+      );
+    },
+    singlePhaseDetectionPoints() {
+      if (this.activePhase === null || !this.phaseCycles.length) {
+        return [];
+      }
+
+      return this.phaseCycles.flatMap((cycle) =>
+        this.filteredDetectionEvents
+          .filter(
+            (event) =>
+              event.timestampMs >= cycle.start && event.timestampMs <= cycle.end
+          )
+          .map((event) => ({
+            x: event.timestampMs - cycle.start,
+            y: cycle.rowLabel,
+            event,
+            cycle,
+          }))
+      );
+    },
+    singlePhaseStateBars() {
+      if (this.activePhase === null || !this.phaseCycles.length) {
+        return [];
+      }
+
+      const states = this.phaseIntervals.filter(
+        (interval) => interval.phase === this.activePhase
+      );
+
+      return this.phaseCycles.flatMap((cycle) =>
+        states
+          .filter(
+            (interval) => interval.start >= cycle.start && interval.end <= cycle.end
+          )
+          .map((interval) => ({
+            x: [interval.start - cycle.start, interval.end - cycle.start],
+            y: cycle.rowLabel,
+            phase: interval,
+          }))
+      );
+    },
+    singlePhaseRange() {
+      if (!this.singlePhaseDetectionPoints.length && !this.phaseCycles.length) {
+        return null;
+      }
+
+      const durations = this.phaseCycles
+        .map((cycle) => cycle.duration)
+        .filter((value) => typeof value === "number" && value > 0);
+
+      if (!durations.length) {
+        return null;
+      }
+
+      const max = Math.max(...durations);
+      return {
+        min: 0,
+        max: max * 1.05,
+      };
+    },
     chartEndTimestamp() {
       const timestamps = [
         ...this.plotData.map((event) => event.timestampMs),
@@ -360,16 +533,20 @@ export default {
       return colorMap;
     },
     coordPatternLineDataset() {
+      if (this.activePhase !== null) {
+        return [];
+      }
+
       if (!this.coordPatternData.length) {
         return [];
       }
 
-      if (!this.channelLabels.length) {
+      if (!this.plotRowLabels.length) {
         return [];
       }
 
-      const yStart = this.channelLabels[0];
-      const yEnd = this.channelLabels[this.channelLabels.length - 1];
+      const yStart = this.plotRowLabels[0];
+      const yEnd = this.plotRowLabels[this.plotRowLabels.length - 1];
 
       const grouped = this.coordPatternData.reduce((lookup, event) => {
         if (typeof event.parameterCode !== "number") {
@@ -439,16 +616,20 @@ export default {
       return colorMap;
     },
     coordCycleStateLineDataset() {
+      if (this.activePhase !== null) {
+        return [];
+      }
+
       if (!this.coordCycleStateData.length) {
         return [];
       }
 
-      if (!this.channelLabels.length) {
+      if (!this.plotRowLabels.length) {
         return [];
       }
 
-      const yStart = this.channelLabels[0];
-      const yEnd = this.channelLabels[this.channelLabels.length - 1];
+      const yStart = this.plotRowLabels[0];
+      const yEnd = this.plotRowLabels[this.plotRowLabels.length - 1];
 
       const grouped = this.coordCycleStateData.reduce((lookup, event) => {
         if (typeof event.parameterCode !== "number") {
@@ -530,6 +711,40 @@ export default {
       return intervals;
     },
     phaseDataset() {
+      if (this.activePhase !== null) {
+        if (!this.singlePhaseStateBars.length) {
+          return null;
+        }
+
+        const stateColors = {
+          green: "rgba(76, 175, 80, 0.25)",
+          yellow: "rgba(251, 192, 45, 0.25)",
+          red: "rgba(229, 57, 53, 0.25)",
+        };
+        const borderColors = {
+          green: "rgba(76, 175, 80, 0.7)",
+          yellow: "rgba(251, 192, 45, 0.7)",
+          red: "rgba(229, 57, 53, 0.7)",
+        };
+
+        return {
+          type: "bar",
+          label: "Phase State",
+          data: this.singlePhaseStateBars,
+          backgroundColor: this.singlePhaseStateBars.map(
+            (point) => stateColors[point.phase.state] ?? "#9e9e9e"
+          ),
+          borderColor: this.singlePhaseStateBars.map(
+            (point) => borderColors[point.phase.state] ?? "#9e9e9e"
+          ),
+          borderWidth: 1,
+          borderSkipped: false,
+          barPercentage: 1.0,
+          categoryPercentage: 1.0,
+          indexAxis: "y",
+        };
+      }
+
       if (!this.phaseIntervals.length) {
         return null;
       }
@@ -596,6 +811,32 @@ export default {
       };
     },
     chartData() {
+      if (this.activePhase !== null) {
+        return {
+          datasets: [
+            {
+              label: "Detection Events",
+              data: this.singlePhaseDetectionPoints,
+              borderColor: this.singlePhaseDetectionPoints.map(
+                (point) => this.getDetectionEventStyle(point.event).color
+              ),
+              backgroundColor: this.singlePhaseDetectionPoints.map(
+                (point) => this.getDetectionEventStyle(point.event).color
+              ),
+              pointRadius: this.singlePhaseDetectionPoints.map(
+                (point) => this.getDetectionEventStyle(point.event).radius
+              ),
+              pointStyle: this.singlePhaseDetectionPoints.map(
+                (point) => this.getDetectionEventStyle(point.event).style
+              ),
+              pointHoverRadius: this.singlePhaseDetectionPoints.map(
+                (point) => this.getDetectionEventStyle(point.event).radius + 1
+              ),
+            },
+          ].concat(this.phaseDataset ? [this.phaseDataset] : []),
+        };
+      }
+
       if (!this.plotData.length) {
         return {
           datasets: [
@@ -616,26 +857,26 @@ export default {
         datasets: [
           {
             label: "Detection Events",
-            data: this.plotData.map((event) => ({
+            data: this.filteredDetectionEvents.map((event) => ({
               x: event.timestampMs,
               y:
                 this.channelLookup[event.parameterCode] ??
                 `Channel ${event.parameterCode}`,
               event,
             })),
-            borderColor: this.plotData.map(
+            borderColor: this.filteredDetectionEvents.map(
               (event) => this.getDetectionEventStyle(event).color
             ),
-            backgroundColor: this.plotData.map(
+            backgroundColor: this.filteredDetectionEvents.map(
               (event) => this.getDetectionEventStyle(event).color
             ),
-            pointRadius: this.plotData.map(
+            pointRadius: this.filteredDetectionEvents.map(
               (event) => this.getDetectionEventStyle(event).radius
             ),
-            pointStyle: this.plotData.map(
+            pointStyle: this.filteredDetectionEvents.map(
               (event) => this.getDetectionEventStyle(event).style
             ),
-            pointHoverRadius: this.plotData.map(
+            pointHoverRadius: this.filteredDetectionEvents.map(
               (event) => this.getDetectionEventStyle(event).radius + 1
             ),
           },
@@ -722,6 +963,14 @@ export default {
                 return [
                   `${event.eventDescriptor} (Code ${event.eventCode})`,
                   `Channel: ${event.parameterCode ?? "N/A"}`,
+                  ...(context.raw?.cycle
+                    ? [`Phase Run: ${context.raw.cycle.rowLabel}`]
+                    : []),
+                  ...(this.activePhase !== null
+                    ? [
+                        `Offset: ${(context.parsed.x / 1000).toFixed(2)}s from green start`,
+                      ]
+                    : []),
                   `Time: ${event.humanReadable ?? event.timestampISO}`,
                 ];
               },
@@ -751,14 +1000,31 @@ export default {
           x: {
             type: "linear",
             position: "bottom",
-            min: this.eventRange?.min,
-            max: this.eventRange?.max,
+            min:
+              this.activePhase !== null
+                ? this.singlePhaseRange?.min
+                : this.eventRange?.min,
+            max:
+              this.activePhase !== null
+                ? this.singlePhaseRange?.max
+                : this.eventRange?.max,
             title: {
               display: true,
-              text: "Timestamp",
+              text:
+                this.activePhase !== null
+                  ? "Time from Start of Green (ms)"
+                  : "Timestamp",
             },
             ticks: {
               callback: (value) => {
+                if (this.activePhase !== null) {
+                  const numericValue =
+                    typeof value === "string" ? parseFloat(value) : value;
+                  if (Number.isNaN(numericValue)) {
+                    return value;
+                  }
+                  return `${(numericValue / 1000).toFixed(1)}s`;
+                }
                 const timestamp = typeof value === "string" ? parseFloat(value) : value;
                 if (Number.isNaN(timestamp)) {
                   return value;
@@ -769,16 +1035,18 @@ export default {
           },
           y: {
             type: "category",
-            labels: this.channelLabels,
+            labels: this.plotRowLabels,
             title: {
               display: true,
-              text: "Detection Channel",
+              text:
+                this.activePhase !== null ? "Phase Occurrence" : "Detection Channel",
             },
           },
           y1: {
             type: "category",
             labels: this.phaseLabels,
             position: "right",
+            display: this.activePhase === null,
             title: {
               display: true,
               text: "Phase State",
@@ -823,7 +1091,7 @@ export default {
       return this.phaseDisplayLabelLookup[value] ?? value;
     },
     resetZoom() {
-      this.$refs.scatterChart.chart.resetZoom();
+      this.$refs.scatterChart?.chart?.resetZoom?.();
     },
   },
 };
@@ -847,5 +1115,18 @@ export default {
 
 .alignment-label {
   font-weight: 500;
+}
+
+.plot-mode-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.phase-select {
+  min-width: 200px;
+  max-width: 260px;
 }
 </style>

@@ -57,7 +57,41 @@
       <Bubble ref="bubbleChart" :data="chartData" :options="chartOptions" />
     </div>
 
-    <v-table density="compact" class="mt-4" v-if="points.length">
+    <v-row v-if="points.length" class="mt-4">
+      <v-col cols="12" md="4">
+        <v-text-field
+          v-model="tableFilter"
+          label="Filter table"
+          density="compact"
+          hide-details
+          clearable
+        />
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-select
+          :items="tableSortOptions"
+          item-title="title"
+          item-value="value"
+          v-model="tableSortField"
+          label="Sort by"
+          density="compact"
+          hide-details
+        />
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-select
+          :items="tableSortDirections"
+          item-title="title"
+          item-value="value"
+          v-model="tableSortDirection"
+          label="Sort direction"
+          density="compact"
+          hide-details
+        />
+      </v-col>
+    </v-row>
+
+    <v-table density="compact" v-if="points.length">
       <thead><tr><th>phase</th><th>cycle</th><th>start</th><th>split_s</th><th>time_since_last_on_s</th><th>detector_delay_s</th><th>off_count</th><th>off_per_split</th><th>delay_per_split</th><th>alpha</th><th>fill</th></tr></thead>
       <tbody>
         <tr v-for="row in pagedPoints" :key="row.phase + '-' + row.cycle_index + '-' + row.service_start_ts">
@@ -65,7 +99,7 @@
         </tr>
       </tbody>
     </v-table>
-    <v-pagination v-if="points.length" v-model="page" :length="Math.ceil(points.length / pageSize)" />
+    <v-pagination v-if="points.length" v-model="page" :length="Math.ceil(filteredPoints.length / pageSize)" />
   </div>
 </template>
 
@@ -85,6 +119,7 @@ export default {
       ignoreFirstMinutes: 0, cycleHandling: 'keep-first', bubbleSizing: 'scaled-sqrt', downloadFormat: 'csv',
       xAxisField: 'cycle_index', yAxisField: 'off_count', bubbleSizeField: 'split_s', transparencyField: 'off_count', invertTransparency: false,
       minAlpha: 0.15, maxAlpha: 0.9, capP95: true, includeFirst: false, points: [], loading: false, page: 1, pageSize: 25,
+      tableFilter: '', tableSortField: 'service_start_ts', tableSortDirection: 'desc',
       worker: null,
     };
   },
@@ -101,6 +136,27 @@ export default {
         { title: 'CSV', value: 'csv' },
         { title: 'PNG', value: 'png' },
         { title: 'SVG', value: 'svg' },
+      ];
+    },
+    tableSortOptions() {
+      return [
+        { title: 'Start time', value: 'service_start_ts' },
+        { title: 'Phase', value: 'phase' },
+        { title: 'Cycle', value: 'cycle_index' },
+        { title: 'Split (s)', value: 'split_s' },
+        { title: 'Time Since Last Service (s)', value: 'time_since_last_on_s' },
+        { title: 'Detector Delay (s)', value: 'detector_delay_s' },
+        { title: 'Detector OFF Count', value: 'off_count' },
+        { title: 'OFF per Split', value: 'off_per_split' },
+        { title: 'Delay per Split', value: 'delay_per_split' },
+        { title: 'Alpha', value: 'alpha' },
+        { title: 'Fill', value: 'fill_factor' },
+      ];
+    },
+    tableSortDirections() {
+      return [
+        { title: 'Descending', value: 'desc' },
+        { title: 'Ascending', value: 'asc' },
       ];
     },
     numericFieldOptions() {
@@ -176,9 +232,47 @@ export default {
         },
       };
     },
+    filteredPoints() {
+      const filterText = this.tableFilter.trim().toLowerCase();
+      if (!filterText) return this.pointsWithStyle;
+      return this.pointsWithStyle.filter((point) => {
+        const searchable = [
+          point.phase,
+          point.cycle_index,
+          point.service_start_iso,
+          this.fmt(point.split_s),
+          this.fmt(point.time_since_last_on_s),
+          this.fmt(point.detector_delay_s),
+          point.off_count,
+          this.fmt(point.off_per_split),
+          this.fmt(point.delay_per_split),
+          this.fmt(point.alpha),
+          this.fmt(point.fill_factor),
+        ].join(' ').toLowerCase();
+        return searchable.includes(filterText);
+      });
+    },
+    sortedPoints() {
+      const sorted = [...this.filteredPoints];
+      const direction = this.tableSortDirection === 'asc' ? 1 : -1;
+      sorted.sort((a, b) => {
+        const aValue = a[this.tableSortField];
+        const bValue = b[this.tableSortField];
+        const aMissing = aValue == null || Number.isNaN(aValue);
+        const bMissing = bValue == null || Number.isNaN(bValue);
+        if (aMissing && bMissing) return 0;
+        if (aMissing) return 1;
+        if (bMissing) return -1;
+        if (typeof aValue === 'string' || typeof bValue === 'string') {
+          return String(aValue).localeCompare(String(bValue)) * direction;
+        }
+        return (aValue - bValue) * direction;
+      });
+      return sorted;
+    },
     pagedPoints() {
       const start = (this.page - 1) * this.pageSize;
-      return this.pointsWithStyle.slice(start, start + this.pageSize);
+      return this.sortedPoints.slice(start, start + this.pageSize);
     },
   },
   methods: {
@@ -194,6 +288,9 @@ export default {
       const [file] = event.target.files || [];
       if (!file) return;
       file.text().then((txt) => { this.csvText = txt; });
+    },
+    resetPage() {
+      this.page = 1;
     },
     process() {
       this.loading = true;
@@ -250,6 +347,11 @@ export default {
       link.click();
       URL.revokeObjectURL(url);
     },
+  },
+  watch: {
+    tableFilter: 'resetPage',
+    tableSortField: 'resetPage',
+    tableSortDirection: 'resetPage',
   },
 };
 </script>

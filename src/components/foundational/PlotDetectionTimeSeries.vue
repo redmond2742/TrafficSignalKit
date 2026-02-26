@@ -414,19 +414,23 @@ export default {
         return [];
       }
 
-      return this.phaseCycles.flatMap((cycle) =>
-        this.filteredDetectionEvents
-          .filter(
-            (event) =>
-              event.timestampMs >= cycle.start && event.timestampMs <= cycle.end
-          )
-          .map((event) => ({
-            x: event.timestampMs - cycle.start,
-            y: cycle.rowLabel,
-            event,
-            cycle,
-          }))
-      );
+      const mappedChannels = this.getChannelsForActivePhase();
+
+      return this.phaseCycles.flatMap((cycle) => {
+        const cycleEvents = this.filteredDetectionEvents.filter(
+          (event) =>
+            event.timestampMs >= cycle.start && event.timestampMs <= cycle.end
+        );
+
+        const carryInEvents = this.getCarryInDetectionEvents(cycle, mappedChannels);
+
+        return [...carryInEvents, ...cycleEvents].map((event) => ({
+          x: event.timestampMs - cycle.start,
+          y: cycle.rowLabel,
+          event,
+          cycle,
+        }));
+      });
     },
     singlePhaseStateBars() {
       if (this.activePhase === null || !this.phaseCycles.length) {
@@ -1063,6 +1067,81 @@ export default {
     },
   },
   methods: {
+    getChannelsForActivePhase() {
+      if (this.activePhase === null) {
+        return [];
+      }
+
+      if (!this.hasMapping) {
+        return this.channels;
+      }
+
+      return Object.entries(this.mappingByChannel)
+        .filter(([, phase]) => phase === this.activePhase)
+        .map(([channel]) => Number(channel))
+        .filter((channel) => !Number.isNaN(channel));
+    },
+    getCarryInDetectionEvents(cycle, mappedChannels) {
+      if (!mappedChannels.length) {
+        return [];
+      }
+
+      return mappedChannels
+        .map((channel) => {
+          const channelEvents = this.filteredDetectionEvents
+            .filter((event) => event.parameterCode === channel)
+            .sort((a, b) => a.timestampMs - b.timestampMs);
+
+          const eventsBeforeGreen = channelEvents.filter(
+            (event) => event.timestampMs < cycle.start
+          );
+
+          const lastOnEvent = [...eventsBeforeGreen]
+            .reverse()
+            .find((event) => this.isDetectorOnEvent(event));
+
+          if (!lastOnEvent) {
+            return null;
+          }
+
+          const turnedOffBeforeGreen = eventsBeforeGreen.some(
+            (event) =>
+              event.timestampMs > lastOnEvent.timestampMs &&
+              this.isDetectorOffEvent(event)
+          );
+
+          if (turnedOffBeforeGreen) {
+            return null;
+          }
+
+          const hasOffDuringCycle = channelEvents.some(
+            (event) =>
+              event.timestampMs >= cycle.start &&
+              event.timestampMs <= cycle.end &&
+              this.isDetectorOffEvent(event)
+          );
+
+          if (!hasOffDuringCycle) {
+            return null;
+          }
+
+          return {
+            ...lastOnEvent,
+            timestampMs: cycle.start,
+            eventDescriptor: `${lastOnEvent.eventDescriptor} (active at green start)`,
+            carryInAtGreenStart: true,
+          };
+        })
+        .filter(Boolean);
+    },
+    isDetectorOnEvent(event) {
+      const descriptor = event?.eventDescriptor?.toLowerCase() ?? "";
+      return descriptor.includes("detector on");
+    },
+    isDetectorOffEvent(event) {
+      const descriptor = event?.eventDescriptor?.toLowerCase() ?? "";
+      return descriptor.includes("detector off");
+    },
     getDetectionEventStyle(event) {
       const descriptor = event?.eventDescriptor?.toLowerCase() ?? "";
 

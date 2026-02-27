@@ -45,8 +45,7 @@ import DetectorEventHeatMap from '../views/DetectorEventHeatMap'
 import GapOutGapReductionHelper from '../views/GapOutGapReductionHelper'
 import DetectorBubbleChart from '../views/DetectorBubbleChart'
 import PhaseBubbleScatter from '../views/PhaseBubbleScatter'
-
-
+import BlockLogic from '../views/BlockLogic'
 
 
 
@@ -260,6 +259,12 @@ const routes = [
         path: '/phase-bubble-scatter',
         name: 'phaseBubbleScatter',
         component: PhaseBubbleScatter,
+    },
+
+    {
+        path: '/tools/block-logic',
+        name: 'blockLogic',
+        component: BlockLogic,
     },
 
     {

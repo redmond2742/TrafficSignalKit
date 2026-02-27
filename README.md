@@ -40,3 +40,37 @@ The Traffic Signal Kit project is licensed under the [MIT License](LICENSE). Fee
 ---
 
 Thanks for checking out Traffic Signal Kit! 🚦✨
+
+## Block Logic Tool
+
+A new tool is available at `/tools/block-logic` for visual, rule-based diagnostics over high-resolution traffic signal streams, now using the shared InputBox component for HR text/file entry.
+
+### What it includes
+- **Block palette + canvas + inspector** to build rule graphs with condition/operator/action blocks.
+- **Rule schema v1.0** (JSON serializable/importable/exportable).
+- **Execution engine** with deterministic replay order, edge handling, hold/sequence operators, timers, counters, table/plot/diagnostic outputs, and per-rule rate limiting.
+- **Step + full run modes** with progress bar and cancellable worker execution for larger datasets.
+- **Built-in templates:** Detector Stuck On, Green Extension Marker, and Split Failure Proxy.
+
+### Rule schema shape
+
+```json
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "rule-1",
+      "name": "Green Phase 2 Marker",
+      "enabled": true,
+      "trigger": { "type": "continuous" },
+      "if": { "type": "phase", "signal": "green", "phase": 2, "target": 1, "mode": "edgeRising" },
+      "actions": [{ "type": "plotPoint", "phase": 2 }]
+    }
+  ]
+}
+```
+
+### Adding new blocks
+1. Add a block factory entry in `src/utils/blockLogicSchema.js` (`createCondition` or `createAction`).
+2. Add evaluation behavior in `src/utils/blockLogicEngine.js` (`evalCondition` or `runAction`).
+3. Add inspector controls in `src/views/BlockLogic.vue`.

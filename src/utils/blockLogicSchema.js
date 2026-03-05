@@ -96,6 +96,39 @@ export function validateSchema(schema) {
 export function builtInTemplates() {
   return [
     {
+      name: 'Basic: Detector On',
+      schema: {
+        version: BLOCK_LOGIC_SCHEMA_VERSION,
+        rules: [{
+          ...createRule('Detector 1 Turns On'),
+          if: { type: 'detector', channel: 1, target: 1, mode: 'edgeRising' },
+          actions: [createAction('appendTableRow')],
+        }],
+      },
+    },
+    {
+      name: 'Basic: Phase Green On',
+      schema: {
+        version: BLOCK_LOGIC_SCHEMA_VERSION,
+        rules: [{
+          ...createRule('Phase 2 Green Turns On'),
+          if: { type: 'phase', signal: 'green', phase: 2, target: 1, mode: 'edgeRising' },
+          actions: [createAction('plotPoint')],
+        }],
+      },
+    },
+    {
+      name: 'Basic: Phase Green Off',
+      schema: {
+        version: BLOCK_LOGIC_SCHEMA_VERSION,
+        rules: [{
+          ...createRule('Phase 2 Green Turns Off'),
+          if: { type: 'phase', signal: 'green', phase: 2, target: 0, mode: 'edgeFalling' },
+          actions: [createAction('appendTableRow')],
+        }],
+      },
+    },
+    {
       name: 'Detector Stuck On',
       schema: {
         version: BLOCK_LOGIC_SCHEMA_VERSION,

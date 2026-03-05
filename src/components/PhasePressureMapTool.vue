@@ -59,34 +59,42 @@
       <v-card-title>Phase Pressure by Time Bin</v-card-title>
       <v-card-text>
         <div class="cycle-legend mb-4">
-          <span>Low pressure</span>
+          <span>Light color: low pressure / adequate service</span>
           <div class="legend-bar"></div>
-          <span>High pressure</span>
+          <span>Dark color: high pressure / likely under-service</span>
         </div>
 
         <div class="heat-map-shell">
           <div class="phase-axis" :style="phaseAxisStyle">
-            <div class="axis-header-cell">Bin</div>
-            <div v-for="phase in orderedPhases" :key="`head-${phase}`" class="phase-header">
-              Ph {{ phase }}
+            <div class="axis-header-cell">Phase</div>
+            <div v-for="row in pressureRows" :key="`head-${row.cycleNumber}`" class="phase-header">
+              {{ formatBinLabel(row) }}
             </div>
           </div>
 
           <div class="heat-map-scroll-y">
             <div class="heat-map-grid" :style="gridStyle">
-              <template v-for="row in pressureRows" :key="`cycle-${row.cycleNumber}`">
-                <div class="cycle-label">Bin {{ row.cycleNumber }}</div>
+              <template v-for="phase in orderedPhases" :key="`phase-${phase}`">
+                <div class="cycle-label">Ph {{ phase }}</div>
                 <div
-                  v-for="phase in orderedPhases"
-                  :key="`cell-${row.cycleNumber}-${phase}`"
+                  v-for="row in pressureRows"
+                  :key="`cell-${phase}-${row.cycleNumber}`"
                   class="pressure-cell"
-                  :style="{ backgroundColor: getHeatColor(getCellPressure(row, phase)) }"
-                  :title="buildCellTitle(row, phase)"
+                  :style="{ backgroundColor: getHeatColor(getCellPressure(phase, row)) }"
+                  :title="buildCellTitle(phase, row)"
                 ></div>
               </template>
             </div>
           </div>
         </div>
+      </v-card-text>
+    </v-card>
+
+    <v-card v-else-if="hasAttemptedBuild" variant="outlined">
+      <v-card-title>Phase Pressure by Time Bin</v-card-title>
+      <v-card-text>
+        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+        <div v-else class="help-text">No valid pressure-map events were found for the provided input.</div>
       </v-card-text>
     </v-card>
   </div>
@@ -118,6 +126,7 @@ export default {
       mappingErrors: [],
       channelToPhaseMap: {},
       unmappedDetectorEvents: 0,
+      hasAttemptedBuild: false,
     };
   },
   computed: {
@@ -178,17 +187,18 @@ export default {
     },
     phaseAxisStyle() {
       return {
-        gridTemplateColumns: `120px repeat(${this.orderedPhases.length}, minmax(48px, 1fr))`,
+        gridTemplateColumns: `120px repeat(${this.pressureRows.length || 1}, minmax(72px, 1fr))`,
       };
     },
     gridStyle() {
       return {
-        gridTemplateColumns: `120px repeat(${this.orderedPhases.length}, minmax(48px, 1fr))`,
+        gridTemplateColumns: `120px repeat(${this.pressureRows.length || 1}, minmax(72px, 1fr))`,
       };
     },
   },
   methods: {
     buildPressureMap() {
+      this.hasAttemptedBuild = true;
       this.errorMessage = "";
       this.mappingErrors = [];
       this.pressureRows = [];
@@ -210,9 +220,12 @@ export default {
         return;
       }
 
-      const records = this.parseRecords(this.inputData);
+      const { records, totalLines, invalidLines } = this.parseRecords(this.inputData);
       if (!records.length) {
-        this.errorMessage = "No usable CSV rows were found.";
+        this.errorMessage =
+          totalLines > 0 && invalidLines === totalLines
+            ? "Unable to parse CSV rows. Confirm timestamp,event code,parameter format."
+            : "No usable CSV rows were found.";
         return;
       }
 
@@ -229,7 +242,7 @@ export default {
       );
 
       if (!perPhaseRows.length) {
-        this.errorMessage = "No phase service intervals were detected in the input.";
+        this.errorMessage = "No valid events were present to compute phase pressure.";
         return;
       }
 
@@ -312,10 +325,12 @@ export default {
       };
     },
     parseRecords(input) {
-      return String(input || "")
+      const lines = String(input || "")
         .split(/\r?\n/)
         .map((line) => line.trim())
-        .filter(Boolean)
+        .filter(Boolean);
+
+      const records = lines
         .map((line) => {
           const [timestamp, eventCodeRaw, parameterRaw] = line.split(",").map((value) => value.trim());
           const eventCode = Number(eventCodeRaw);
@@ -340,6 +355,12 @@ export default {
         })
         .filter(Boolean)
         .sort((a, b) => a.timestampMs - b.timestampMs);
+
+      return {
+        totalLines: lines.length,
+        invalidLines: lines.length - records.length,
+        records,
+      };
     },
     buildTimeBins(records, binSizeMs) {
       const startMs = records[0].timestampMs;
@@ -568,7 +589,13 @@ export default {
 
       return rows;
     },
-    getCellPressure(row, phase) {
+    formatBinLabel(row) {
+      if (!row) {
+        return "Bin";
+      }
+      return `${row.binStartLabel} - ${row.binEndLabel}`;
+    },
+    getCellPressure(phase, row) {
       return row.byPhase?.[phase]?.pressure ?? null;
     },
     getHeatColor(pressure) {
@@ -577,25 +604,33 @@ export default {
       }
 
       const ratio = this.maxPressure > 0 ? Math.min(1, pressure / this.maxPressure) : 0;
-      const hue = 120 - ratio * 120;
-      return `hsl(${hue}, 75%, 50%)`;
+      const hue = 210 - ratio * 210;
+      const saturation = 82;
+      const lightness = 96 - ratio * 46;
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     },
-    buildCellTitle(row, phase) {
+    buildCellTitle(phase, row) {
       const cell = row.byPhase?.[phase];
       if (!cell) {
-        return `Phase ${phase} - Cycle ${row.cycleNumber}\nNo completed service interval.`;
+        return `Phase ${phase}\nTime Bin: ${this.formatBinLabel(row)}\nNo completed service interval.`;
       }
 
       return [
-        `Phase ${phase} - Bin ${row.cycleNumber} (${cell.binStartLabel} - ${cell.binEndLabel})`,
+        `Phase: ${phase}`,
+        `Time Bin: ${cell.binStartLabel} - ${cell.binEndLabel}`,
+        `Pressure score: ${cell.pressure.toFixed(3)}`,
+        "",
+        "Demand components",
         `Demand activations: ${cell.activationCount}`,
         `Demand occupancy (s): ${cell.occupancySeconds.toFixed(2)}`,
         `Demand proxy: ${cell.demandProxy.toFixed(2)} (activations + occupancy/10)`,
+        "",
+        "Service components",
         `Service (seconds): ${cell.serviceSeconds.toFixed(2)}`,
         `Normalized service floor (seconds): ${cell.safeServiceSeconds.toFixed(2)}`,
-        `Gap-outs: ${cell.gapOutCount}`,
-        `Max-outs: ${cell.maxOutCount}`,
-        `Pressure (demand/service): ${cell.pressure.toFixed(3)}`,
+        "",
+        `Gap-outs (optional diagnostic): ${cell.gapOutCount}`,
+        `Max-outs (optional diagnostic): ${cell.maxOutCount}`,
       ].join("\n");
     },
   },
@@ -639,50 +674,55 @@ export default {
 }
 
 .heat-map-shell {
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  overflow: hidden;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
 }
 
 .phase-axis,
 .heat-map-grid {
   display: grid;
+  gap: 2px;
+  align-items: stretch;
+}
+
+.phase-axis {
+  background: #f7f9fb;
+  border-bottom: 1px solid #d7dee6;
+  padding: 4px;
 }
 
 .axis-header-cell,
 .phase-header,
 .cycle-label,
 .pressure-cell {
-  border-bottom: 1px solid #ececec;
-  border-right: 1px solid #ececec;
-  min-height: 42px;
+  min-height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .axis-header-cell,
 .phase-header {
   font-weight: 700;
-  background: #fafafa;
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  background: #f7f9fb;
 }
 
 .cycle-label {
   font-weight: 600;
-  background: #fafafa;
+  color: #2f3b48;
 }
 
 .pressure-cell {
   cursor: default;
+  border: 1px solid #e2e8ee;
+  border-radius: 3px;
 }
 
 .heat-map-scroll-y {
-  max-height: 500px;
-  overflow: auto;
+  max-height: 520px;
+  overflow-y: auto;
+  padding: 4px;
 }
 </style>

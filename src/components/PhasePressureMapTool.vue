@@ -3,14 +3,25 @@
     <v-card class="mb-4" variant="outlined">
       <v-card-title>Phase Pressure Map Inputs</v-card-title>
       <v-card-text>
+        <div class="input-label">High-resolution CSV input</div>
         <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
 
-        <v-textarea
-          v-model="detectorPhaseMapInput"
-          class="mt-3"
-          label="Detector-to-phase map (one pair per line, e.g., 'DET 12 4' or '12,4')"
-          rows="4"
-        />
+        <div class="help-text mt-1">
+          Accepted CSV format: <code>timestamp,event code,parameter</code> (one event per line).
+        </div>
+
+        <div class="input-label mt-4">Detector mapping input</div>
+        <v-textarea v-model="detectorPhaseMapInput" rows="6" placeholder="12,4&#10;13,4&#10;21,8" />
+        <div class="help-text mt-1">
+          Accepted mapping formats (one mapping per line):
+          <code>12,4</code>, <code>12 4</code>, <code>DET 12 4</code>, or
+          <code>{"channel":12,"phase":4}</code>.
+        </div>
+        <ul v-if="mappingErrors.length" class="mapping-errors mt-2">
+          <li v-for="(mappingError, index) in mappingErrors" :key="`mapping-error-${index}`">
+            {{ mappingError }}
+          </li>
+        </ul>
 
         <v-row class="mt-2">
           <v-col cols="12" md="4">
@@ -90,6 +101,8 @@ export default {
       pressureRows: [],
       maxPressure: 0,
       errorMessage: "",
+      mappingErrors: [],
+      channelToPhaseMap: {},
     };
   },
   computed: {
@@ -138,13 +151,22 @@ export default {
   methods: {
     buildPressureMap() {
       this.errorMessage = "";
+      this.mappingErrors = [];
       this.pressureRows = [];
       this.orderedPhases = [];
       this.maxPressure = 0;
+      this.channelToPhaseMap = {};
 
-      const detectorToPhase = this.parseDetectorPhaseMap(this.detectorPhaseMapInput);
-      if (!detectorToPhase.size) {
-        this.errorMessage = "Provide at least one detector-to-phase mapping pair.";
+      const mappingResult = this.parseDetectorPhaseMap(this.detectorPhaseMapInput);
+      this.mappingErrors = mappingResult.errors;
+      if (this.mappingErrors.length) {
+        this.errorMessage = "Fix detector mapping errors before building the map.";
+        return;
+      }
+
+      this.channelToPhaseMap = mappingResult.channelToPhaseMap;
+      if (!Object.keys(this.channelToPhaseMap).length) {
+        this.errorMessage = "Provide at least one valid detector-to-phase mapping pair.";
         return;
       }
 
@@ -155,7 +177,7 @@ export default {
       }
 
       const phaseIntervalsByPhase = this.buildPhaseIntervals(records);
-      const detectorOnEventsByPhase = this.buildDetectorOnEventsByPhase(records, detectorToPhase);
+      const detectorOnEventsByPhase = this.buildDetectorOnEventsByPhase(records);
 
       const perPhaseRows = [];
       phaseIntervalsByPhase.forEach((intervals, phase) => {
@@ -214,29 +236,64 @@ export default {
       );
     },
     parseDetectorPhaseMap(input) {
-      const map = new Map();
+      const channelToPhaseMap = {};
+      const errors = [];
 
       String(input || "")
         .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .forEach((line) => {
-          const numbers = line.match(/\d+/g);
-          if (!numbers || numbers.length < 2) {
+        .forEach((line, index) => {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) {
             return;
           }
 
-          const detector = Number(numbers[0]);
-          const phase = Number(numbers[1]);
-
-          if (Number.isNaN(detector) || Number.isNaN(phase)) {
+          const parsedPair = this.parseMappingLine(trimmedLine);
+          if (!parsedPair) {
+            errors.push(`Line ${index + 1}: expected channel and phase values.`);
             return;
           }
 
-          map.set(detector, phase);
+          const { channel, phase } = parsedPair;
+          if (!Number.isFinite(channel) || !Number.isFinite(phase)) {
+            errors.push(`Line ${index + 1}: channel and phase must both be numeric.`);
+            return;
+          }
+
+          if (channelToPhaseMap[channel] !== undefined) {
+            errors.push(`Line ${index + 1}: channel ${channel} is mapped more than once.`);
+            return;
+          }
+
+          channelToPhaseMap[channel] = phase;
         });
 
-      return map;
+      return {
+        channelToPhaseMap,
+        errors,
+      };
+    },
+    parseMappingLine(line) {
+      if (line.startsWith("{")) {
+        try {
+          const parsedJson = JSON.parse(line);
+          return {
+            channel: Number(parsedJson.channel),
+            phase: Number(parsedJson.phase),
+          };
+        } catch {
+          return null;
+        }
+      }
+
+      const numbers = line.match(/-?\d+(?:\.\d+)?/g);
+      if (!numbers || numbers.length < 2) {
+        return null;
+      }
+
+      return {
+        channel: Number(numbers[0]),
+        phase: Number(numbers[1]),
+      };
     },
     parseRecords(input) {
       return String(input || "")
@@ -302,7 +359,7 @@ export default {
       intervalsByPhase.forEach((intervals) => intervals.sort((a, b) => a.startMs - b.startMs));
       return intervalsByPhase;
     },
-    buildDetectorOnEventsByPhase(records, detectorToPhase) {
+    buildDetectorOnEventsByPhase(records) {
       const eventsByPhase = new Map();
 
       records.forEach((record) => {
@@ -310,7 +367,7 @@ export default {
           return;
         }
 
-        const mappedPhase = detectorToPhase.get(record.parameter);
+        const mappedPhase = this.channelToPhaseMap[record.parameter];
         if (mappedPhase === undefined) {
           return;
         }
@@ -358,6 +415,22 @@ export default {
 .error-message {
   color: #b00020;
   font-weight: 600;
+}
+
+.mapping-errors {
+  color: #b00020;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.input-label {
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.help-text {
+  font-size: 0.85rem;
+  color: #4f4f4f;
 }
 
 .cycle-legend {

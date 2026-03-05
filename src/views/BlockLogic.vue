@@ -116,6 +116,7 @@
     <v-card class="mt-4">
       <v-tabs v-model="resultsTab" color="primary">
         <v-tab value="events">Events Table</v-tab>
+        <v-tab value="table">Appended Table Rows</v-tab>
         <v-tab value="plots">Plots</v-tab>
         <v-tab value="logs">Logs</v-tab>
         <v-tab value="diagnostics">Diagnostics</v-tab>
@@ -123,6 +124,9 @@
       <v-window v-model="resultsTab">
         <v-window-item value="events">
           <v-data-table :items="outputs.events" :headers="eventHeaders" density="compact" />
+        </v-window-item>
+        <v-window-item value="table">
+          <v-data-table :items="outputs.table" :headers="tableHeaders" density="compact" />
         </v-window-item>
         <v-window-item value="plots" class="pa-4">
           <Scatter v-if="plotDatasets.length" :data="plotData" :options="plotOptions" />
@@ -144,12 +148,12 @@
 <script setup>
 import { computed, reactive, ref } from 'vue';
 import { Scatter } from 'vue-chartjs';
-import { Chart as ChartJS, PointElement, LinearScale, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, PointElement, LineElement, LinearScale, Tooltip, Legend } from 'chart.js';
 import InputBox from '../components/foundational/InputBox.vue';
 import { actionPalette, builtInTemplates, conditionPalette, createAction, createCondition, createEmptySchema, createRule, validateSchema } from '../utils/blockLogicSchema.js';
 import { createRuntime } from '../utils/blockLogicEngine.js';
 
-ChartJS.register(PointElement, LinearScale, Tooltip, Legend);
+ChartJS.register(PointElement, LineElement, LinearScale, Tooltip, Legend);
 
 const schema = reactive(createEmptySchema());
 const templateOptions = builtInTemplates();
@@ -167,11 +171,47 @@ let dragPayload = null;
 const eventHeaders = [
   { title: 'Timestamp', key: 'timestamp' }, { title: 'Rule', key: 'ruleName' }, { title: 'Type', key: 'eventType' }, { title: 'Value', key: 'value' },
 ];
+const tableHeaders = [
+  { title: 'Timestamp', key: 'timestamp' },
+  { title: 'Phase', key: 'phase' },
+  { title: 'Detector', key: 'detector' },
+  { title: 'Rule', key: 'ruleName' },
+  { title: 'Metric Value', key: 'metricValue' },
+  { title: 'Notes', key: 'notes' },
+];
 const diagHeaders = [{ title: 'Timestamp', key: 'timestamp' }, { title: 'Severity', key: 'severity' }, { title: 'Message', key: 'message' }];
 
 const validationErrors = computed(() => validateSchema(schema));
-const plotDatasets = computed(() => outputs.plots.filter((plot) => plot.type === 'point'));
-const plotData = computed(() => ({ datasets: [{ label: 'Rule Points', data: plotDatasets.value.map((p) => ({ x: p.x, y: p.y })), backgroundColor: '#1976D2' }] }));
+const plotDatasets = computed(() => {
+  const pointRows = outputs.plots.filter((plot) => plot.type === 'point');
+  const rangeRows = outputs.plots.filter((plot) => plot.type === 'range');
+
+  const datasets = [];
+
+  if (pointRows.length) {
+    datasets.push({
+      type: 'scatter',
+      label: 'Rule Points',
+      data: pointRows.map((point) => ({ x: point.x, y: point.y })),
+      backgroundColor: '#1976D2',
+    });
+  }
+
+  if (rangeRows.length) {
+    datasets.push(...rangeRows.map((range, index) => ({
+      type: 'line',
+      label: `Range ${index + 1}`,
+      data: [{ x: range.startT, y: range.y }, { x: range.endT, y: range.y }],
+      borderColor: range.color || '#8E24AA',
+      borderWidth: 2,
+      pointRadius: 0,
+      showLine: true,
+    })));
+  }
+
+  return datasets;
+});
+const plotData = computed(() => ({ datasets: plotDatasets.value }));
 const plotOptions = { responsive: true, scales: { x: { type: 'linear', ticks: { callback: (v) => new Date(Number(v)).toLocaleTimeString() } }, y: { type: 'linear' } } };
 
 function addRule() { schema.rules.push(createRule(`Rule ${schema.rules.length + 1}`)); }

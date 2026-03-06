@@ -388,10 +388,59 @@ export default {
         }
       });
 
-      return cycles.map((cycle, index) => ({
-        ...cycle,
-        rowLabel: `Run ${index + 1}`,
-      }));
+      const servedRuns = cycles;
+      const cycleStarts = this.coordCycleStateData
+        .filter((event) => event.parameterCode === 7)
+        .sort((a, b) => a.timestampMs - b.timestampMs);
+
+      if (cycleStarts.length < 2) {
+        return servedRuns.map((cycle, index) => ({
+          ...cycle,
+          rowLabel: `Run ${index + 1}`,
+          isServed: true,
+          windowStart: cycle.start,
+          windowEnd: cycle.end,
+        }));
+      }
+
+      const runsByCycle = [];
+      let servedIndex = 0;
+
+      for (let index = 0; index < cycleStarts.length - 1; index += 1) {
+        const windowStart = cycleStarts[index].timestampMs;
+        const windowEnd = cycleStarts[index + 1].timestampMs;
+
+        while (
+          servedIndex < servedRuns.length &&
+          servedRuns[servedIndex].end <= windowStart
+        ) {
+          servedIndex += 1;
+        }
+
+        let matchingRun = null;
+        if (servedIndex < servedRuns.length) {
+          const candidate = servedRuns[servedIndex];
+          if (candidate.start < windowEnd && candidate.end > windowStart) {
+            matchingRun = candidate;
+            servedIndex += 1;
+          }
+        }
+
+        runsByCycle.push({
+          phase: this.activePhase,
+          rowLabel: `Run ${index + 1}`,
+          start: matchingRun ? matchingRun.start : windowStart,
+          end: matchingRun ? matchingRun.end : windowEnd,
+          duration: matchingRun
+            ? matchingRun.duration
+            : Math.max(windowEnd - windowStart, 0),
+          windowStart,
+          windowEnd,
+          isServed: Boolean(matchingRun),
+        });
+      }
+
+      return runsByCycle;
     },
     singlePhaseRows() {
       return this.phaseCycles.map((cycle) => cycle.rowLabel);
@@ -417,15 +466,19 @@ export default {
       const mappedChannels = this.getChannelsForActivePhase();
 
       return this.phaseCycles.flatMap((cycle) => {
+        const rowStart = cycle.isServed ? cycle.start : cycle.windowStart;
+        const rowEnd = cycle.isServed ? cycle.end : cycle.windowEnd;
+
         const cycleEvents = this.filteredDetectionEvents.filter(
-          (event) =>
-            event.timestampMs >= cycle.start && event.timestampMs <= cycle.end
+          (event) => event.timestampMs >= rowStart && event.timestampMs <= rowEnd
         );
 
-        const carryInEvents = this.getCarryInDetectionEvents(cycle, mappedChannels);
+        const carryInEvents = cycle.isServed
+          ? this.getCarryInDetectionEvents(cycle, mappedChannels)
+          : [];
 
         return [...carryInEvents, ...cycleEvents].map((event) => ({
-          x: event.timestampMs - cycle.start,
+          x: event.timestampMs - rowStart,
           y: cycle.rowLabel,
           event,
           cycle,
@@ -441,7 +494,12 @@ export default {
         (interval) => interval.phase === this.activePhase
       );
 
-      return this.phaseCycles.flatMap((cycle) =>
+      return this.phaseCycles.flatMap((cycle) => {
+        if (!cycle.isServed) {
+          return [];
+        }
+
+        return (
         states
           .filter(
             (interval) => interval.start >= cycle.start && interval.end <= cycle.end
@@ -451,7 +509,8 @@ export default {
             y: cycle.rowLabel,
             phase: interval,
           }))
-      );
+        );
+      });
     },
     singlePhaseRange() {
       if (!this.singlePhaseDetectionPoints.length && !this.phaseCycles.length) {

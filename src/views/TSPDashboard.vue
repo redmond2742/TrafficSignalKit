@@ -147,6 +147,18 @@ const CHECK_IN_CODE = 112;
 const CHECK_OUT_CODE = 115;
 const SERVICE_START_CODE = 118;
 const SERVICE_END_CODE = 119;
+const CHANNEL_COLORS = [
+  "rgba(25, 118, 210, 0.85)",
+  "rgba(46, 125, 50, 0.85)",
+  "rgba(198, 40, 40, 0.85)",
+  "rgba(123, 31, 162, 0.85)",
+  "rgba(251, 140, 0, 0.85)",
+  "rgba(0, 121, 107, 0.85)",
+  "rgba(93, 64, 55, 0.85)",
+  "rgba(57, 73, 171, 0.85)",
+  "rgba(216, 27, 96, 0.85)",
+  "rgba(2, 136, 209, 0.85)",
+];
 
 export default {
   name: "TSPDashboard",
@@ -162,6 +174,7 @@ export default {
       tspEvents: [],
       phaseEvents: [],
       detailedPairRows: [],
+      fileTimeBounds: null,
     };
   },
   computed: {
@@ -245,16 +258,26 @@ export default {
       return levels;
     },
     tspEnumerationChartData() {
-      const dataset = {
-        label: "TSP Enumerations",
-        data: this.tspEvents.map((event) => ({ x: event.timestampMs, y: event.eventCode })),
-        pointRadius: 4,
-        showLine: false,
-        backgroundColor: "rgba(25, 118, 210, 0.8)",
-      };
+      const groupedByChannel = this.tspEvents.reduce((lookup, event) => {
+        if (!lookup[event.parameterCode]) {
+          lookup[event.parameterCode] = [];
+        }
+        lookup[event.parameterCode].push({
+          x: event.timestampMs,
+          y: event.eventCode,
+          parameterCode: event.parameterCode,
+        });
+        return lookup;
+      }, {});
 
       return {
-        datasets: this.tspEvents.length ? [dataset] : [],
+        datasets: Object.entries(groupedByChannel).map(([channel, points], index) => ({
+          label: `Channel ${channel}`,
+          data: points,
+          pointRadius: 4,
+          showLine: false,
+          backgroundColor: CHANNEL_COLORS[index % CHANNEL_COLORS.length],
+        })),
       };
     },
     tspEnumerationChartOptions() {
@@ -263,13 +286,14 @@ export default {
         responsive: true,
         parsing: false,
         plugins: {
-          legend: { display: false },
+          legend: { display: true },
           tooltip: {
             callbacks: {
               label(context) {
                 const code = context.parsed.y;
                 const timestamp = new Date(context.parsed.x).toLocaleString();
-                return `${timestamp} · ${code}: ${codeToDescriptor[code] || "TSP Event"}`;
+                const channel = context.raw.parameterCode;
+                return `${timestamp} · Channel ${channel} · ${code}: ${codeToDescriptor[code] || "TSP Event"}`;
               },
             },
           },
@@ -298,30 +322,27 @@ export default {
       };
     },
     tspPhaseChartData() {
-      const colorMap = {
-        green: "rgba(46, 125, 50, 0.85)",
-        yellow: "rgba(251, 192, 45, 0.9)",
-        red: "rgba(198, 40, 40, 0.85)",
-        inactive: "rgba(117, 117, 117, 0.75)",
-        unknown: "rgba(33, 33, 33, 0.75)",
-      };
-
       const grouped = new Map();
       this.tspEvents.forEach((event) => {
-        const state = event.phaseStateAtEvent || "unknown";
-        if (!grouped.has(state)) {
-          grouped.set(state, []);
+        const channel = event.parameterCode;
+        if (!grouped.has(channel)) {
+          grouped.set(channel, []);
         }
-        grouped.get(state).push({ x: event.timestampMs, y: event.parameterCode, eventCode: event.eventCode });
+        grouped.get(channel).push({
+          x: event.timestampMs,
+          y: event.parameterCode,
+          eventCode: event.eventCode,
+          phaseStateAtEvent: event.phaseStateAtEvent,
+        });
       });
 
       return {
-        datasets: Array.from(grouped.entries()).map(([state, points]) => ({
-          label: state,
+        datasets: Array.from(grouped.entries()).map(([channel, points], index) => ({
+          label: `Channel ${channel}`,
           data: points,
           pointRadius: 4,
           showLine: false,
-          backgroundColor: colorMap[state] || colorMap.unknown,
+          backgroundColor: CHANNEL_COLORS[index % CHANNEL_COLORS.length],
         })),
       };
     },
@@ -341,7 +362,8 @@ export default {
                 const timestamp = new Date(context.parsed.x).toLocaleString();
                 const channel = context.parsed.y;
                 const code = context.raw.eventCode;
-                return `${timestamp} · Channel ${channel} · ${codeToDescriptor[code] || `Event ${code}`}`;
+                const phaseState = context.raw.phaseStateAtEvent || "unknown";
+                return `${timestamp} · Channel ${channel} · ${codeToDescriptor[code] || `Event ${code}`} · Phase ${phaseState}`;
               },
             },
           },
@@ -379,7 +401,7 @@ export default {
             values: [],
           };
         }
-        lookup[key].values.push(row.durationSec);
+        lookup[key].values.push(row.durationSecValue);
         return lookup;
       }, {});
 
@@ -402,6 +424,8 @@ export default {
       const lines = this.inputData.split("\n");
       const tspEvents = [];
       const phaseEvents = [];
+      let minTimestampMs = Number.POSITIVE_INFINITY;
+      let maxTimestampMs = Number.NEGATIVE_INFINITY;
 
       lines.forEach((line, index) => {
         const trimmedLine = line.trim();
@@ -414,6 +438,8 @@ export default {
         if (!timestampInfo || Number.isNaN(timestampInfo.MillisecFromEpoch)) {
           return;
         }
+        minTimestampMs = Math.min(minTimestampMs, timestampInfo.MillisecFromEpoch);
+        maxTimestampMs = Math.max(maxTimestampMs, timestampInfo.MillisecFromEpoch);
 
         const eventCode = parseInt(eventCodeRaw, 10);
         const parameterCode = parseInt(parameterRaw, 10);
@@ -446,6 +472,14 @@ export default {
 
       tspEvents.sort((a, b) => a.timestampMs - b.timestampMs);
       phaseEvents.sort((a, b) => a.timestampMs - b.timestampMs);
+      this.fileTimeBounds = Number.isFinite(minTimestampMs) && Number.isFinite(maxTimestampMs)
+        ? {
+            minTimestampMs,
+            maxTimestampMs,
+            minTimestampText: new Date(minTimestampMs).toLocaleString(),
+            maxTimestampText: new Date(maxTimestampMs).toLocaleString(),
+          }
+        : null;
 
       this.phaseEvents = phaseEvents;
       this.tspEvents = tspEvents.map((event) => ({
@@ -500,27 +534,69 @@ export default {
             if (event.eventCode === definition.startCode) {
               starts.push(event);
             }
-            if (event.eventCode === definition.endCode && starts.length) {
-              const startEvent = starts.shift();
-              const durationSec = (event.timestampMs - startEvent.timestampMs) / 1000;
-              if (durationSec >= 0) {
+            if (event.eventCode === definition.endCode) {
+              if (starts.length) {
+                const startEvent = starts.shift();
+                const durationSecValue = (event.timestampMs - startEvent.timestampMs) / 1000;
+                if (durationSecValue >= 0) {
+                  rows.push({
+                    id: `${channel}-${definition.metric}-${startEvent.id}-${event.id}`,
+                    channel: Number(channel),
+                    metric: definition.metric,
+                    startEvent: `${definition.startCode} ${this.tspLookup[definition.startCode] || ""}`.trim(),
+                    startTime: startEvent.timestampText,
+                    endEvent: `${definition.endCode} ${this.tspLookup[definition.endCode] || ""}`.trim(),
+                    endTime: event.timestampText,
+                    durationSecValue,
+                    durationSec: durationSecValue.toFixed(2),
+                    startTimestampMs: startEvent.timestampMs,
+                  });
+                }
+              } else if (this.fileTimeBounds) {
+                const estimatedDuration = (event.timestampMs - this.fileTimeBounds.minTimestampMs) / 1000;
+                if (estimatedDuration >= 0) {
+                  rows.push({
+                    id: `${channel}-${definition.metric}-estimated-start-${event.id}`,
+                    channel: Number(channel),
+                    metric: definition.metric,
+                    startEvent: `${definition.startCode} ${this.tspLookup[definition.startCode] || ""} (missing)`
+                      .trim(),
+                    startTime: `${this.fileTimeBounds.minTimestampText} (+)`,
+                    endEvent: `${definition.endCode} ${this.tspLookup[definition.endCode] || ""}`.trim(),
+                    endTime: event.timestampText,
+                    durationSecValue: estimatedDuration,
+                    durationSec: `${estimatedDuration.toFixed(2)}+`,
+                    startTimestampMs: this.fileTimeBounds.minTimestampMs,
+                  });
+                }
+              }
+            }
+          });
+
+          if (this.fileTimeBounds) {
+            starts.forEach((startEvent) => {
+              const estimatedDuration = (this.fileTimeBounds.maxTimestampMs - startEvent.timestampMs) / 1000;
+              if (estimatedDuration >= 0) {
                 rows.push({
-                  id: `${channel}-${definition.metric}-${startEvent.id}-${event.id}`,
+                  id: `${channel}-${definition.metric}-${startEvent.id}-estimated-end`,
                   channel: Number(channel),
                   metric: definition.metric,
                   startEvent: `${definition.startCode} ${this.tspLookup[definition.startCode] || ""}`.trim(),
                   startTime: startEvent.timestampText,
-                  endEvent: `${definition.endCode} ${this.tspLookup[definition.endCode] || ""}`.trim(),
-                  endTime: event.timestampText,
-                  durationSec,
+                  endEvent: `${definition.endCode} ${this.tspLookup[definition.endCode] || ""} (missing)`
+                    .trim(),
+                  endTime: `${this.fileTimeBounds.maxTimestampText} (+)`,
+                  durationSecValue: estimatedDuration,
+                  durationSec: `${estimatedDuration.toFixed(2)}+`,
+                  startTimestampMs: startEvent.timestampMs,
                 });
               }
-            }
-          });
+            });
+          }
         });
       });
 
-      return rows.sort((a, b) => (a.channel === b.channel ? a.startTime.localeCompare(b.startTime) : a.channel - b.channel));
+      return rows.sort((a, b) => (a.channel === b.channel ? a.startTimestampMs - b.startTimestampMs : a.channel - b.channel));
     },
     average(values) {
       if (!values.length) {

@@ -153,15 +153,6 @@ export default {
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
-          title: "Phase Pressure Map",
-          description:
-            "Heat map of phase pressure using detector demand versus phase service by cycle",
-          link: "/phase-pressure-map",
-          topics: ["Controller Data", "Detection", "Heat Map"],
-        },
-        {
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
           title: "Detector Event Heat Map",
           description:
             "Heat map detector activity by time of day and phase/channel mappings",

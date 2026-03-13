@@ -6,70 +6,14 @@
     -->
 
     <div class="grow-wrap">
-      <div class="input-toggle">
-        <v-switch
-          v-model="useFileUpload"
-          inset
-          label="Upload CSV files instead of pasting"
-        />
-      </div>
-
-      <div v-if="useFileUpload" class="file-upload">
-        <div class="input-toggle">
-          <v-switch
-            v-model="allowMultipleUploads"
-            inset
-            label="Allow multiple CSV uploads"
-          />
-        </div>
-        <div
-          class="file-drop-zone"
-          @dragover.prevent
-          @drop.prevent="handleDrop"
-        >
-          <p>Drag and drop CSV files here, or choose files to upload.</p>
-          <input
-            ref="fileInput"
-            type="file"
-            :multiple="allowMultipleUploads"
-            accept=".csv,text/csv"
-            @change="handleFileSelection"
-          />
-        </div>
-        <div class="file-list">
-          <p v-if="isLoadingFiles" class="file-placeholder">
-            Loading files...
-          </p>
-          <p
-            v-else-if="!selectedFileNames.length"
-            class="file-placeholder"
-          >
-            No files selected yet.
-          </p>
-          <ul v-else>
-            <li v-for="fileName in selectedFileNames" :key="fileName">
-              {{ fileName }}
-            </li>
-          </ul>
-          <v-btn
-            v-if="selectedFileNames.length"
-            variant="text"
-            color="secondary"
-            @click="clearFileSelection"
-          >
-            Clear selection
-          </v-btn>
-        </div>
-      </div>
-
-      <InputBox v-else v-model="inputData" />
+      <InputBox v-model="inputData" />
 
       <v-card>
         <v-card-text>
           <v-btn
             color="primary"
             :loading="isProcessing"
-            :disabled="isProcessing || isLoadingFiles || !canProcess"
+            :disabled="isProcessing || !inputData.trim().length"
             @click="processCSV"
           >
             Process High Resolution Data
@@ -158,11 +102,6 @@ export default {
   data() {
     return {
       inputData: "",
-      useFileUpload: false,
-      allowMultipleUploads: true,
-      selectedFileNames: [],
-      filesLoaded: false,
-      isLoadingFiles: false,
       filters: {
         timestamp: "",
         enumeration: "",
@@ -345,73 +284,6 @@ export default {
     selectedTimezone(tzData) {
       this.timezoneOffset = tzData;
     },
-    handleFileSelection(event) {
-      const files = event.target?.files;
-      this.loadCsvFiles(files);
-    },
-    handleDrop(event) {
-      const files = event.dataTransfer?.files;
-      this.loadCsvFiles(files);
-    },
-    clearFileSelection() {
-      this.selectedFileNames = [];
-      this.filesLoaded = false;
-      this.isLoadingFiles = false;
-      this.inputData = "";
-      this.rowData = [];
-      if (this.$refs.fileInput) {
-        this.$refs.fileInput.value = "";
-      }
-    },
-    async loadCsvFiles(fileList) {
-      if (!fileList || !fileList.length) {
-        this.clearFileSelection();
-        return;
-      }
-      this.isLoadingFiles = true;
-      this.filesLoaded = false;
-      const files = Array.from(fileList);
-      const filesToLoad = this.allowMultipleUploads ? files : files.slice(0, 1);
-      this.selectedFileNames = filesToLoad.map((file) => file.name);
-      const combinedLines = [];
-      let headerLine = null;
-      let normalizedHeader = null;
-
-      try {
-        for (const file of filesToLoad) {
-          const text = await file.text();
-          const lines = text
-            .split(/\r?\n/)
-            .map((line) => line.trim())
-            .filter(Boolean);
-          if (!lines.length) {
-            continue;
-          }
-          if (!headerLine) {
-            headerLine = lines[0];
-            normalizedHeader = this.normalizeHeader(headerLine);
-            combinedLines.push(...lines);
-            continue;
-          }
-          const currentHeader = this.normalizeHeader(lines[0]);
-          if (currentHeader === normalizedHeader) {
-            combinedLines.push(...lines.slice(1));
-          } else {
-            combinedLines.push(...lines);
-          }
-        }
-      } finally {
-        this.inputData = combinedLines.join("\n");
-        this.filesLoaded = combinedLines.length > 0;
-        this.isLoadingFiles = false;
-      }
-    },
-    normalizeHeader(line) {
-      if (!line) {
-        return "";
-      }
-      return line.replace(/^\uFEFF/, "").trim().toLowerCase();
-    },
     async processCSV() {
       this.isProcessing = true;
       this.rowData = [];
@@ -513,36 +385,7 @@ export default {
       URL.revokeObjectURL(url);
     },
   },
-  watch: {
-    useFileUpload(newValue) {
-      if (newValue) {
-        this.inputData = "";
-        this.rowData = [];
-      } else {
-        this.clearFileSelection();
-      }
-    },
-    allowMultipleUploads(newValue) {
-      if (newValue) {
-        return;
-      }
-      const currentFiles = this.$refs.fileInput?.files;
-      if (currentFiles && currentFiles.length > 1) {
-        this.loadCsvFiles([currentFiles[0]]);
-        return;
-      }
-      if (this.selectedFileNames.length > 1) {
-        this.clearFileSelection();
-      }
-    },
-  },
   computed: {
-    canProcess() {
-      if (this.useFileUpload) {
-        return this.filesLoaded && this.inputData.trim().length > 0;
-      }
-      return this.inputData.trim().length > 0;
-    },
     filteredRows() {
       const timestampFilter = this.filters.timestamp.toLowerCase();
       const enumerationFilter = this.filters.enumeration.toLowerCase();
@@ -586,32 +429,6 @@ export default {
 
   /* Hidden from view, clicks, and screen readers */
   visibility: hidden;
-}
-.input-toggle {
-  margin-bottom: 12px;
-}
-.file-upload {
-  border: 1px dashed #c0c0c0;
-  border-radius: 6px;
-  padding: 16px;
-  margin-bottom: 16px;
-  background: #fafafa;
-}
-.file-drop-zone {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.file-drop-zone input[type="file"] {
-  padding: 8px 0;
-}
-.file-list ul {
-  margin: 0;
-  padding-left: 18px;
-}
-.file-placeholder {
-  margin: 0 0 8px;
-  color: #6b6b6b;
 }
 .grow-wrap > textarea {
   /* You could leave this, but after a user resizes, then it ruins the auto sizing */

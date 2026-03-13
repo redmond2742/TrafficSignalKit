@@ -46,7 +46,6 @@ import GapOutGapReductionHelper from '../views/GapOutGapReductionHelper'
 import DetectorBubbleChart from '../views/DetectorBubbleChart'
 import PhaseBubbleScatter from '../views/PhaseBubbleScatter'
 import BlockLogic from '../views/BlockLogic'
-import PhasePressureMap from '../views/PhasePressureMap'
 
 
 
@@ -261,12 +260,6 @@ const routes = [
         name: 'phaseBubbleScatter',
         component: PhaseBubbleScatter,
     },
-    {
-        path: '/phase-pressure-map',
-        name: 'phasePressureMap',
-        component: PhasePressureMap,
-    },
-
     {
         path: '/tools/block-logic',
         name: 'blockLogic',

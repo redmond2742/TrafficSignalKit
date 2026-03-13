@@ -181,8 +181,11 @@ export default {
         phaseColors.set(row.phase, palette[index % palette.length]);
       });
       const bubbleScale = 1.4;
+      const rowsWithDuration = this.displayedPhaseAggregates.filter(
+        (row) => Number(row.avgSplitServed) > 0,
+      );
       return {
-        datasets: this.displayedPhaseAggregates.map((row) => {
+        datasets: rowsWithDuration.map((row) => {
           const radius = Math.max(
             4,
             Math.sqrt(Number(row.avgSplitServed) || 0) * bubbleScale,

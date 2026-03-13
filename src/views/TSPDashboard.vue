@@ -62,6 +62,18 @@
       </v-card>
 
       <v-card class="tool-card" variant="outlined">
+        <v-card-title class="card-title">TSP Check In / Check Out Pair Durations by Channel</v-card-title>
+        <v-card-text class="card-body">
+          <Scatter
+            v-if="checkInOutPairChartData.datasets.length"
+            :data="checkInOutPairChartData"
+            :options="checkInOutPairChartOptions"
+          />
+          <div v-else class="empty-state">No check in/check out events available for pair plotting.</div>
+        </v-card-text>
+      </v-card>
+
+      <v-card class="tool-card" variant="outlined">
         <v-card-title class="card-title">Channel Timing Metrics (Check-In/Out and TSP On/Off)</v-card-title>
         <v-card-text class="card-body">
           <v-table density="compact">
@@ -257,14 +269,31 @@ export default {
       );
       return levels;
     },
+    channelLevels() {
+      return Array.from(new Set(this.tspEvents.map((event) => event.parameterCode))).sort(
+        (a, b) => a - b,
+      );
+    },
+    channelLevelLookup() {
+      return this.channelLevels.reduce((lookup, channel, index) => {
+        lookup[channel] = index;
+        return lookup;
+      }, {});
+    },
     tspEnumerationChartData() {
+      const eventCodeLookup = this.enumerationLevels.reduce((lookup, code, index) => {
+        lookup[code] = index;
+        return lookup;
+      }, {});
+
       const groupedByChannel = this.tspEvents.reduce((lookup, event) => {
         if (!lookup[event.parameterCode]) {
           lookup[event.parameterCode] = [];
         }
         lookup[event.parameterCode].push({
           x: event.timestampMs,
-          y: event.eventCode,
+          y: eventCodeLookup[event.eventCode],
+          eventCode: event.eventCode,
           parameterCode: event.parameterCode,
         });
         return lookup;
@@ -290,7 +319,7 @@ export default {
           tooltip: {
             callbacks: {
               label(context) {
-                const code = context.parsed.y;
+                const code = context.raw.eventCode;
                 const timestamp = new Date(context.parsed.x).toLocaleString();
                 const channel = context.raw.parameterCode;
                 return `${timestamp} · Channel ${channel} · ${code}: ${codeToDescriptor[code] || "TSP Event"}`;
@@ -311,10 +340,13 @@ export default {
           y: {
             type: "linear",
             ticks: {
-              callback: (value) => codeToDescriptor[value] || `Event ${value}`,
+              callback: (value) => {
+                const code = this.enumerationLevels[value];
+                return code !== undefined ? codeToDescriptor[code] || `Event ${code}` : "";
+              },
             },
             afterBuildTicks: (axis) => {
-              axis.ticks = this.enumerationLevels.map((value) => ({ value }));
+              axis.ticks = this.enumerationLevels.map((_, index) => ({ value: index }));
             },
             title: { display: true, text: "TSP Enumeration" },
           },
@@ -330,7 +362,8 @@ export default {
         }
         grouped.get(channel).push({
           x: event.timestampMs,
-          y: event.parameterCode,
+          y: this.channelLevelLookup[event.parameterCode],
+          channel: event.parameterCode,
           eventCode: event.eventCode,
           phaseStateAtEvent: event.phaseStateAtEvent,
         });
@@ -348,9 +381,7 @@ export default {
     },
     tspPhaseChartOptions() {
       const codeToDescriptor = this.tspLookup;
-      const channels = Array.from(new Set(this.tspEvents.map((event) => event.parameterCode))).sort(
-        (a, b) => a - b,
-      );
+      const channels = this.channelLevels;
 
       return {
         responsive: true,
@@ -360,7 +391,7 @@ export default {
             callbacks: {
               label(context) {
                 const timestamp = new Date(context.parsed.x).toLocaleString();
-                const channel = context.parsed.y;
+                const channel = context.raw.channel;
                 const code = context.raw.eventCode;
                 const phaseState = context.raw.phaseStateAtEvent || "unknown";
                 return `${timestamp} · Channel ${channel} · ${codeToDescriptor[code] || `Event ${code}`} · Phase ${phaseState}`;
@@ -381,15 +412,159 @@ export default {
           y: {
             type: "linear",
             ticks: {
-              callback: (value) => `Channel ${value}`,
+              callback: (value) => {
+                const channel = channels[value];
+                return channel !== undefined ? `Channel ${channel}` : "";
+              },
             },
             afterBuildTicks: (axis) => {
-              axis.ticks = channels.map((value) => ({ value }));
+              axis.ticks = channels.map((_, index) => ({ value: index }));
             },
             title: { display: true, text: "TSP Channel" },
           },
         },
       };
+    },
+    checkInOutPairChartData() {
+      const color = "rgba(2, 136, 209, 0.8)";
+      return {
+        datasets: this.checkInOutPairLines.map((pair) => ({
+          label: `Channel ${pair.channel}`,
+          data: [
+            {
+              x: pair.startTimestampMs,
+              y: this.channelLevelLookup[pair.channel],
+              channel: pair.channel,
+              durationSec: pair.durationSec,
+              missingBound: pair.missingBound,
+            },
+            {
+              x: pair.endTimestampMs,
+              y: this.channelLevelLookup[pair.channel],
+              channel: pair.channel,
+              durationSec: pair.durationSec,
+              missingBound: pair.missingBound,
+            },
+          ],
+          showLine: true,
+          borderWidth: 2,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+          borderColor: color,
+          backgroundColor: color,
+        })),
+      };
+    },
+    checkInOutPairChartOptions() {
+      return {
+        responsive: true,
+        parsing: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const row = context.raw;
+                const durationText = `${row.durationSec.toFixed(2)} s`;
+                const boundText = row.missingBound ? ` (${row.missingBound} extrapolated)` : "";
+                return `Channel ${row.channel} · Duration ${durationText}${boundText}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: "linear",
+            ticks: {
+              callback(value) {
+                return new Date(value).toLocaleTimeString();
+              },
+            },
+            title: { display: true, text: "Time" },
+          },
+          y: {
+            type: "linear",
+            ticks: {
+              callback: (value) => {
+                const channel = this.channelLevels[value];
+                return channel !== undefined ? `Channel ${channel}` : "";
+              },
+            },
+            afterBuildTicks: (axis) => {
+              axis.ticks = this.channelLevels.map((_, index) => ({ value: index }));
+            },
+            title: { display: true, text: "TSP Channel" },
+          },
+        },
+      };
+    },
+    checkInOutPairLines() {
+      if (!this.fileTimeBounds) {
+        return [];
+      }
+
+      const lines = [];
+      const byChannel = this.tspEvents.reduce((lookup, event) => {
+        if (!lookup[event.parameterCode]) {
+          lookup[event.parameterCode] = [];
+        }
+        lookup[event.parameterCode].push(event);
+        return lookup;
+      }, {});
+
+      Object.entries(byChannel).forEach(([channelRaw, events]) => {
+        const channel = Number(channelRaw);
+        const starts = [];
+        events.forEach((event) => {
+          if (event.eventCode === CHECK_IN_CODE) {
+            starts.push(event);
+            return;
+          }
+          if (event.eventCode !== CHECK_OUT_CODE) {
+            return;
+          }
+
+          if (starts.length) {
+            const startEvent = starts.shift();
+            const durationSec = (event.timestampMs - startEvent.timestampMs) / 1000;
+            if (durationSec >= 0) {
+              lines.push({
+                channel,
+                startTimestampMs: startEvent.timestampMs,
+                endTimestampMs: event.timestampMs,
+                durationSec,
+                missingBound: null,
+              });
+            }
+          } else {
+            const durationSec = (event.timestampMs - this.fileTimeBounds.minTimestampMs) / 1000;
+            if (durationSec >= 0) {
+              lines.push({
+                channel,
+                startTimestampMs: this.fileTimeBounds.minTimestampMs,
+                endTimestampMs: event.timestampMs,
+                durationSec,
+                missingBound: "start",
+              });
+            }
+          }
+        });
+
+        starts.forEach((startEvent) => {
+          const durationSec = (this.fileTimeBounds.maxTimestampMs - startEvent.timestampMs) / 1000;
+          if (durationSec >= 0) {
+            lines.push({
+              channel,
+              startTimestampMs: startEvent.timestampMs,
+              endTimestampMs: this.fileTimeBounds.maxTimestampMs,
+              durationSec,
+              missingBound: "end",
+            });
+          }
+        });
+      });
+
+      return lines.sort((a, b) => (a.channel === b.channel ? a.startTimestampMs - b.startTimestampMs : a.channel - b.channel));
     },
     channelMetricSummaryRows() {
       const grouped = this.detailedPairRows.reduce((lookup, row) => {

@@ -217,6 +217,12 @@ export const routeMeta = {
       "Process high-resolution data to review detector status, phase plots, and split history in one dashboard.",
     path: "/dashboard",
   },
+  tspDashboard: {
+    title: "TSP Dashboard | Transit Signal Priority Event Analytics",
+    description:
+      "Upload high-resolution CSV files to analyze TSP channels, event frequencies, time-series patterns, and check-in/check-out performance metrics.",
+    path: "/tsp-dashboard",
+  },
   practiceExam: {
     title: "Traffic Signal Practice Exam | Certification Prep",
     description:

@@ -14,6 +14,9 @@
         <v-btn color="primary" variant="flat" to="/dashboard">
           Go to Dashboard
         </v-btn>
+        <v-btn color="secondary" variant="flat" to="/tsp-dashboard">
+          Go to TSP Dashboard
+        </v-btn>
       </v-card-actions>
     </v-card>
 

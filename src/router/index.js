@@ -31,6 +31,7 @@ import SignalOffsetCalculator from '../views/SignalOffsetCalculator'
 import YellowRedRunning from '../views/YellowRedRunning'
 import PedestrianInvestigator from '../views/PedestrianInvestigator'
 import Dashboard from '../views/Dashboard'
+import TSPDashboard from '../views/TSPDashboard'
 import VideoFrameExtractor from '../views/VideoFrameExtractor'
 import HighResPhaseStartTable from '../views/HighResPhaseStartTable'
 import PatternCalendar from '../views/PatternCalendar'
@@ -194,6 +195,11 @@ const routes = [
         path: '/dashboard',
         name: 'dashboard',
         component: Dashboard,
+    },
+    {
+        path: '/tsp-dashboard',
+        name: 'tspDashboard',
+        component: TSPDashboard,
     },
     {
         path: '/practice-exam',

@@ -26,15 +26,27 @@
               <div class="table-count">
                 Rows in table: {{ filteredRows.length }}
               </div>
-              <v-btn
-                color="secondary"
-                :disabled="!rowData.length"
-                @click="exportToExcel"
-              >
-                Export to Excel
-              </v-btn>
+              <div class="table-actions">
+                <v-btn
+                  color="secondary"
+                  :disabled="!rowData.length"
+                  @click="exportToExcel"
+                >
+                  Export to Excel
+                </v-btn>
+                <v-btn
+                  variant="text"
+                  :icon="isTableFullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
+                  :aria-label="
+                    isTableFullscreen
+                      ? 'Exit full screen view'
+                      : 'View explainer table in full screen'
+                  "
+                  @click="toggleTableFullscreen"
+                ></v-btn>
+              </div>
             </div>
-            <div class="virtual-table">
+            <div ref="virtualTable" class="virtual-table">
               <div class="virtual-table__filters">
                 <input
                   type="text"
@@ -109,6 +121,7 @@ export default {
       },
       rowData: [],
       isProcessing: false,
+      isTableFullscreen: false,
       timezoneOffset: "America/Los_Angeles",
       usaTimezones: {
         "America/New_York": -5, // UTC offset: -5 hours
@@ -327,6 +340,22 @@ export default {
         }
       });
     },
+    async toggleTableFullscreen() {
+      const tableEl = this.$refs.virtualTable;
+      if (!tableEl) {
+        return;
+      }
+
+      if (document.fullscreenElement === tableEl) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await tableEl.requestFullscreen();
+    },
+    handleFullscreenChange() {
+      this.isTableFullscreen = document.fullscreenElement === this.$refs.virtualTable;
+    },
     highlightMatches(text, filterValue) {
       if (filterValue === "" || filterValue === null || filterValue === undefined) {
         return text;
@@ -408,9 +437,13 @@ export default {
     },
   },
   mounted() {
+    document.addEventListener("fullscreenchange", this.handleFullscreenChange);
     // Output the processed data when the component is mounted
     //const output = this.processTimeSeriesData();
     //document.querySelector('timeseries').innerHTML = output;
+  },
+  beforeUnmount() {
+    document.removeEventListener("fullscreenchange", this.handleFullscreenChange);
   },
 };
 </script>
@@ -453,6 +486,21 @@ export default {
   border: 1px solid #d0d0d0;
   border-radius: 4px;
   overflow: hidden;
+}
+
+.virtual-table:fullscreen {
+  border: none;
+  border-radius: 0;
+  width: 100%;
+  height: 100vh;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.virtual-table:fullscreen .virtual-table__body {
+  flex: 1;
+  max-height: none;
 }
 
 .virtual-table__header,
@@ -551,6 +599,11 @@ select {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .table-count {
   font-weight: 600;

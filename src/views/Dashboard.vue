@@ -143,9 +143,22 @@
       </div>
 
       <v-card class="tool-card" variant="outlined">
-        <v-card-title class="card-title">High Resolution Explainer Tool</v-card-title>
+        <v-card-title class="card-title card-title--actions">
+          <span>High Resolution Explainer Tool</span>
+          <v-btn
+            size="small"
+            variant="text"
+            :icon="isExplainerFullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
+            :aria-label="
+              isExplainerFullscreen
+                ? 'Exit full screen view'
+                : 'View explainer table in full screen'
+            "
+            @click="toggleExplainerFullscreen"
+          ></v-btn>
+        </v-card-title>
         <v-card-text class="card-body">
-          <div class="explainer-table">
+          <div ref="explainerTable" class="explainer-table">
             <v-table density="compact">
             <thead>
               <tr>
@@ -259,6 +272,7 @@ export default {
         parameter: "",
         description: "",
       },
+      isExplainerFullscreen: false,
     };
   },
   computed: {
@@ -363,6 +377,22 @@ export default {
   methods: {
     updateSplitHistory(data) {
       this.splitHistoryRows = data;
+    },
+    async toggleExplainerFullscreen() {
+      const explainerEl = this.$refs.explainerTable;
+      if (!explainerEl) {
+        return;
+      }
+
+      if (document.fullscreenElement === explainerEl) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await explainerEl.requestFullscreen();
+    },
+    handleFullscreenChange() {
+      this.isExplainerFullscreen = document.fullscreenElement === this.$refs.explainerTable;
     },
     processDashboard() {
       const lines = this.inputData.split("\n");
@@ -509,6 +539,12 @@ export default {
       return parts[3] || "";
     },
   },
+  mounted() {
+    document.addEventListener("fullscreenchange", this.handleFullscreenChange);
+  },
+  beforeUnmount() {
+    document.removeEventListener("fullscreenchange", this.handleFullscreenChange);
+  },
 };
 </script>
 
@@ -560,6 +596,12 @@ export default {
 .card-title {
   font-size: 0.95rem;
   padding: 10px 14px 4px;
+}
+
+.card-title--actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .card-body {
@@ -673,6 +715,15 @@ export default {
   max-height: 300px;
   overflow: auto;
   font-size: 0.8rem;
+}
+
+.explainer-table:fullscreen {
+  max-height: 100vh;
+  height: 100vh;
+  width: 100%;
+  background: #fff;
+  padding: 8px;
+  box-sizing: border-box;
 }
 
 .explainer-table thead tr:first-child th {

@@ -44,6 +44,14 @@
             density="compact"
           ></v-text-field>
         </div>
+        <div class="vehicle-count-toggle">
+          <v-switch
+            v-model="showHeatmap"
+            color="primary"
+            label="Heat map colors"
+            density="compact"
+          ></v-switch>
+        </div>
       </div>
     </div>
 
@@ -63,6 +71,13 @@
             <td
               v-for="phase in phaseColumns"
               :key="`summary-vehicle-average-${phase}`"
+              :style="
+                heatCellStyle(
+                  averageVehicleDelayByPhase[phase],
+                  averageVehicleDelayRange.min,
+                  averageVehicleDelayRange.max
+                )
+              "
             >
               <span v-if="averageVehicleDelayByPhase[phase] !== null">
                 {{ formatDelay(averageVehicleDelayByPhase[phase]) }}
@@ -75,6 +90,13 @@
             <td
               v-for="phase in phaseColumns"
               :key="`summary-vehicle-count-${phase}`"
+              :style="
+                heatCellStyle(
+                  vehicleCountsByPhase[phase],
+                  vehicleCountRange.min,
+                  vehicleCountRange.max
+                )
+              "
             >
               <span v-if="vehicleCountsByPhase[phase] !== null">
                 {{ vehicleCountsByPhase[phase] }}
@@ -106,6 +128,13 @@
               v-for="phase in phaseColumns"
               :key="`cycle-${row.cycle}-phase-${phase}`"
               :title="cellTitle(row.phases[phase])"
+              :style="
+                heatCellStyle(
+                  row.phases[phase]?.delaySeconds,
+                  vehicleDelayRange.min,
+                  vehicleDelayRange.max
+                )
+              "
             >
               <span v-if="row.phases[phase]">
                 <span v-if="row.phases[phase].skipped">
@@ -143,6 +172,13 @@
                 v-for="phase in phaseColumns"
                 :key="`ped-cycle-${row.cycle}-phase-${phase}`"
                 :title="cellTitle(row.phases[phase])"
+                :style="
+                  heatCellStyle(
+                    row.phases[phase]?.delaySeconds,
+                    pedestrianDelayRange.min,
+                    pedestrianDelayRange.max
+                  )
+                "
               >
                 <span v-if="row.phases[phase]">
                   <span v-if="row.phases[phase].skipped">
@@ -189,6 +225,7 @@ export default {
       vehicleCountMode: "off",
       useExperimentalEstimate: false,
       secondsPerVehicle: 2,
+      showHeatmap: true,
     };
   },
   computed: {
@@ -221,8 +258,70 @@ export default {
         Object.values(row.phases).some((cell) => cell)
       );
     },
+    averageVehicleDelayRange() {
+      return this.computeRange(Object.values(this.averageVehicleDelayByPhase));
+    },
+    vehicleCountRange() {
+      return this.computeRange(Object.values(this.vehicleCountsByPhase));
+    },
+    vehicleDelayRange() {
+      const values = this.tableRows.flatMap((row) =>
+        Object.values(row.phases)
+          .filter((cell) => cell && cell.delaySeconds !== null)
+          .map((cell) => cell.delaySeconds)
+      );
+      return this.computeRange(values);
+    },
+    pedestrianDelayRange() {
+      const values = this.pedTableRows.flatMap((row) =>
+        Object.values(row.phases)
+          .filter((cell) => cell && cell.delaySeconds !== null)
+          .map((cell) => cell.delaySeconds)
+      );
+      return this.computeRange(values);
+    },
   },
   methods: {
+    computeRange(values) {
+      const numericValues = values.filter((value) => Number.isFinite(value));
+      if (!numericValues.length) {
+        return { min: null, max: null };
+      }
+      return {
+        min: Math.min(...numericValues),
+        max: Math.max(...numericValues),
+      };
+    },
+    heatCellStyle(value, min, max) {
+      if (!this.showHeatmap || !Number.isFinite(value) || min === null || max === null) {
+        return {};
+      }
+      const backgroundColor = this.heatColorForValue(value, min, max);
+      return {
+        backgroundColor,
+        color: "#111",
+        transition: "background-color 0.2s ease",
+      };
+    },
+    heatColorForValue(value, min, max) {
+      if (max === min) {
+        return "rgb(255, 235, 59)";
+      }
+      const ratio = Math.min(1, Math.max(0, (value - min) / (max - min)));
+      const green = [102, 187, 106];
+      const yellow = [255, 235, 59];
+      const red = [239, 83, 80];
+
+      if (ratio <= 0.5) {
+        return this.interpolateRgb(green, yellow, ratio / 0.5);
+      }
+      return this.interpolateRgb(yellow, red, (ratio - 0.5) / 0.5);
+    },
+    interpolateRgb(start, end, ratio) {
+      const channel = (index) =>
+        Math.round(start[index] + (end[index] - start[index]) * ratio);
+      return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`;
+    },
     processDelays() {
       const { detectorToPhase, phaseColumns } = this.parseDetectorMapping(
         this.detectorMapInput

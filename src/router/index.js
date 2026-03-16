@@ -47,6 +47,7 @@ import GapOutGapReductionHelper from '../views/GapOutGapReductionHelper'
 import DetectorBubbleChart from '../views/DetectorBubbleChart'
 import PhaseBubbleScatter from '../views/PhaseBubbleScatter'
 import BlockLogic from '../views/BlockLogic'
+import GeoJSONMapper from '../views/GeoJSONMapper'
 
 
 
@@ -135,6 +136,12 @@ const routes = [
         path: '/gpx-mapper',
         name: 'gpxMapper',
         component: GPXMapper,
+    },
+
+    {
+        path: '/geojson-mapper',
+        name: 'geoJsonMapper',
+        component: GeoJSONMapper,
     },
     {
         path: '/gpx-elevation',

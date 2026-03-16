@@ -225,6 +225,14 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+GPX+Map+and+Table.png",
+          title: "GeoJSON Mapper",
+          description: "Upload and style GeoJSON files with map image export",
+          link: "/geojson-mapper",
+          topics: ["GeoJSON", "Map", "Visualization"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Yellow+and+Red+Light+Running.png",
           title: "Basic Timing Seeker",
           description:

@@ -33,9 +33,18 @@
         <h3>Layer Styles</h3>
       </v-col>
       <v-col v-for="layer in layers" :key="layer.id" cols="12" class="layer-row">
-        <v-row align="center">
+        <v-row align="center" @click="selectLayer(layer.id)">
           <v-col cols="12" md="4">
             <strong>{{ layer.name }}</strong>
+          </v-col>
+          <v-col cols="6" md="2">
+            <v-checkbox
+              v-model="layer.visible"
+              label="Visible"
+              hide-details
+              density="compact"
+              @update:model-value="onLayerVisibilityChange(layer.id)"
+            />
           </v-col>
           <v-col cols="6" md="3">
             <v-text-field
@@ -69,20 +78,70 @@
       <l-map ref="mapRef" :zoom="zoom" :center="center" class="leaflet-map">
         <l-tile-layer :url="tileUrl" :attribution="attribution" />
         <l-geo-json
-          v-for="layer in layers"
+          v-for="layer in visibleLayers"
           :key="layer.id"
           :geojson="layer.geoJson"
+          :options="layerOptions(layer)"
           :options-style="layerStyle(layer)"
         />
       </l-map>
     </div>
 
+    <v-row v-if="layerMetrics.length" class="mt-4">
+      <v-col cols="12">
+        <h3>Layer Metrics Summary</h3>
+        <v-table density="compact">
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Features</th>
+              <th>Line Length (mi)</th>
+              <th>Polygon Perimeter (mi)</th>
+              <th>Geometry Types</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="metric in layerMetrics" :key="metric.id">
+              <td>{{ metric.name }}</td>
+              <td>{{ metric.featureCount }}</td>
+              <td>{{ formatMiles(metric.lineMiles) }}</td>
+              <td>{{ formatMiles(metric.perimeterMiles) }}</td>
+              <td>{{ metric.typeSummary }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+      <v-col cols="12" md="6">
+        <v-card variant="tonal">
+          <v-card-title>Visible Layer Totals</v-card-title>
+          <v-card-text>
+            <div><strong>Total Features:</strong> {{ visibleTotals.featureCount }}</div>
+            <div><strong>Total Line Length:</strong> {{ formatMiles(visibleTotals.lineMiles) }} mi</div>
+            <div><strong>Total Polygon Perimeter:</strong> {{ formatMiles(visibleTotals.perimeterMiles) }} mi</div>
+            <div><strong>Geometry Mix:</strong> {{ visibleTotals.typeSummary }}</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="6" v-if="selectedFeatureInfo">
+        <v-card variant="outlined">
+          <v-card-title>Clicked Feature Details</v-card-title>
+          <v-card-text>
+            <div><strong>Layer:</strong> {{ selectedFeatureInfo.layerName }}</div>
+            <div><strong>Geometry:</strong> {{ selectedFeatureInfo.geometryType }}</div>
+            <div><strong>Segment Length:</strong> {{ formatMiles(selectedFeatureInfo.segmentMiles) }} mi</div>
+            <div><strong>Properties:</strong></div>
+            <pre class="feature-json">{{ selectedFeatureInfo.propertiesText }}</pre>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <v-row class="mt-4">
       <v-col cols="12">
-        <h3>Paste GeoJSON Text</h3>
+        <h3>GeoJSON Text Viewer / Paste</h3>
         <v-textarea
-          v-model="pastedGeoJson"
-          label="Paste GeoJSON text below the map"
+          v-model="activeLayerText"
+          label="Selected layer text (editable for pasted content)"
           rows="8"
           auto-grow
           clearable
@@ -102,7 +161,7 @@
         />
       </v-col>
       <v-col cols="12" md="3" class="d-flex align-center">
-        <v-btn color="primary" block @click="addPastedGeoJson">Add Pasted GeoJSON</v-btn>
+        <v-btn color="primary" block @click="addPastedGeoJson">Add GeoJSON From Viewer</v-btn>
       </v-col>
     </v-row>
   </v-container>
@@ -141,10 +200,50 @@ export default {
       attribution:
         '&copy; <a target="_blank" href="http://osm.org/copyright">OpenStreetMap</a> contributors',
       errorMessage: "",
-      pastedGeoJson: "",
+      activeLayerText: "",
       pastedLayerColor: "#ff0000",
       pastedLayerWeight: 4,
+      selectedLayerId: null,
+      selectedFeatureInfo: null,
     };
+  },
+  computed: {
+    visibleLayers() {
+      return this.layers.filter((layer) => layer.visible);
+    },
+    layerMetrics() {
+      return this.layers.map((layer) => {
+        const metrics = this.computeGeoJsonMetrics(layer.geoJson);
+        return {
+          id: layer.id,
+          name: layer.name,
+          ...metrics,
+        };
+      });
+    },
+    visibleTotals() {
+      const totals = this.visibleLayers.reduce(
+        (acc, layer) => {
+          const metrics = this.computeGeoJsonMetrics(layer.geoJson);
+          acc.featureCount += metrics.featureCount;
+          acc.lineMiles += metrics.lineMiles;
+          acc.perimeterMiles += metrics.perimeterMiles;
+          Object.entries(metrics.typeCounts).forEach(([type, count]) => {
+            acc.typeCounts[type] = (acc.typeCounts[type] || 0) + count;
+          });
+          return acc;
+        },
+        { featureCount: 0, lineMiles: 0, perimeterMiles: 0, typeCounts: {} }
+      );
+
+      return {
+        ...totals,
+        typeSummary:
+          Object.entries(totals.typeCounts)
+            .map(([type, count]) => `${type} (${count})`)
+            .join(", ") || "None",
+      };
+    },
   },
   methods: {
     getNextColor() {
@@ -161,6 +260,16 @@ export default {
         fillOpacity: 0.25,
       };
     },
+    layerOptions(layer) {
+      return {
+        onEachFeature: (feature, leafletLayer) => {
+          leafletLayer.on("click", (event) => {
+            this.selectLayer(layer.id);
+            this.handleFeatureClick(layer, feature, event);
+          });
+        },
+      };
+    },
     addLayer(geoJson, name, color = this.getNextColor(), weight = 4) {
       this.layers.push({
         id: this.layerCounter,
@@ -168,7 +277,10 @@ export default {
         geoJson,
         color,
         weight,
+        visible: true,
       });
+      this.selectedLayerId = this.layerCounter;
+      this.activeLayerText = JSON.stringify(geoJson, null, 2);
       this.layerCounter += 1;
     },
     async onGeoJsonUpload(fileOrFiles) {
@@ -205,13 +317,13 @@ export default {
     },
     addPastedGeoJson() {
       this.errorMessage = "";
-      if (!this.pastedGeoJson.trim()) {
+      if (!this.activeLayerText.trim()) {
         this.errorMessage = "Paste GeoJSON text before adding.";
         return;
       }
 
       try {
-        const parsedGeoJson = JSON.parse(this.pastedGeoJson);
+        const parsedGeoJson = JSON.parse(this.activeLayerText);
         if (!this.isValidGeoJson(parsedGeoJson)) {
           throw new Error("Invalid pasted GeoJSON.");
         }
@@ -222,7 +334,6 @@ export default {
           this.pastedLayerColor,
           this.pastedLayerWeight
         );
-        this.pastedGeoJson = "";
         this.$nextTick(() => this.zoomToAllLayers());
       } catch (error) {
         this.errorMessage =
@@ -232,18 +343,173 @@ export default {
     },
     removeLayer(layerId) {
       this.layers = this.layers.filter((layer) => layer.id !== layerId);
+      if (this.selectedLayerId === layerId) {
+        this.selectedLayerId = this.layers[0]?.id || null;
+        this.activeLayerText = this.layers[0]
+          ? JSON.stringify(this.layers[0].geoJson, null, 2)
+          : "";
+      }
       if (this.layers.length > 0) {
         this.$nextTick(() => this.zoomToAllLayers());
       }
     },
+    onLayerVisibilityChange(layerId) {
+      this.selectLayer(layerId);
+      this.$nextTick(() => this.zoomToAllLayers());
+    },
+    selectLayer(layerId) {
+      this.selectedLayerId = layerId;
+      const selectedLayer = this.layers.find((layer) => layer.id === layerId);
+      if (selectedLayer) {
+        this.activeLayerText = JSON.stringify(selectedLayer.geoJson, null, 2);
+      }
+    },
+    formatMiles(value) {
+      return Number.isFinite(value) ? value.toFixed(2) : "0.00";
+    },
+    computeGeoJsonMetrics(geoJson) {
+      const features = geoJson.type === "FeatureCollection" ? geoJson.features || [] : [geoJson];
+      const typeCounts = {};
+      let lineMiles = 0;
+      let perimeterMiles = 0;
+
+      features.forEach((feature) => {
+        const geometry = feature.type === "Feature" ? feature.geometry : feature;
+        if (!geometry) {
+          return;
+        }
+
+        typeCounts[geometry.type] = (typeCounts[geometry.type] || 0) + 1;
+        lineMiles += this.getLineMiles(geometry);
+        perimeterMiles += this.getPolygonPerimeterMiles(geometry);
+      });
+
+      return {
+        featureCount: features.length,
+        lineMiles,
+        perimeterMiles,
+        typeCounts,
+        typeSummary:
+          Object.entries(typeCounts)
+            .map(([type, count]) => `${type} (${count})`)
+            .join(", ") || "None",
+      };
+    },
+    getLineMiles(geometry) {
+      if (!geometry || !geometry.coordinates) {
+        return 0;
+      }
+      if (geometry.type === "LineString") {
+        return this.coordinatePathDistanceMiles(geometry.coordinates);
+      }
+      if (geometry.type === "MultiLineString") {
+        return geometry.coordinates.reduce(
+          (total, line) => total + this.coordinatePathDistanceMiles(line),
+          0
+        );
+      }
+      return 0;
+    },
+    getPolygonPerimeterMiles(geometry) {
+      if (!geometry || !geometry.coordinates) {
+        return 0;
+      }
+      if (geometry.type === "Polygon") {
+        return geometry.coordinates.reduce(
+          (total, ring) => total + this.coordinatePathDistanceMiles(ring),
+          0
+        );
+      }
+      if (geometry.type === "MultiPolygon") {
+        return geometry.coordinates.reduce(
+          (polygonTotal, polygon) =>
+            polygonTotal +
+            polygon.reduce(
+              (ringTotal, ring) => ringTotal + this.coordinatePathDistanceMiles(ring),
+              0
+            ),
+          0
+        );
+      }
+      return 0;
+    },
+    coordinatePathDistanceMiles(coordinates) {
+      if (!Array.isArray(coordinates) || coordinates.length < 2) {
+        return 0;
+      }
+
+      let meters = 0;
+      for (let i = 0; i < coordinates.length - 1; i += 1) {
+        const [lng1, lat1] = coordinates[i];
+        const [lng2, lat2] = coordinates[i + 1];
+        meters += L.latLng(lat1, lng1).distanceTo(L.latLng(lat2, lng2));
+      }
+      return meters / 1609.344;
+    },
+    handleFeatureClick(layer, feature, event) {
+      const geometry = feature?.geometry;
+      if (!geometry) {
+        return;
+      }
+
+      const segmentMiles = this.getClickedSegmentMiles(geometry, event?.latlng);
+      const propertiesText = JSON.stringify(feature.properties || {}, null, 2);
+      const popupContent = [
+        `<strong>${layer.name}</strong>`,
+        `Geometry: ${geometry.type}`,
+        `Segment length: ${this.formatMiles(segmentMiles)} mi`,
+        `<pre style="max-height:120px;overflow:auto;white-space:pre-wrap;">${propertiesText}</pre>`,
+      ].join("<br>");
+
+      this.selectedFeatureInfo = {
+        layerName: layer.name,
+        geometryType: geometry.type,
+        segmentMiles,
+        propertiesText,
+      };
+
+      if (event?.target) {
+        event.target.bindPopup(popupContent).openPopup(event.latlng);
+      }
+    },
+    getClickedSegmentMiles(geometry, clickLatLng) {
+      const lineGroups = [];
+      if (geometry.type === "LineString") {
+        lineGroups.push(geometry.coordinates);
+      } else if (geometry.type === "MultiLineString") {
+        lineGroups.push(...geometry.coordinates);
+      } else {
+        return 0;
+      }
+
+      if (!clickLatLng) {
+        return this.coordinatePathDistanceMiles(lineGroups[0] || []);
+      }
+
+      let bestDistance = Number.POSITIVE_INFINITY;
+      let bestSegmentMiles = 0;
+      lineGroups.forEach((line) => {
+        for (let i = 0; i < line.length - 1; i += 1) {
+          const start = L.latLng(line[i][1], line[i][0]);
+          const end = L.latLng(line[i + 1][1], line[i + 1][0]);
+          const distance =
+            clickLatLng.distanceTo(start) + clickLatLng.distanceTo(end) - start.distanceTo(end);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            bestSegmentMiles = start.distanceTo(end) / 1609.344;
+          }
+        }
+      });
+      return bestSegmentMiles;
+    },
     zoomToAllLayers() {
       try {
-        if (!this.layers.length || !this.$refs.mapRef?.leafletObject) {
+        if (!this.visibleLayers.length || !this.$refs.mapRef?.leafletObject) {
           return;
         }
 
         const combinedLayer = L.featureGroup(
-          this.layers.map((layer) => L.geoJSON(layer.geoJson))
+          this.visibleLayers.map((layer) => L.geoJSON(layer.geoJson))
         );
         const bounds = combinedLayer.getBounds();
 
@@ -256,13 +522,21 @@ export default {
       }
     },
     async exportMapImage() {
-      if (!this.$refs.mapWrapper) {
+      const map = this.$refs.mapRef?.leafletObject;
+      if (!this.$refs.mapWrapper || !map) {
         return;
       }
+
+      map.invalidateSize(true);
+      await new Promise((resolve) => setTimeout(resolve, 250));
 
       const canvas = await html2canvas(this.$refs.mapWrapper, {
         useCORS: true,
         backgroundColor: "#ffffff",
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        windowWidth: document.documentElement.clientWidth,
+        windowHeight: document.documentElement.clientHeight,
       });
 
       const link = document.createElement("a");
@@ -292,5 +566,11 @@ export default {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 8px;
+}
+
+.feature-json {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
 }
 </style>

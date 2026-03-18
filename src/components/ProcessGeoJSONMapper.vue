@@ -74,6 +74,20 @@
       </v-col>
     </v-row>
 
+    <v-alert
+      v-if="layers.length"
+      type="info"
+      variant="tonal"
+      class="mb-4"
+    >
+      Feature-level styling is supported from GeoJSON properties. Use
+      <code>stroke</code>, <code>color</code>, <code>lineColor</code>,
+      <code>fill</code>, <code>marker-color</code>, <code>marker-size</code>,
+      <code>radius</code>, or a nested <code>style</code> object to give
+      different features different colors and point sizes inside the same
+      GeoJSON file.
+    </v-alert>
+
     <div ref="mapWrapper" class="map-wrapper">
       <l-map ref="mapRef" :zoom="zoom" :center="center" class="leaflet-map">
         <l-tile-layer :url="tileUrl" :attribution="attribution" />
@@ -252,16 +266,159 @@ export default {
     isValidGeoJson(geoJson) {
       return !!(geoJson && geoJson.type);
     },
-    layerStyle(layer) {
+    normalizeFeatureProperties(feature) {
+      if (!feature || typeof feature !== "object") {
+        return {};
+      }
+
+      const properties =
+        feature.type === "Feature" && feature.properties && typeof feature.properties === "object"
+          ? feature.properties
+          : {};
+      const nestedStyle =
+        properties.style && typeof properties.style === "object" ? properties.style : {};
+
       return {
-        color: layer.color,
-        weight: layer.weight,
-        fillColor: layer.color,
-        fillOpacity: 0.25,
+        ...properties,
+        ...nestedStyle,
       };
+    },
+    firstDefinedValue(values) {
+      return values.find(
+        (value) =>
+          value !== undefined &&
+          value !== null &&
+          !(typeof value === "string" && value.trim() === "")
+      );
+    },
+    normalizeColor(value, fallback) {
+      if (typeof value !== "string") {
+        return fallback;
+      }
+
+      const trimmed = value.trim();
+      return trimmed || fallback;
+    },
+    normalizeNumber(value, fallback, minimum = 0) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return fallback;
+      }
+      return Math.max(minimum, numeric);
+    },
+    normalizeOpacity(value, fallback) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return fallback;
+      }
+      return Math.min(1, Math.max(0, numeric));
+    },
+    pointRadiusFromSize(size, fallback) {
+      if (typeof size !== "string") {
+        return fallback;
+      }
+
+      const normalized = size.trim().toLowerCase();
+      if (normalized === "small") {
+        return 4;
+      }
+      if (normalized === "medium") {
+        return 7;
+      }
+      if (normalized === "large") {
+        return 10;
+      }
+      return fallback;
+    },
+    getFeatureStyle(layer, feature) {
+      const properties = this.normalizeFeatureProperties(feature);
+      const strokeColor = this.normalizeColor(
+        this.firstDefinedValue([
+          properties.stroke,
+          properties.lineColor,
+          properties.line_color,
+          properties.color,
+          properties.outlineColor,
+          properties.outline_color,
+        ]),
+        layer.color
+      );
+      const fillColor = this.normalizeColor(
+        this.firstDefinedValue([
+          properties.fill,
+          properties.fillColor,
+          properties.fill_color,
+          properties["marker-color"],
+          properties.markerColor,
+          properties.marker_color,
+          strokeColor,
+        ]),
+        strokeColor
+      );
+
+      return {
+        color: strokeColor,
+        weight: this.normalizeNumber(
+          this.firstDefinedValue([
+            properties["stroke-width"],
+            properties.strokeWidth,
+            properties.weight,
+          ]),
+          layer.weight,
+          1
+        ),
+        opacity: this.normalizeOpacity(
+          this.firstDefinedValue([
+            properties["stroke-opacity"],
+            properties.strokeOpacity,
+            properties.opacity,
+          ]),
+          1
+        ),
+        fillColor,
+        fillOpacity: this.normalizeOpacity(
+          this.firstDefinedValue([
+            properties["fill-opacity"],
+            properties.fillOpacity,
+          ]),
+          0.25
+        ),
+      };
+    },
+    getPointStyle(layer, feature) {
+      const featureStyle = this.getFeatureStyle(layer, feature);
+      const properties = this.normalizeFeatureProperties(feature);
+      const fallbackRadius = 7;
+
+      return {
+        ...featureStyle,
+        radius: this.normalizeNumber(
+          this.firstDefinedValue([
+            properties.radius,
+            properties.pointRadius,
+            properties.point_radius,
+            this.pointRadiusFromSize(
+              this.firstDefinedValue([
+                properties["marker-size"],
+                properties.markerSize,
+              ]),
+              fallbackRadius
+            ),
+          ]),
+          fallbackRadius,
+          1
+        ),
+      };
+    },
+    layerStyle(layer) {
+      return (feature) => this.getFeatureStyle(layer, feature);
     },
     layerOptions(layer) {
       return {
+        pointToLayer: (feature, latLng) => {
+          const pointStyle = this.getPointStyle(layer, feature);
+          return L.circleMarker(latLng, pointStyle);
+        },
         onEachFeature: (feature, leafletLayer) => {
           leafletLayer.on("click", (event) => {
             this.selectLayer(layer.id);

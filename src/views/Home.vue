@@ -1,6 +1,10 @@
 <template>
-  <div>
+  <main class="home-page">
+    <p class="sr-only">
+      Traffic Signal Kit homepage with searchable traffic engineering tools and simulators.
+    </p>
     <v-card class="intro-card" variant="outlined">
+      <h1 class="h1-center-text page-title">Traffic Signal Kit</h1>
       <v-card-text class="intro-text">
         Various experimental free & open source tools for traffic engineers.
         These are rapid-fire, proof-of-concept creations designed to innovate,
@@ -19,8 +23,7 @@
         </v-btn>
       </v-card-actions>
     </v-card>
-
-    <h1 class="h1-center-text">Traffic Signal Kit</h1>
+    <p class="tool-count">Browse {{ posts.length }} practical tools for traffic signal analysis and operations.</p>
 
     <v-container>
       <v-row no-gutters>
@@ -42,7 +45,7 @@
         </v-col>
       </v-row>
     </v-container>
-  </div>
+  </main>
 </template>
 
 <script>
@@ -339,6 +342,36 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.home-page {
+  padding-bottom: 1.5rem;
+}
+
+.page-title {
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.tool-count {
+  text-align: center;
+  color: #4e5f6c;
+  margin: 0.25rem 0 1rem;
+  font-size: 0.95rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+</style>
 
 <style>
 .intro-card {

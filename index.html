@@ -4,15 +4,27 @@
 <head>
   <meta charset="UTF-8" />
   <title>Traffic Signal Kit | Traffic Engineering Tools & Simulators</title>
+  <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta
     name="description"
     content="Traffic Signal Kit provides practical traffic engineering tools, split calculators, and intersection signal simulators for learning and planning."
   />
+  <meta name="author" content="Traffic Signal Kit" />
   <link rel="canonical" href="https://trafficsignalkit.com/" />
   <meta
     name="keywords"
     content="traffic signal, traffic engineering, split calculator, traffic data, intersection simulator"
   />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Traffic Signal Kit" />
+  <meta property="og:title" content="Traffic Signal Kit | Traffic Engineering Tools & Simulators" />
+  <meta property="og:description" content="Free traffic engineering tools for split history, yellow/red running analysis, GPX mapping, and signal timing workflows." />
+  <meta property="og:url" content="https://trafficsignalkit.com/" />
+  <meta property="og:image" content="https://trafficsignalkit.com/favicon.ico" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Traffic Signal Kit | Traffic Engineering Tools & Simulators" />
+  <meta name="twitter:description" content="Explore open-source traffic signal tools for diagnostics, planning, and training." />
+  <meta name="theme-color" content="#0d47a1" />
 
   <link rel="icon" href="/favicon.ico">
   <link rel="manifest" href="site.webmanifest">
@@ -24,10 +36,42 @@
 </head>
 
 <body>
+  <a href="#app" class="skip-link">Skip to main content</a>
   <div id="app"></div>
+  <noscript>Traffic Signal Kit requires JavaScript to load interactive traffic engineering tools.</noscript>
   <script type="module" src="/src/main.js"></script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Traffic Signal Kit",
+      "url": "https://trafficsignalkit.com/",
+      "description": "Open-source traffic engineering tools for signal operations analysis and planning.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://trafficsignalkit.com/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+  </script>
 
-  
+  <style>
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      background: #0d47a1;
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0 0 0.375rem 0.375rem;
+      z-index: 10000;
+    }
+
+    .skip-link:focus {
+      left: 0.5rem;
+      top: 0.5rem;
+    }
+  </style>
 </body>
 
 </html>

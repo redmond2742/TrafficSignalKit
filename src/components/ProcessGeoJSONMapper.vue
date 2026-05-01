@@ -23,6 +23,25 @@
         </v-btn>
       </v-col>
     </v-row>
+    <v-row class="mb-2">
+      <v-col cols="12" md="4">
+        <v-select
+          v-model="selectedBaseMap"
+          :items="baseMapOptions"
+          item-title="label"
+          item-value="value"
+          label="Base Map"
+          density="compact"
+          hide-details
+        />
+      </v-col>
+      <v-col cols="6" md="4" class="d-flex align-center">
+        <v-btn variant="outlined" block @click="resetMapView">Reset U.S. View</v-btn>
+      </v-col>
+      <v-col cols="6" md="4" class="d-flex align-center">
+        <v-btn variant="outlined" block :disabled="!layers.length" @click="clearAllLayers">Clear Layers</v-btn>
+      </v-col>
+    </v-row>
 
     <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-3">
       {{ errorMessage }}
@@ -36,6 +55,9 @@
         <v-row align="center" @click="selectLayer(layer.id)">
           <v-col cols="12" md="4">
             <strong>{{ layer.name }}</strong>
+            <div class="layer-meta">
+              {{ layerFeatureSummary(layer) }}
+            </div>
           </v-col>
           <v-col cols="6" md="2">
             <v-checkbox
@@ -90,7 +112,7 @@
 
     <div ref="mapWrapper" class="map-wrapper">
       <l-map ref="mapRef" :zoom="zoom" :center="center" class="leaflet-map">
-        <l-tile-layer :url="tileUrl" :attribution="attribution" />
+        <l-tile-layer :url="currentTileUrl" :attribution="currentAttribution" />
         <l-geo-json
           v-for="layer in visibleLayers"
           :key="layer.id"
@@ -219,9 +241,41 @@ export default {
       pastedLayerWeight: 4,
       selectedLayerId: null,
       selectedFeatureInfo: null,
+      selectedBaseMap: "streets",
+      baseMapOptions: [
+        { label: "OpenStreetMap Streets", value: "streets" },
+        { label: "Carto Light", value: "light" },
+        { label: "Carto Dark", value: "dark" },
+      ],
+      baseMaps: {
+        streets: {
+          tileUrl: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          attribution:
+            '&copy; <a target="_blank" href="http://osm.org/copyright">OpenStreetMap</a> contributors',
+        },
+        light: {
+          tileUrl: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+          attribution:
+            '&copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; CARTO',
+        },
+        dark: {
+          tileUrl: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+          attribution:
+            '&copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; CARTO',
+        },
+      },
     };
   },
   computed: {
+    currentBaseMap() {
+      return this.baseMaps[this.selectedBaseMap] || this.baseMaps.streets;
+    },
+    currentTileUrl() {
+      return this.currentBaseMap.tileUrl;
+    },
+    currentAttribution() {
+      return this.currentBaseMap.attribution;
+    },
     visibleLayers() {
       return this.layers.filter((layer) => layer.visible);
     },
@@ -260,6 +314,14 @@ export default {
     },
   },
   methods: {
+    layerFeatureSummary(layer) {
+      const geoJson = layer?.geoJson;
+      if (!geoJson) {
+        return "0 features";
+      }
+      const features = geoJson.type === "FeatureCollection" ? geoJson.features || [] : [geoJson];
+      return `${features.length} feature${features.length === 1 ? "" : "s"}`;
+    },
     getNextColor() {
       return DEFAULT_COLORS[this.layers.length % DEFAULT_COLORS.length];
     },
@@ -510,6 +572,14 @@ export default {
         this.$nextTick(() => this.zoomToAllLayers());
       }
     },
+    clearAllLayers() {
+      this.layers = [];
+      this.selectedLayerId = null;
+      this.selectedFeatureInfo = null;
+      this.activeLayerText = "";
+      this.errorMessage = "";
+      this.resetMapView();
+    },
     onLayerVisibilityChange(layerId) {
       this.selectLayer(layerId);
       this.$nextTick(() => this.zoomToAllLayers());
@@ -678,6 +748,14 @@ export default {
         console.error(error);
       }
     },
+    resetMapView() {
+      const map = this.$refs.mapRef?.leafletObject;
+      this.center = [39.5, -98.35];
+      this.zoom = 4;
+      if (map) {
+        map.setView(this.center, this.zoom, { animate: true });
+      }
+    },
     async exportMapImage() {
       const map = this.$refs.mapRef?.leafletObject;
       if (!this.$refs.mapWrapper || !map) {
@@ -723,6 +801,12 @@ export default {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 8px;
+}
+
+.layer-meta {
+  color: #616161;
+  font-size: 0.85rem;
+  margin-top: 2px;
 }
 
 .feature-json {

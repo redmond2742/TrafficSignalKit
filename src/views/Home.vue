@@ -70,6 +70,15 @@ export default {
         },
         {
           image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Offset+Calculation.png",
+          title: "Coordination Learning Tool",
+          description:
+            "Interactive sliders and visuals for cycle length, splits, offsets, scheduler plans, and coordinated phases.",
+          link: "/coordination-learning-tool",
+          topics: ["Coordination", "Education", "Offsets"],
+        },
+        {
+          image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Vehicle+and+Pedestrian+Delay.png",
           title: "Delay & Count Estimator",
           description: "Estimate detector call delays to phase service",

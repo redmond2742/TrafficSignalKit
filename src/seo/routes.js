@@ -193,6 +193,12 @@ export const routeMeta = {
       "Identify detector on events where the assigned phase is not served within two minutes.",
     path: "/skipped-phase-finder",
   },
+  coordinationLearningTool: {
+    title: "Traffic Signal Coordination Learning Tool | Cycle, Splits & Offsets",
+    description:
+      "Use interactive sliders and visuals to learn cycle length, split times, offsets, scheduler plans, and coordinated green phases across multiple signals.",
+    path: "/coordination-learning-tool",
+  },
   signalOffsets: {
     title: "Signal Offset Calculator | Coordinated Phase Alignment",
     description:

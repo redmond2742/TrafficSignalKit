@@ -48,6 +48,7 @@ import DetectorBubbleChart from '../views/DetectorBubbleChart'
 import PhaseBubbleScatter from '../views/PhaseBubbleScatter'
 import BlockLogic from '../views/BlockLogic'
 import GeoJSONMapper from '../views/GeoJSONMapper'
+import CoordinationLearningTool from '../views/CoordinationLearningTool'
 
 
 
@@ -272,6 +273,11 @@ const routes = [
         path: '/phase-bubble-scatter',
         name: 'phaseBubbleScatter',
         component: PhaseBubbleScatter,
+    },
+    {
+        path: '/coordination-learning-tool',
+        name: 'coordinationLearningTool',
+        component: CoordinationLearningTool,
     },
     {
         path: '/tools/block-logic',

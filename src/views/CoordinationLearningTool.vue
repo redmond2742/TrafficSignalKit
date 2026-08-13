@@ -10,7 +10,7 @@
       </div>
       <div class="hero-stat">
         <strong>{{ progressionBandwidth }}s</strong>
-        <span>continuous green band</span>
+        <span>platoon green window</span>
       </div>
     </section>
 
@@ -36,6 +36,15 @@
                 <label>Scheduler time of day: {{ formattedClock }}</label>
                 <v-slider v-model="schedulerMinute" :min="0" :max="1439" :step="15" color="indigo" thumb-label></v-slider>
               </div>
+              <v-select
+                v-model="signalCount"
+                :items="signalCountOptions"
+                item-title="label"
+                item-value="value"
+                label="Number of coordinated signals"
+                variant="outlined"
+                density="compact"
+              ></v-select>
               <v-select
                 v-model="coordinatedPhase"
                 :items="phaseOptions"
@@ -88,7 +97,7 @@
               <div class="timeline-axis">
                 <span v-for="tick in timelineTicks" :key="tick">{{ tick }}s</span>
               </div>
-              <div class="signal-row" v-for="signal in signals" :key="signal.name">
+              <div class="signal-row" v-for="signal in activeSignals" :key="signal.name">
                 <div class="signal-label">
                   <strong>{{ signal.name }}</strong>
                   <small>{{ signal.distance }} ft · offset {{ signal.offset }}s</small>
@@ -106,7 +115,7 @@
                 </div>
               </div>
               <div class="progression-window" :style="progressionStyle">
-                coordinated green window
+                platoon green window
               </div>
             </v-card-text>
           </v-card>
@@ -117,7 +126,7 @@
               <div class="corridor">
                 <div class="road-line"></div>
                 <div
-                  v-for="signal in signals"
+                  v-for="signal in activeSignals"
                   :key="signal.name"
                   class="signal-mast"
                   :style="{ left: signal.position + '%' }"
@@ -146,6 +155,7 @@ export default {
       sideStreetSplit: 25,
       schedulerMinute: 480,
       coordinatedPhase: "Main Street through phases 2 + 6",
+      signalCount: 4,
       showVehicles: true,
       isPlaying: false,
       playbackSpeed: 1,
@@ -159,6 +169,12 @@ export default {
         { label: "8x", value: 8 },
         { label: "16x", value: 16 },
       ],
+      signalCountOptions: [
+        { label: "1 signal (basic cycle)", value: 1 },
+        { label: "2 signals", value: 2 },
+        { label: "3 signals", value: 3 },
+        { label: "4 signals (full corridor)", value: 4 },
+      ],
       phaseOptions: ["Main Street through phases 2 + 6", "Cross street phases 4 + 8"],
       signals: [
         { name: "Signal A", distance: 0, offset: 0, position: 8 },
@@ -169,6 +185,7 @@ export default {
     };
   },
   computed: {
+    activeSignals() { return this.signals.slice(0, this.signalCount); },
     maxCoordinatedSplit() { return this.cycleLength - 20; },
     maxSideStreetSplit() { return this.cycleLength - this.coordinatedSplit - 5; },
     clearanceTime() { return Math.max(5, this.cycleLength - this.coordinatedSplit - this.sideStreetSplit); },
@@ -179,9 +196,9 @@ export default {
     },
     timelineTicks() { return [0, Math.round(this.cycleLength / 4), Math.round(this.cycleLength / 2), Math.round(this.cycleLength * 0.75), this.cycleLength]; },
     progressionBandwidth() {
-      const starts = this.signals.map((signal) => signal.offset);
+      const starts = this.activeSignals.map((signal) => signal.offset);
       const ends = starts.map((start) => start + this.coordinatedSplit);
-      return Math.max(0, Math.min(...ends) - Math.max(...starts));
+      return Math.max(0, Math.min(...ends) - Math.min(...starts));
     },
     coordinationQuality() {
       if (this.progressionBandwidth >= 20) return "Strong progression";
@@ -189,18 +206,31 @@ export default {
       return "Adjust offsets";
     },
     progressionStyle() {
-      const start = Math.max(...this.signals.map((signal) => signal.offset));
+      const start = Math.min(...this.activeSignals.map((signal) => signal.offset));
       return { left: this.percent(start) + "%", width: this.percent(this.progressionBandwidth) + "%" };
     },
     currentCycleSecond() {
       return this.isPlaying ? this.animationSecond : this.schedulerMinute % this.cycleLength;
     },
     vehicleStyle() {
-      const travelProgress = (this.currentCycleSecond / this.cycleLength) * 100;
-      return { left: `${Math.min(94, Math.max(6, 6 + travelProgress * 0.88))}%` };
+      return { left: `${this.vehiclePosition}%` };
+    },
+    vehiclePosition() {
+      const routeStart = 6;
+      const routeEnd = 94;
+      const freeFlowPosition = routeStart + (this.currentCycleSecond / this.cycleLength) * (routeEnd - routeStart);
+      const stopBuffer = 2.4;
+
+      return this.activeSignals.reduce((position, signal) => {
+        const stopPosition = signal.position - stopBuffer;
+        if (position >= stopPosition && freeFlowPosition >= stopPosition && !this.isGreen(signal)) {
+          return Math.min(position, stopPosition);
+        }
+        return position;
+      }, freeFlowPosition);
     },
     insightText() {
-      return `At ${this.formattedClock}, the scheduler runs a ${this.cycleLength}s cycle. ${this.coordinatedPhase} receives ${this.coordinatedSplit}s of green; offsets shift each downstream green start so a platoon can arrive during the shared ${this.progressionBandwidth}s window.`;
+      return `At ${this.formattedClock}, the scheduler runs a ${this.cycleLength}s cycle for ${this.signalCount} signal${this.signalCount === 1 ? "" : "s"}. ${this.coordinatedPhase} receives ${this.coordinatedSplit}s of green; the displayed window starts at the first coordinated green and ends when the limiting signal turns red, giving a ${this.progressionBandwidth}s platoon window.`;
     },
     conceptLegend() {
       return [
@@ -264,7 +294,7 @@ export default {
     },
     isGreen(signal) {
       const cyclePosition = (this.currentCycleSecond - signal.offset + this.cycleLength) % this.cycleLength;
-      return cyclePosition <= this.coordinatedSplit;
+      return cyclePosition < this.coordinatedSplit;
     },
   },
 };
@@ -302,7 +332,7 @@ h1 { font-size: clamp(2rem, 4vw, 3.6rem); line-height: 1.05; margin: 0 0 12px; }
 .signal-head { width: 34px; height: 34px; margin: 0 auto 58px; border-radius: 50%; border: 5px solid #263238; box-shadow: 0 0 0 5px #455a64; }
 .signal-head.go { background: #22c55e; }
 .signal-head.stop { background: #ef4444; }
-.vehicle-platoon { position: absolute; top: 47%; transform: translateX(-50%); font-size: 1.8rem; transition: left .08s linear; white-space: nowrap; z-index: 3; }
+.vehicle-platoon { position: absolute; top: 47%; transform: translateX(-50%) scaleX(-1); font-size: 1.8rem; transition: left .08s linear; white-space: nowrap; z-index: 3; }
 .insight-text { margin: 14px 0 0; color: #37474f; line-height: 1.55; }
 @media (max-width: 760px) { .hero-panel { flex-direction: column; } .signal-row { grid-template-columns: 1fr; } .timeline-axis, .progression-window { margin-left: 0; padding-left: 0; } .playback-controls { grid-template-columns: 1fr; } }
 </style>

@@ -160,6 +160,10 @@ export default {
       isPlaying: false,
       playbackSpeed: 1,
       animationSecond: 0,
+      vehicleRouteStart: 6,
+      vehicleRouteEnd: 94,
+      vehicleStopBuffer: 2.4,
+      vehicleCurrentPosition: 6,
       lastFrameTime: null,
       animationFrameId: null,
       playbackSpeedOptions: [
@@ -196,9 +200,15 @@ export default {
     },
     timelineTicks() { return [0, Math.round(this.cycleLength / 4), Math.round(this.cycleLength / 2), Math.round(this.cycleLength * 0.75), this.cycleLength]; },
     progressionBandwidth() {
-      const starts = this.activeSignals.map((signal) => signal.offset);
-      const ends = starts.map((start) => start + this.coordinatedSplit);
-      return Math.max(0, Math.min(...ends) - Math.min(...starts));
+      return Math.max(0, this.progressionWindowEnd - this.progressionWindowStart);
+    },
+    progressionWindowStart() {
+      return Math.max(...this.activeSignals.map((signal) => signal.offset));
+    },
+    progressionWindowEnd() {
+      return Math.min(
+        ...this.activeSignals.map((signal) => signal.offset + this.coordinatedSplit)
+      );
     },
     coordinationQuality() {
       if (this.progressionBandwidth >= 20) return "Strong progression";
@@ -206,8 +216,10 @@ export default {
       return "Adjust offsets";
     },
     progressionStyle() {
-      const start = Math.min(...this.activeSignals.map((signal) => signal.offset));
-      return { left: this.percent(start) + "%", width: this.percent(this.progressionBandwidth) + "%" };
+      return {
+        left: this.percent(this.progressionWindowStart) + "%",
+        width: this.percent(this.progressionBandwidth) + "%",
+      };
     },
     currentCycleSecond() {
       return this.isPlaying ? this.animationSecond : this.schedulerMinute % this.cycleLength;
@@ -216,21 +228,10 @@ export default {
       return { left: `${this.vehiclePosition}%` };
     },
     vehiclePosition() {
-      const routeStart = 6;
-      const routeEnd = 94;
-      const freeFlowPosition = routeStart + (this.currentCycleSecond / this.cycleLength) * (routeEnd - routeStart);
-      const stopBuffer = 2.4;
-
-      return this.activeSignals.reduce((position, signal) => {
-        const stopPosition = signal.position - stopBuffer;
-        if (position >= stopPosition && freeFlowPosition >= stopPosition && !this.isGreen(signal)) {
-          return Math.min(position, stopPosition);
-        }
-        return position;
-      }, freeFlowPosition);
+      return this.vehicleCurrentPosition;
     },
     insightText() {
-      return `At ${this.formattedClock}, the scheduler runs a ${this.cycleLength}s cycle for ${this.signalCount} signal${this.signalCount === 1 ? "" : "s"}. ${this.coordinatedPhase} receives ${this.coordinatedSplit}s of green; the displayed window starts at the first coordinated green and ends when the limiting signal turns red, giving a ${this.progressionBandwidth}s platoon window.`;
+      return `At ${this.formattedClock}, the scheduler runs a ${this.cycleLength}s cycle for ${this.signalCount} signal${this.signalCount === 1 ? "" : "s"}. ${this.coordinatedPhase} receives ${this.coordinatedSplit}s of green; the displayed window starts at the first coordinated green and ends when the limiting signal turns red, giving a ${this.progressionBandwidth}s minimum shared green window.`;
     },
     conceptLegend() {
       return [
@@ -269,6 +270,7 @@ export default {
 
       this.isPlaying = true;
       this.animationSecond = this.schedulerMinute % this.cycleLength;
+      this.vehicleCurrentPosition = this.vehicleRouteStart;
       this.lastFrameTime = null;
       this.animationFrameId = requestAnimationFrame(this.advancePlayback);
     },
@@ -289,8 +291,35 @@ export default {
 
       const elapsedSeconds = ((timestamp - this.lastFrameTime) / 1000) * this.playbackSpeed;
       this.animationSecond = (this.animationSecond + elapsedSeconds) % this.cycleLength;
+      this.advanceVehicles(elapsedSeconds);
       this.lastFrameTime = timestamp;
       this.animationFrameId = requestAnimationFrame(this.advancePlayback);
+    },
+    advanceVehicles(elapsedSeconds) {
+      if (!this.showVehicles) return;
+
+      const travelSeconds = this.cycleLength;
+      const travelPercentPerSecond = (this.vehicleRouteEnd - this.vehicleRouteStart) / travelSeconds;
+      const candidatePosition = Math.min(
+        this.vehicleRouteEnd,
+        this.vehicleCurrentPosition + elapsedSeconds * travelPercentPerSecond
+      );
+      const nextStop = this.activeSignals.find((signal) => {
+        const stopPosition = signal.position - this.vehicleStopBuffer;
+        return (
+          this.vehicleCurrentPosition < stopPosition &&
+          candidatePosition >= stopPosition &&
+          !this.isGreen(signal)
+        );
+      });
+
+      this.vehicleCurrentPosition = nextStop
+        ? nextStop.position - this.vehicleStopBuffer
+        : candidatePosition;
+
+      if (this.vehicleCurrentPosition >= this.vehicleRouteEnd) {
+        this.vehicleCurrentPosition = this.vehicleRouteStart;
+      }
     },
     isGreen(signal) {
       const cyclePosition = (this.currentCycleSecond - signal.offset + this.cycleLength) % this.cycleLength;

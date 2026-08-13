@@ -44,6 +44,26 @@
                 density="compact"
               ></v-select>
               <v-switch v-model="showVehicles" color="primary" label="Show progression vehicles"></v-switch>
+              <div class="playback-controls">
+                <v-btn
+                  color="primary"
+                  variant="flat"
+                  :prepend-icon="isPlaying ? 'mdi-pause' : 'mdi-play'"
+                  @click="togglePlayback"
+                >
+                  {{ isPlaying ? "Pause cars" : "Play cars" }}
+                </v-btn>
+                <v-select
+                  v-model="playbackSpeed"
+                  :items="playbackSpeedOptions"
+                  item-title="label"
+                  item-value="value"
+                  label="Playback speed"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                ></v-select>
+              </div>
             </v-card-text>
           </v-card>
 
@@ -127,6 +147,18 @@ export default {
       schedulerMinute: 480,
       coordinatedPhase: "Main Street through phases 2 + 6",
       showVehicles: true,
+      isPlaying: false,
+      playbackSpeed: 1,
+      animationSecond: 0,
+      lastFrameTime: null,
+      animationFrameId: null,
+      playbackSpeedOptions: [
+        { label: "1x", value: 1 },
+        { label: "2x", value: 2 },
+        { label: "4x", value: 4 },
+        { label: "8x", value: 8 },
+        { label: "16x", value: 16 },
+      ],
       phaseOptions: ["Main Street through phases 2 + 6", "Cross street phases 4 + 8"],
       signals: [
         { name: "Signal A", distance: 0, offset: 0, position: 8 },
@@ -160,9 +192,12 @@ export default {
       const start = Math.max(...this.signals.map((signal) => signal.offset));
       return { left: this.percent(start) + "%", width: this.percent(this.progressionBandwidth) + "%" };
     },
+    currentCycleSecond() {
+      return this.isPlaying ? this.animationSecond : this.schedulerMinute % this.cycleLength;
+    },
     vehicleStyle() {
-      const start = Math.max(...this.signals.map((signal) => signal.offset));
-      return { left: `${Math.min(88, 6 + (start / this.cycleLength) * 70)}%` };
+      const travelProgress = (this.currentCycleSecond / this.cycleLength) * 100;
+      return { left: `${Math.min(94, Math.max(6, 6 + travelProgress * 0.88))}%` };
     },
     insightText() {
       return `At ${this.formattedClock}, the scheduler runs a ${this.cycleLength}s cycle. ${this.coordinatedPhase} receives ${this.coordinatedSplit}s of green; offsets shift each downstream green start so a platoon can arrive during the shared ${this.progressionBandwidth}s window.`;
@@ -181,7 +216,11 @@ export default {
       this.signals.forEach((signal) => { signal.offset = Math.min(signal.offset, this.cycleLength - 1); });
       this.coordinatedSplit = Math.min(this.coordinatedSplit, this.maxCoordinatedSplit);
       this.sideStreetSplit = Math.min(this.sideStreetSplit, this.maxSideStreetSplit);
+      this.animationSecond = this.animationSecond % this.cycleLength;
     },
+  },
+  beforeUnmount() {
+    this.stopPlayback();
   },
   methods: {
     percent(value) { return (value / this.cycleLength) * 100; },
@@ -192,9 +231,40 @@ export default {
         { start: signal.offset + this.coordinatedSplit + this.clearanceTime, duration: this.sideStreetSplit, color: "red", label: "side street" },
       ].filter((band) => band.start < this.cycleLength).map((band) => ({ ...band, duration: Math.min(band.duration, this.cycleLength - band.start) }));
     },
+    togglePlayback() {
+      if (this.isPlaying) {
+        this.stopPlayback();
+        return;
+      }
+
+      this.isPlaying = true;
+      this.animationSecond = this.schedulerMinute % this.cycleLength;
+      this.lastFrameTime = null;
+      this.animationFrameId = requestAnimationFrame(this.advancePlayback);
+    },
+    stopPlayback() {
+      this.isPlaying = false;
+      if (this.animationFrameId) {
+        cancelAnimationFrame(this.animationFrameId);
+        this.animationFrameId = null;
+      }
+      this.lastFrameTime = null;
+    },
+    advancePlayback(timestamp) {
+      if (!this.isPlaying) return;
+
+      if (this.lastFrameTime === null) {
+        this.lastFrameTime = timestamp;
+      }
+
+      const elapsedSeconds = ((timestamp - this.lastFrameTime) / 1000) * this.playbackSpeed;
+      this.animationSecond = (this.animationSecond + elapsedSeconds) % this.cycleLength;
+      this.lastFrameTime = timestamp;
+      this.animationFrameId = requestAnimationFrame(this.advancePlayback);
+    },
     isGreen(signal) {
-      const currentSecond = this.schedulerMinute % this.cycleLength;
-      return currentSecond >= signal.offset && currentSecond <= signal.offset + this.coordinatedSplit;
+      const cyclePosition = (this.currentCycleSecond - signal.offset + this.cycleLength) % this.cycleLength;
+      return cyclePosition <= this.coordinatedSplit;
     },
   },
 };
@@ -211,6 +281,7 @@ h1 { font-size: clamp(2rem, 4vw, 3.6rem); line-height: 1.05; margin: 0 0 12px; }
 .tool-grid { max-width: 1220px; }
 .control-card, .visual-card { border-radius: 18px; margin-bottom: 18px; background: rgba(255,255,255,.94); }
 .control-group label { display: block; font-weight: 700; margin: 14px 0 0; color: #244050; }
+.playback-controls { display: grid; grid-template-columns: minmax(130px, auto) 1fr; gap: 12px; align-items: center; margin-top: 8px; }
 .concept-row { display: flex; gap: 12px; margin-bottom: 14px; }
 .concept-row p { margin: 2px 0 0; color: #52636e; line-height: 1.35; }
 .legend-dot { width: 14px; height: 14px; border-radius: 50%; margin-top: 5px; flex: 0 0 auto; }
@@ -231,7 +302,7 @@ h1 { font-size: clamp(2rem, 4vw, 3.6rem); line-height: 1.05; margin: 0 0 12px; }
 .signal-head { width: 34px; height: 34px; margin: 0 auto 58px; border-radius: 50%; border: 5px solid #263238; box-shadow: 0 0 0 5px #455a64; }
 .signal-head.go { background: #22c55e; }
 .signal-head.stop { background: #ef4444; }
-.vehicle-platoon { position: absolute; top: 47%; transform: translateX(-50%); font-size: 1.8rem; transition: left .25s ease; }
+.vehicle-platoon { position: absolute; top: 47%; transform: translateX(-50%); font-size: 1.8rem; transition: left .08s linear; white-space: nowrap; z-index: 3; }
 .insight-text { margin: 14px 0 0; color: #37474f; line-height: 1.55; }
-@media (max-width: 760px) { .hero-panel { flex-direction: column; } .signal-row { grid-template-columns: 1fr; } .timeline-axis, .progression-window { margin-left: 0; padding-left: 0; } }
+@media (max-width: 760px) { .hero-panel { flex-direction: column; } .signal-row { grid-template-columns: 1fr; } .timeline-axis, .progression-window { margin-left: 0; padding-left: 0; } .playback-controls { grid-template-columns: 1fr; } }
 </style>

@@ -74,3 +74,16 @@ A new tool is available at `/tools/block-logic` for visual, rule-based diagnosti
 1. Add a block factory entry in `src/utils/blockLogicSchema.js` (`createCondition` or `createAction`).
 2. Add evaluation behavior in `src/utils/blockLogicEngine.js` (`evalCondition` or `runAction`).
 3. Add inspector controls in `src/views/BlockLogic.vue`.
+
+## Pedestrian Conflict Correlator
+
+`/ped-conflict-correlator` pairs a detector channel with a pedestrian phase and shows when the two are active at the same time — the exposure between turning vehicles and people crossing.
+
+### What it does
+- **Correlation rules:** each rule is one detector channel × one pedestrian phase. Pick the detector type (vehicle 82/81, ped 90/89, TSP 94/93), the pedestrian interval to watch (WALK, ped clearance, both, or the ped call wait), the trigger (detector ON, OFF, either edge, or any occupancy overlap), and lead/lag buffer seconds. Presets cover permissive lefts, right turn on red, departures at the start of WALK, and late crossings.
+- **Conflict timeline:** one row per pedestrian service with time measured from the start of WALK, so correlated detector activity lines up into a visible pattern. Blue markers bracket the evaluated window; detector occupancy inside it is drawn in red.
+- **Offset histogram and hour-of-day chart** to show whether detector activity clusters around the start of WALK and when it happens.
+- **Summary metrics** per rule, including percent of pedestrian services affected, detector occupancy per service, and an exposure index (in-window event rate ÷ whole-file event rate).
+- **CSV export** of every correlated event.
+
+All parsing and analysis happen in the browser in a Web Worker — pasted text and selected files never leave the machine. Core logic lives in `src/utils/pedConflictCorrelator.js` and is covered by `tests/pedConflictCorrelator.test.mjs` (`npm test`).

@@ -217,6 +217,29 @@ export const routeMeta = {
       "Analyze pedestrian walk, clearance, and don't-walk intervals from high-resolution controller logs.",
     path: "/pedestrian-investigator",
   },
+  pedConflictCorrelator: {
+    title: "Pedestrian Conflict Correlator | Detector & Ped Phase Overlap",
+    description:
+      "Correlate detector channel on/off events with pedestrian walk and clearance intervals to visualize turning vehicle and pedestrian conflict exposure.",
+    path: "/ped-conflict-correlator",
+    faq: [
+      {
+        question: "How does the tool identify a pedestrian conflict?",
+        answer:
+          "It builds a window from the pedestrian interval you choose, pads it by your lead and lag seconds, and flags detector on, off, or occupancy events that fall inside that window.",
+      },
+      {
+        question: "Which enumerations does the correlator use?",
+        answer:
+          "Pedestrian intervals come from events 21, 22, 23, 24, and 45, and detector activity comes from 82/81 for vehicles, 90/89 for ped detectors, or 94/93 for TSP detectors.",
+      },
+      {
+        question: "Is my high-resolution data uploaded anywhere?",
+        answer:
+          "No. Pasted text and selected files are parsed and analyzed in your browser using a local web worker.",
+      },
+    ],
+  },
   dashboard: {
     title: "Signal Data Dashboard | Detector Status & Phase Insights",
     description:

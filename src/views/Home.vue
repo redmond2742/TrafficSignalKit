@@ -88,6 +88,15 @@ export default {
         {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Vehicle+and+Pedestrian+Delay.png",
+          title: "Pedestrian Conflict Correlator",
+          description:
+            "Correlate detector on/off events with pedestrian walk and clearance intervals to see turning conflict exposure.",
+          link: "/ped-conflict-correlator",
+          topics: ["Controller Data", "Pedestrians", "Safety", "Detection"],
+        },
+        {
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Vehicle+and+Pedestrian+Delay.png",
           title: "Pedestrian Investigator",
           description:
             "Summarize pedestrian walk, clearance, and crossing distance estimates.",

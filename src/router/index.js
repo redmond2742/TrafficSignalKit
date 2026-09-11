@@ -49,6 +49,7 @@ import PhaseBubbleScatter from '../views/PhaseBubbleScatter'
 import BlockLogic from '../views/BlockLogic'
 import GeoJSONMapper from '../views/GeoJSONMapper'
 import CoordinationLearningTool from '../views/CoordinationLearningTool'
+import PedConflictCorrelator from '../views/PedConflictCorrelator'
 
 
 
@@ -198,6 +199,11 @@ const routes = [
         path: '/pedestrian-investigator',
         name: 'pedestrianInvestigator',
         component: PedestrianInvestigator,
+    },
+    {
+        path: '/ped-conflict-correlator',
+        name: 'pedConflictCorrelator',
+        component: PedConflictCorrelator,
     },
     {
         path: '/dashboard',

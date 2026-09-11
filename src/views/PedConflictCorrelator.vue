@@ -36,6 +36,22 @@
             file mode are concatenated.
           </v-expansion-panel-text>
         </v-expansion-panel>
+        <v-expansion-panel title="Red-light runs into a crosswalk" value="rlr">
+          <v-expansion-panel-text>
+            Set a rule's trigger to <b>Red-light run</b> to chain three events
+            together: the stop bar detector drops out while the vehicle phase
+            you name is showing yellow or red, a downstream detector then turns
+            on and back off within the travel time you allow, and that traversal
+            overlaps the pedestrian interval you selected. The downstream
+            confirmation is what separates a vehicle that actually entered the
+            intersection from one shuffling forward in queue, and each
+            downstream call is matched to only one departure. Yellow runs
+            <code>8 → 9</code>; red runs from the end of yellow (or the start of
+            red clearance) until that phase's next begin green, so a legal right
+            turn on red will also appear &mdash; use the <i>seconds into state</i>
+            column and the movement label to tell them apart.
+          </v-expansion-panel-text>
+        </v-expansion-panel>
         <v-expansion-panel title="Enumerations used" value="enums">
           <v-expansion-panel-text>
             Pedestrian intervals come from
@@ -44,7 +60,10 @@
             <b>45</b> (ped call registered). Detector activity comes from
             <b>82/81</b> (vehicle detector on/off), <b>90/89</b> (ped detector
             on/off), or <b>94/93</b> (TSP detector on/off), depending on the
-            detector type set on each rule.
+            detector type set on each rule. Red-light-run rules additionally
+            read vehicle phase state from <b>1</b> (begin green), <b>7</b>
+            (green termination), <b>8</b> (begin yellow), <b>9</b> (end yellow),
+            and <b>10</b> (begin red clearance).
           </v-expansion-panel-text>
         </v-expansion-panel>
         <v-expansion-panel title="How to read the results" value="reading">
@@ -54,7 +73,11 @@
             clearance; the blue end markers bracket the window actually
             being evaluated, including any lead/lag buffer you added. Detector
             occupancy is drawn in slate, and the part of it that falls inside
-            the evaluated window is drawn in red. The offset histogram collapses
+            the evaluated window is drawn in red. For red-light-run rules, a
+            diamond marks the stop bar drop-out, a dashed line follows the
+            vehicle to the downstream detector, and the purple bar is the
+            downstream call &mdash; all of it turns crimson when the traversal
+            overlaps the crossing. The offset histogram collapses
             every service into one picture: a spike near zero means the detector
             fires just as WALK starts. The exposure index compares the detector
             event rate inside ped windows against its rate across the whole
@@ -77,6 +100,12 @@
           <v-btn v-if="dataLoaded" variant="text" @click="resetAll">Clear</v-btn>
         </div>
         <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+        <p v-if="sampleLoaded" class="note-text">
+          Sample data: pedestrian phase 4, a permissive left turn on channel 5, a
+          phase 2 through movement on stop bar channel 2, and a downstream
+          detector on channel 21 that confirms vehicles entering on yellow or
+          red.
+        </p>
 
         <div v-if="dataLoaded" class="scan-summary">
           <v-chip class="ma-1" color="primary" variant="tonal">
@@ -186,7 +215,7 @@
               <v-combobox
                 v-model="rule.detectorChannel"
                 :items="channelItems(rule.detectorType)"
-                label="Detector channel"
+                :label="channelLabel(rule)"
                 density="compact"
                 variant="outlined"
                 hide-details
@@ -221,6 +250,53 @@
                 item-title="title"
                 item-value="value"
                 label="Pedestrian interval"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
+            </v-col>
+          </v-row>
+
+          <v-row v-if="isRlr(rule)" dense class="rlr-row">
+            <v-col cols="12" md="3">
+              <v-combobox
+                v-model="rule.downstreamChannel"
+                :items="channelItems(rule.detectorType)"
+                label="Downstream detector channel"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-combobox
+                v-model="rule.vehiclePhase"
+                :items="summary.vehiclePhases"
+                label="Vehicle phase (signal state)"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-select
+                v-model="rule.signalStates"
+                :items="signalStateOptions"
+                item-title="title"
+                item-value="value"
+                label="Departure happens during"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model.number="rule.maxTravelSec"
+                type="number"
+                min="0.5"
+                step="0.5"
+                label="Max travel to downstream (s)"
                 density="compact"
                 variant="outlined"
                 hide-details
@@ -334,7 +410,10 @@
               >
                 <td>{{ result.label }}</td>
                 <td>{{ result.rule.movement }}</td>
-                <td>Ch {{ result.rule.detectorChannel }}</td>
+                <td>
+                  Ch {{ result.rule.detectorChannel }}
+                  <template v-if="result.isRedLightRun"> → Ch {{ result.rule.downstreamChannel }}</template>
+                </td>
                 <td>{{ result.rule.pedPhase }}</td>
                 <td>{{ result.triggerLabel }}</td>
                 <td>{{ result.pedWindowLabel }}</td>
@@ -374,7 +453,31 @@
             class="rule-picker"
           />
 
-          <div class="stat-row">
+          <div v-if="selectedResult.isRedLightRun" class="stat-row">
+            <div class="stat-tile">
+              <span class="stat-value">{{ selectedResult.totals.conflictEvents }}</span>
+              <span class="stat-label">Runs through an active crossing</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-value">{{ selectedResult.totals.redLightRuns }}</span>
+              <span class="stat-label">Confirmed runs in the file</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-value">{{ fmt(selectedResult.totals.conflictRatePct, 1) }}%</span>
+              <span class="stat-label">Ped services affected</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-value">
+                {{ selectedResult.totals.conflictRunsYellow }} / {{ selectedResult.totals.conflictRunsRed }}
+              </span>
+              <span class="stat-label">Yellow / red entries</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-value">{{ fmt(selectedResult.totals.avgTravelSec) }}s</span>
+              <span class="stat-label">Avg stop bar to downstream</span>
+            </div>
+          </div>
+          <div v-else class="stat-row">
             <div class="stat-tile">
               <span class="stat-value">{{ selectedResult.totals.conflictEvents }}</span>
               <span class="stat-label">Correlated events</span>
@@ -495,6 +598,34 @@
                   </rect>
                 </g>
 
+                <g v-for="(run, r) in service.runs || []" :key="`r-${service.index}-${r}`">
+                  <line
+                    :x1="xScale(clamp(run.offsetSec))"
+                    :x2="xScale(clamp(run.downstreamOnSec))"
+                    :y1="rowY(i) + rowHeight / 2"
+                    :y2="rowY(i) + rowHeight / 2"
+                    :class="run.conflict ? 'run-travel-conflict' : 'run-travel'"
+                  />
+                  <rect
+                    :x="xScale(clamp(run.downstreamOnSec))"
+                    :y="rowY(i) + 4"
+                    :width="barWidth(run.downstreamOnSec, run.downstreamOffSec)"
+                    :height="rowHeight - 9"
+                    :class="run.conflict ? 'downstream-conflict' : 'downstream-clear'"
+                  />
+                  <polygon
+                    :points="diamondPoints(xScale(clamp(run.offsetSec)), rowY(i) + rowHeight / 2, 4)"
+                    :class="run.conflict ? 'run-marker-conflict' : 'run-marker'"
+                  >
+                    <title>
+                      Stop bar off during {{ run.state }} at {{ run.offsetSec }}s;
+                      downstream detector on {{ run.travelSec }}s later
+                      ({{ run.downstreamOnSec }}s to {{ run.downstreamOffSec }}s);
+                      {{ run.overlapSec }}s of the crossing overlapped
+                    </title>
+                  </polygon>
+                </g>
+
                 <g v-for="(trigger, t) in service.triggers" :key="`t-${service.index}-${t}`">
                   <circle
                     :cx="xScale(clamp(trigger.offsetSec))"
@@ -516,6 +647,10 @@
               <span class="legend-item"><span class="swatch pulse-swatch"></span>Detector on (outside window)</span>
               <span class="legend-item"><span class="swatch conflict-swatch"></span>Detector on (in window)</span>
               <span class="legend-item"><span class="dot conflict-dot"></span>Correlated ON/OFF edge</span>
+              <template v-if="selectedResult.isRedLightRun">
+                <span class="legend-item"><span class="diamond run-diamond"></span>Stop bar off in {{ selectedResult.signalStateLabel.toLowerCase() }}</span>
+                <span class="legend-item"><span class="swatch downstream-swatch"></span>Downstream detector (confirms entry)</span>
+              </template>
             </div>
             <v-pagination
               v-if="timelinePageCount > 1"
@@ -571,6 +706,12 @@
                 <th>Ped interval</th>
                 <th class="numeric">Offset (s)</th>
                 <th class="numeric">Overlap (s)</th>
+                <template v-if="showRlrColumns">
+                  <th>Signal state</th>
+                  <th class="numeric">Into state (s)</th>
+                  <th class="numeric">Travel (s)</th>
+                  <th class="numeric">Downstream (s)</th>
+                </template>
               </tr>
             </thead>
             <tbody>
@@ -584,6 +725,12 @@
                 <td>{{ row.interval }}</td>
                 <td class="numeric">{{ fmt(row.offsetSec) }}</td>
                 <td class="numeric">{{ fmt(row.overlapSec) }}</td>
+                <template v-if="showRlrColumns">
+                  <td>{{ row.signalState || "—" }}</td>
+                  <td class="numeric">{{ fmt(row.secIntoStateSec, 1) }}</td>
+                  <td class="numeric">{{ fmt(row.travelSec) }}</td>
+                  <td class="numeric">{{ fmt(row.downstreamSec) }}</td>
+                </template>
               </tr>
             </tbody>
           </v-table>
@@ -627,6 +774,7 @@ import {
   DETECTOR_TYPES,
   PED_WINDOW_MODES,
   TRIGGER_MODES,
+  SIGNAL_STATE_MODES,
   parseHighResEvents,
   summarizeEvents,
   correlateAll,
@@ -642,6 +790,7 @@ const EMPTY_SUMMARY = {
   spanSec: 0,
   channels: { vehicle: [], pedestrian: [], tsp: [] },
   pedPhases: [],
+  vehiclePhases: [],
 };
 
 let ruleSequence = 0;
@@ -661,6 +810,11 @@ function makeRule(overrides = {}) {
     lagSec: 0,
     minOverlapSec: 0,
     movement: "Permissive left turn",
+    // Red-light-run mode only.
+    downstreamChannel: 1,
+    vehiclePhase: 2,
+    signalStates: "yellow-red",
+    maxTravelSec: 6,
     ...overrides,
   };
 }
@@ -687,6 +841,7 @@ export default {
       binSec: 1,
       contextSec: 10,
       conflictsOnly: false,
+      sampleLoaded: false,
       timelinePage: 1,
       timelinePageSize: 25,
       tableFilter: "",
@@ -725,6 +880,12 @@ export default {
     triggerOptions() {
       return Object.values(TRIGGER_MODES).map((mode) => ({ title: mode.label, value: mode.key }));
     },
+    signalStateOptions() {
+      return Object.values(SIGNAL_STATE_MODES).map((mode) => ({ title: mode.label, value: mode.key }));
+    },
+    showRlrColumns() {
+      return this.results.some((result) => result.isRedLightRun);
+    },
     presets() {
       return [
         {
@@ -746,6 +907,17 @@ export default {
           key: "late-crossing",
           label: "Late crossing during clearance",
           rule: { trigger: "either", pedWindow: "clearance", lagSec: 3, movement: "Permissive left turn" },
+        },
+        {
+          key: "red-light-run",
+          label: "Red-light run into crosswalk",
+          rule: {
+            trigger: "red-light-run",
+            pedWindow: "walk-clearance",
+            signalStates: "yellow-red",
+            maxTravelSec: 6,
+            movement: "Through",
+          },
         },
         {
           key: "call-wait",
@@ -941,24 +1113,40 @@ export default {
     shortTime(ts) {
       return ts == null ? "" : DateTime.fromMillis(ts).toFormat("HH:mm:ss");
     },
+    isRlr(rule) {
+      return rule.trigger === "red-light-run";
+    },
+    channelLabel(rule) {
+      return this.isRlr(rule) ? "Stop bar detector channel" : "Detector channel";
+    },
     ruleLabel(rule) {
       if (rule.name && rule.name.trim()) return rule.name.trim();
+      if (this.isRlr(rule)) {
+        return `Red-light run ${rule.detectorChannel} → ${rule.downstreamChannel} × Ped phase ${rule.pedPhase}`;
+      }
       return `Detector ${rule.detectorChannel} × Ped phase ${rule.pedPhase}`;
     },
     ruleSentence(rule) {
-      const trigger = TRIGGER_MODES[rule.trigger]?.label || rule.trigger;
       const window = PED_WINDOW_MODES[rule.pedWindow]?.label || rule.pedWindow;
       const lead = Number(rule.leadSec) || 0;
       const lag = Number(rule.lagSec) || 0;
       const buffer = lead || lag ? ` extended ${lead}s before and ${lag}s after` : "";
+      if (this.isRlr(rule)) {
+        const states = (SIGNAL_STATE_MODES[rule.signalStates]?.label || rule.signalStates).toLowerCase();
+        return `Flag when stop bar channel ${rule.detectorChannel} drops out during ${states} on phase ${rule.vehiclePhase} and channel ${rule.downstreamChannel} then turns on and off within ${rule.maxTravelSec}s, while ped phase ${rule.pedPhase} is in ${window}${buffer}.`;
+      }
+      const trigger = TRIGGER_MODES[rule.trigger]?.label || rule.trigger;
       return `Flag when ${trigger.toLowerCase()} on channel ${rule.detectorChannel} during ${window}${buffer} on ped phase ${rule.pedPhase}.`;
     },
     channelItems(detectorType) {
       return this.summary.channels[detectorType] || [];
     },
     addRule(overrides = {}) {
+      const channels = this.summary.channels.vehicle;
       const rule = makeRule({
-        detectorChannel: this.summary.channels.vehicle[0] ?? 1,
+        detectorChannel: channels[0] ?? 1,
+        downstreamChannel: channels[channels.length - 1] ?? 1,
+        vehiclePhase: this.summary.vehiclePhases[0] ?? 2,
         pedPhase: this.summary.pedPhases[0] ?? 2,
         ...overrides,
       });
@@ -980,6 +1168,9 @@ export default {
         leadSec: Number(rule.leadSec) || 0,
         lagSec: Number(rule.lagSec) || 0,
         minOverlapSec: Number(rule.minOverlapSec) || 0,
+        downstreamChannel: Number(rule.downstreamChannel),
+        vehiclePhase: Number(rule.vehiclePhase),
+        maxTravelSec: Number(rule.maxTravelSec) || 0,
       }));
     },
     ensureWorker() {
@@ -1040,6 +1231,13 @@ export default {
         if (pedPhase != null && !this.summary.pedPhases.includes(Number(rule.pedPhase))) {
           rule.pedPhase = pedPhase;
         }
+        if (channels.length && !channels.includes(Number(rule.downstreamChannel))) {
+          rule.downstreamChannel = channels[channels.length - 1];
+        }
+        const vehiclePhase = this.summary.vehiclePhases[0];
+        if (vehiclePhase != null && !this.summary.vehiclePhases.includes(Number(rule.vehiclePhase))) {
+          rule.vehiclePhase = vehiclePhase;
+        }
       }
     },
     applyResults(results) {
@@ -1099,6 +1297,7 @@ export default {
       this.results = [];
       this.skippedRows = 0;
       this.errorMessage = "";
+      this.sampleLoaded = false;
       if (this.worker) this.worker.postMessage({ type: "reset" });
     },
     downloadCsv() {
@@ -1128,9 +1327,13 @@ export default {
     rowY(index) {
       return this.plotTop + index * this.rowHeight;
     },
+    diamondPoints(cx, cy, r) {
+      return `${cx},${cy - r} ${cx + r},${cy} ${cx},${cy + r} ${cx - r},${cy}`;
+    },
     loadSample() {
       this.rawData = this.buildSampleData();
       this.errorMessage = "";
+      this.sampleLoaded = true;
     },
     /**
      * Deterministic demo file: ped phase 4 served every cycle with a permissive
@@ -1175,12 +1378,27 @@ export default {
           push(on, 82, 5);
           push(on + 1.5 + random() * 4, 81, 5);
         }
-        // Channel 2: through movement on the other street, unrelated timing.
+        // Channel 2: through movement on phase 2, arriving on green.
         const throughCalls = 3 + Math.floor(random() * 3);
         for (let i = 0; i < throughCalls; i += 1) {
-          const on = cycleStart + random() * 45;
+          const on = cycleStart + random() * 38;
           push(on, 82, 2);
           push(on + 1 + random() * 2, 81, 2);
+        }
+
+        // Some cycles include a vehicle that leaves the phase 2 stop bar during
+        // yellow or red and is confirmed by downstream channel 21.
+        const runnerRoll = random();
+        if (runnerRoll > 0.55) {
+          const intoRed = runnerRoll > 0.78;
+          const stopBarOff = intoRed
+            ? cycleStart + 49.5 + random() * 4
+            : cycleStart + 46 + random() * 2.3;
+          push(stopBarOff - 2.5 - random(), 82, 2);
+          push(stopBarOff, 81, 2);
+          const downstreamOn = stopBarOff + 1.4 + random() * 1.2;
+          push(downstreamOn, 82, 21);
+          push(downstreamOn + 0.6 + random() * 0.6, 81, 21);
         }
       }
 
@@ -1400,6 +1618,36 @@ export default {
   fill: rgba(211, 47, 47, 0.9);
 }
 
+.run-travel {
+  stroke: rgba(94, 53, 177, 0.75);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 2;
+}
+
+.run-travel-conflict {
+  stroke: #b71c1c;
+  stroke-width: 1.4;
+  stroke-dasharray: 2 2;
+}
+
+.downstream-clear {
+  fill: rgba(94, 53, 177, 0.7);
+}
+
+.downstream-conflict {
+  fill: rgba(183, 28, 28, 0.95);
+}
+
+.run-marker {
+  fill: #5e35b1;
+}
+
+.run-marker-conflict {
+  fill: #b71c1c;
+  stroke: #fff;
+  stroke-width: 0.7;
+}
+
 .trigger-clear {
   fill: #37474f;
 }
@@ -1465,6 +1713,21 @@ export default {
 
 .conflict-dot {
   background: #b71c1c;
+}
+
+.diamond {
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+  transform: rotate(45deg);
+}
+
+.run-diamond {
+  background: #b71c1c;
+}
+
+.downstream-swatch {
+  background: rgba(94, 53, 177, 0.7);
 }
 
 .chart-wrap {

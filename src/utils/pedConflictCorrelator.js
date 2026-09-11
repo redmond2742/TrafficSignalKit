@@ -33,6 +33,22 @@ export const TRIGGER_MODES = {
   off: { key: 'off', label: 'Detector turns OFF' },
   either: { key: 'either', label: 'Detector turns ON or OFF' },
   overlap: { key: 'overlap', label: 'Detector occupied (any overlap)' },
+  'red-light-run': { key: 'red-light-run', label: 'Red-light run (stop bar → downstream)' },
+};
+
+export const SIGNAL_STATE_MODES = {
+  yellow: { key: 'yellow', label: 'Yellow only' },
+  red: { key: 'red', label: 'Red only' },
+  'yellow-red': { key: 'yellow-red', label: 'Yellow or red' },
+};
+
+export const PHASE_STATE_CODES = {
+  BEGIN_GREEN: 1,
+  GREEN_TERMINATION: 7,
+  BEGIN_YELLOW: 8,
+  END_YELLOW: 9,
+  BEGIN_RED_CLEARANCE: 10,
+  END_RED_CLEARANCE: 11,
 };
 
 const MDY_RE = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.(\d{1,6}))?$/;
@@ -143,13 +159,16 @@ export function parseHighResEvents(text) {
 export function summarizeEvents(events) {
   const channelsByType = { vehicle: new Set(), pedestrian: new Set(), tsp: new Set() };
   const pedPhases = new Set();
+  const vehiclePhases = new Set();
   const pedCodes = new Set(Object.values(PED_CODES));
+  const phaseStateCodes = new Set(Object.values(PHASE_STATE_CODES));
 
   for (const evt of events) {
     for (const type of Object.values(DETECTOR_TYPES)) {
       if (evt.code === type.onCode || evt.code === type.offCode) channelsByType[type.key].add(evt.param);
     }
     if (pedCodes.has(evt.code)) pedPhases.add(evt.param);
+    if (phaseStateCodes.has(evt.code)) vehiclePhases.add(evt.param);
   }
 
   const firstTs = events.length ? events[0].tsMs : null;
@@ -166,6 +185,7 @@ export function summarizeEvents(events) {
       tsp: [...channelsByType.tsp].sort((a, b) => a - b),
     },
     pedPhases: [...pedPhases].sort((a, b) => a - b),
+    vehiclePhases: [...vehiclePhases].sort((a, b) => a - b),
   };
 }
 
@@ -265,6 +285,141 @@ export function buildPedServices(events, phase) {
   });
 }
 
+/**
+ * Green/yellow/red display intervals for one vehicle phase.
+ * Green runs 1 → 7|8, yellow runs 8 → 9|10, and red runs from the end of
+ * yellow (or the start of red clearance) until the phase's next begin green,
+ * which is the full red display a vehicle could be entering against.
+ */
+export function buildPhaseStateIntervals(events, phase, datasetEndTs = null) {
+  const intervals = [];
+  let greenStart = null;
+  let yellowStart = null;
+  let redStart = null;
+
+  const push = (state, start, end) => {
+    if (start != null && end > start) intervals.push({ state, start, end });
+  };
+
+  for (const evt of events) {
+    if (evt.param !== phase) continue;
+    switch (evt.code) {
+      case PHASE_STATE_CODES.BEGIN_GREEN:
+        push('yellow', yellowStart, evt.tsMs);
+        push('red', redStart, evt.tsMs);
+        yellowStart = null;
+        redStart = null;
+        if (greenStart == null) greenStart = evt.tsMs;
+        break;
+      case PHASE_STATE_CODES.GREEN_TERMINATION:
+      case PHASE_STATE_CODES.BEGIN_YELLOW:
+        push('green', greenStart, evt.tsMs);
+        greenStart = null;
+        if (evt.code === PHASE_STATE_CODES.BEGIN_YELLOW && yellowStart == null) yellowStart = evt.tsMs;
+        break;
+      case PHASE_STATE_CODES.END_YELLOW:
+      case PHASE_STATE_CODES.BEGIN_RED_CLEARANCE:
+        push('yellow', yellowStart, evt.tsMs);
+        yellowStart = null;
+        if (redStart == null) redStart = evt.tsMs;
+        break;
+      default:
+        break;
+    }
+  }
+
+  const endTs = datasetEndTs ?? (events.length ? events[events.length - 1].tsMs : null);
+  if (endTs != null) {
+    push('green', greenStart, endTs);
+    push('yellow', yellowStart, endTs);
+    push('red', redStart, endTs);
+  }
+
+  return intervals.sort((a, b) => a.start - b.start);
+}
+
+function findStateInterval(intervals, ts) {
+  let lo = 0;
+  let hi = intervals.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const interval = intervals[mid];
+    if (ts < interval.start) hi = mid - 1;
+    else if (ts >= interval.end) lo = mid + 1;
+    else return interval;
+  }
+  return null;
+}
+
+/**
+ * Confirmed red-light runs: a stop bar detector drops out while the phase is
+ * showing yellow or red, and a downstream detector then turns on and back off
+ * within the travel time allowed. The downstream pulse is the confirmation that
+ * the vehicle actually entered the intersection rather than shuffling in queue,
+ * and each downstream pulse is only matched once.
+ */
+export function findRedLightRuns({
+  events,
+  stopBarChannel,
+  downstreamChannel,
+  vehiclePhase,
+  detectorType = 'vehicle',
+  signalStates = 'yellow-red',
+  maxTravelSec = 6,
+}) {
+  const type = DETECTOR_TYPES[detectorType] || DETECTOR_TYPES.vehicle;
+  const datasetEndTs = events.length ? events[events.length - 1].tsMs : null;
+  const stopBarPulses = buildDetectorPulses(events, stopBarChannel, type.key, datasetEndTs);
+  const downstreamPulses = buildDetectorPulses(events, downstreamChannel, type.key, datasetEndTs);
+  const intervals = buildPhaseStateIntervals(events, vehiclePhase, datasetEndTs);
+  const wanted = new Set(signalStates === 'yellow-red' ? ['yellow', 'red'] : [signalStates]);
+  const maxTravelMs = Math.max(0, Number(maxTravelSec) || 0) * 1000;
+
+  const runs = [];
+  let lastMatchedDownstream = -1;
+
+  for (const pulse of stopBarPulses) {
+    if (pulse.openEnded) continue;
+    const offTs = pulse.end;
+    const interval = findStateInterval(intervals, offTs);
+    if (!interval || !wanted.has(interval.state)) continue;
+
+    const searchFrom = Math.max(firstPulseIndexAtOrAfter(downstreamPulses, offTs), lastMatchedDownstream + 1);
+    for (let i = searchFrom; i < downstreamPulses.length; i += 1) {
+      const downstream = downstreamPulses[i];
+      if (downstream.start < offTs) continue;
+      if (downstream.start > offTs + maxTravelMs) break;
+      if (downstream.openEnded) break;
+      lastMatchedDownstream = i;
+      runs.push({
+        stopBarOnTs: pulse.start,
+        stopBarOffTs: offTs,
+        stopBarOccupancySec: pulse.durationSec,
+        state: interval.state,
+        secIntoState: (offTs - interval.start) / 1000,
+        downstreamOnTs: downstream.start,
+        downstreamOffTs: downstream.end,
+        downstreamOccupancySec: downstream.durationSec,
+        travelSec: (downstream.start - offTs) / 1000,
+      });
+      break;
+    }
+  }
+
+  return runs;
+}
+
+function firstRunIndexAtOrAfter(runs, ts) {
+  let lo = 0;
+  let hi = runs.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (runs[mid].downstreamOffTs < ts) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
 /** The pedestrian interval a rule is watching, before lead/lag padding. */
 export function resolvePedWindow(service, mode = 'walk-clearance') {
   const walkEnd = service.clearanceStart ?? service.dontWalkStart ?? service.endTs;
@@ -360,6 +515,18 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
   const wantsOn = rule.trigger === 'on' || rule.trigger === 'either';
   const wantsOff = rule.trigger === 'off' || rule.trigger === 'either';
   const overlapMode = rule.trigger === 'overlap';
+  const rlrMode = rule.trigger === 'red-light-run';
+  const runs = rlrMode
+    ? findRedLightRuns({
+        events,
+        stopBarChannel: rule.detectorChannel,
+        downstreamChannel: rule.downstreamChannel,
+        vehiclePhase: rule.vehiclePhase,
+        detectorType: detectorType.key,
+        signalStates: rule.signalStates,
+        maxTravelSec: rule.maxTravelSec,
+      })
+    : [];
 
   const serviceRows = [];
   const conflicts = [];
@@ -371,6 +538,8 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
   let totalOverlapSec = 0;
   let evaluatedWindowSec = 0;
   let skippedServices = 0;
+  let totalTravelSec = 0;
+  const stateCounts = { yellow: 0, red: 0 };
 
   for (const service of services) {
     const window = resolvePedWindow(service, rule.pedWindow);
@@ -391,6 +560,7 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
     const anchor = service.walkStart;
     const servicePulses = [];
     const serviceTriggers = [];
+    const serviceRuns = [];
     let serviceConflicts = 0;
     let serviceOverlapSec = 0;
 
@@ -400,7 +570,9 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
 
       const overlapMs = Math.max(0, Math.min(pulse.end, conflictEnd) - Math.max(pulse.start, conflictStart));
       const overlapSec = overlapMs / 1000;
-      const pulseConflict = overlapMode ? overlapSec > minOverlapSec : overlapMs > 0;
+      // In red-light-run mode the pulses are only context; the confirmed runs
+      // below carry the conflict flag.
+      const pulseConflict = rlrMode ? false : overlapMode ? overlapSec > minOverlapSec : overlapMs > 0;
 
       servicePulses.push({
         startSec: round((pulse.start - anchor) / 1000),
@@ -413,7 +585,7 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
 
       // Occupancy time inside the window is accumulated once per pulse so the
       // "either" trigger cannot count the same overlap twice.
-      if (overlapMs > 0 && (!overlapMode || pulseConflict)) serviceOverlapSec += overlapSec;
+      if (overlapMs > 0 && !rlrMode && (!overlapMode || pulseConflict)) serviceOverlapSec += overlapSec;
 
       if (overlapMode) {
         if (pulse.start >= rasterStart && pulse.start <= rasterEnd) {
@@ -467,6 +639,60 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
       }
     }
 
+    if (rlrMode) {
+      for (let i = firstRunIndexAtOrAfter(runs, rasterStart); i < runs.length; i += 1) {
+        const run = runs[i];
+        if (run.stopBarOffTs > rasterEnd) break;
+
+        // The vehicle is in the intersection from the stop bar drop-out until
+        // it clears the downstream detector, so that whole traversal is what is
+        // tested against the pedestrian window.
+        const overlapMs = Math.max(
+          0,
+          Math.min(run.downstreamOffTs, conflictEnd) - Math.max(run.stopBarOffTs, conflictStart),
+        );
+        const overlapSec = overlapMs / 1000;
+        const conflict = overlapMs > 0;
+        const offsetSec = round((run.stopBarOffTs - anchor) / 1000);
+
+        serviceRuns.push({
+          offsetSec,
+          downstreamOnSec: round((run.downstreamOnTs - anchor) / 1000),
+          downstreamOffSec: round((run.downstreamOffTs - anchor) / 1000),
+          state: run.state,
+          travelSec: round(run.travelSec),
+          overlapSec: round(overlapSec),
+          conflict,
+        });
+        histogramSamples.push({ offsetSec, conflict });
+
+        if (!conflict) continue;
+        serviceConflicts += 1;
+        serviceOverlapSec += overlapSec;
+        totalTravelSec += run.travelSec;
+        stateCounts[run.state] += 1;
+        conflicts.push({
+          ruleId: rule.id,
+          ruleLabel: rule.label,
+          serviceIndex: service.index,
+          walkStartTs: service.walkStart,
+          eventTs: run.stopBarOffTs,
+          eventType: `Red-light run (${run.state})`,
+          offsetSec,
+          overlapSec: round(overlapSec),
+          interval: intervalLabel(Math.max(run.stopBarOffTs, conflictStart), service, window),
+          detectorChannel: rule.detectorChannel,
+          downstreamChannel: rule.downstreamChannel,
+          pedPhase: rule.pedPhase,
+          movement: rule.movement,
+          signalState: run.state,
+          secIntoStateSec: round(run.secIntoState),
+          travelSec: round(run.travelSec),
+          downstreamSec: round(run.downstreamOccupancySec),
+        });
+      }
+    }
+
     if (serviceConflicts > 0) conflictServices += 1;
     conflictEvents += serviceConflicts;
     totalOverlapSec += serviceOverlapSec;
@@ -494,16 +720,20 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
       overlapSec: round(serviceOverlapSec),
       pulses: servicePulses,
       triggers: serviceTriggers,
+      runs: serviceRuns,
     });
   }
 
   // Baseline: how often this detector fires across the whole data set, so an
   // "expected" count can be compared against what lands in the ped window.
-  let baselineEvents = 0;
-  for (const pulse of pulses) {
-    if (wantsOn) baselineEvents += 1;
-    if (wantsOff && !pulse.openEnded) baselineEvents += 1;
-    if (overlapMode) baselineEvents += 1;
+  let baselineEvents = runs.length;
+  if (!rlrMode) {
+    baselineEvents = 0;
+    for (const pulse of pulses) {
+      if (wantsOn) baselineEvents += 1;
+      if (wantsOff && !pulse.openEnded) baselineEvents += 1;
+      if (overlapMode) baselineEvents += 1;
+    }
   }
   const spanSec = events.length ? (events[events.length - 1].tsMs - events[0].tsMs) / 1000 : 0;
   const baselineRatePerHour = spanSec > 0 ? baselineEvents / (spanSec / 3600) : null;
@@ -516,6 +746,8 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
     detectorTypeLabel: detectorType.label,
     pedWindowLabel: PED_WINDOW_MODES[rule.pedWindow]?.label || rule.pedWindow,
     triggerLabel: TRIGGER_MODES[rule.trigger]?.label || rule.trigger,
+    signalStateLabel: rlrMode ? SIGNAL_STATE_MODES[rule.signalStates]?.label || rule.signalStates : null,
+    isRedLightRun: rlrMode,
     services: serviceRows,
     conflicts,
     histogram: buildHistogram(histogramSamples, binSec),
@@ -532,6 +764,10 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
       overlapPerServiceSec: serviceRows.length ? round(totalOverlapSec / serviceRows.length) : null,
       evaluatedWindowSec: round(evaluatedWindowSec),
       baselineEvents,
+      redLightRuns: rlrMode ? runs.length : null,
+      avgTravelSec: conflictEvents > 0 && rlrMode ? round(totalTravelSec / conflictEvents) : null,
+      conflictRunsYellow: rlrMode ? stateCounts.yellow : null,
+      conflictRunsRed: rlrMode ? stateCounts.red : null,
       baselineRatePerHour: round(baselineRatePerHour),
       windowRatePerHour: round(windowRatePerHour),
       exposureIndex:
@@ -550,6 +786,7 @@ const CSV_HEADER = [
   'rule',
   'movement',
   'detector_channel',
+  'downstream_channel',
   'ped_phase',
   'ped_service_index',
   'walk_start',
@@ -558,6 +795,10 @@ const CSV_HEADER = [
   'ped_interval',
   'offset_from_walk_start_s',
   'overlap_s',
+  'signal_state',
+  'sec_into_state',
+  'travel_to_downstream_s',
+  'downstream_occupancy_s',
 ];
 
 function csvCell(value) {
@@ -572,6 +813,7 @@ export function conflictsToCsv(results, formatTs = (ts) => new Date(ts).toISOStr
         row.ruleLabel,
         row.movement,
         row.detectorChannel,
+        row.downstreamChannel,
         row.pedPhase,
         row.serviceIndex,
         formatTs(row.walkStartTs),
@@ -580,6 +822,10 @@ export function conflictsToCsv(results, formatTs = (ts) => new Date(ts).toISOStr
         row.interval,
         row.offsetSec,
         row.overlapSec,
+        row.signalState,
+        row.secIntoStateSec,
+        row.travelSec,
+        row.downstreamSec,
       ]
         .map(csvCell)
         .join(','),

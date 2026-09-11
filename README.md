@@ -81,9 +81,10 @@ A new tool is available at `/tools/block-logic` for visual, rule-based diagnosti
 
 ### What it does
 - **Correlation rules:** each rule is one detector channel × one pedestrian phase. Pick the detector type (vehicle 82/81, ped 90/89, TSP 94/93), the pedestrian interval to watch (WALK, ped clearance, both, or the ped call wait), the trigger (detector ON, OFF, either edge, or any occupancy overlap), and lead/lag buffer seconds. Presets cover permissive lefts, right turn on red, departures at the start of WALK, and late crossings.
+- **Red-light run chain:** the `Red-light run` trigger links three events — the stop bar detector drops out while the named vehicle phase is showing yellow or red, a downstream detector then turns on and back off within the allowed travel time, and that traversal overlaps the selected pedestrian interval. The downstream confirmation separates a vehicle that entered the intersection from one shuffling in queue, and each downstream call is matched to only one departure. Yellow is `8 → 9`; red runs from the end of yellow (or the start of red clearance) to that phase's next begin green.
 - **Conflict timeline:** one row per pedestrian service with time measured from the start of WALK, so correlated detector activity lines up into a visible pattern. Blue markers bracket the evaluated window; detector occupancy inside it is drawn in red.
 - **Offset histogram and hour-of-day chart** to show whether detector activity clusters around the start of WALK and when it happens.
 - **Summary metrics** per rule, including percent of pedestrian services affected, detector occupancy per service, and an exposure index (in-window event rate ÷ whole-file event rate).
-- **CSV export** of every correlated event.
+- **CSV export** of every correlated event, including signal state, seconds into yellow/red, and stop-bar-to-downstream travel time for red-light runs.
 
 All parsing and analysis happen in the browser in a Web Worker — pasted text and selected files never leave the machine. Core logic lives in `src/utils/pedConflictCorrelator.js` and is covered by `tests/pedConflictCorrelator.test.mjs` (`npm test`).

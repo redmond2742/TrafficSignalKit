@@ -9,6 +9,8 @@ import {
   resolvePedWindow,
   correlateRule,
   conflictsToCsv,
+  buildPhaseStateIntervals,
+  findRedLightRuns,
 } from '../src/utils/pedConflictCorrelator.js';
 
 const base = new Date(2024, 0, 6, 15, 0, 0, 0).getTime();
@@ -229,6 +231,173 @@ test('conflictsToCsv emits a header and one row per conflict', () => {
   const lines = conflictsToCsv([result], (ts) => String(ts)).split('\n');
 
   assert.equal(lines.length, 2);
-  assert.ok(lines[0].startsWith('rule,movement,detector_channel,ped_phase'));
+  assert.ok(lines[0].startsWith('rule,movement,detector_channel,downstream_channel,ped_phase'));
   assert.ok(lines[1].includes('Detector ON'));
+});
+
+// --- Red-light run chain ----------------------------------------------------
+// Phase 2 green at 0s, yellow 40s-44s, red 44s until the next green at 100s.
+// Ped phase 4 walks 50s-57s with clearance to 75s.
+const rlrEvents = [
+  evt(0, 1, 2),
+  evt(40, 8, 2),
+  evt(44, 10, 2),
+  evt(100, 1, 2),
+  evt(50, 21, 4),
+  evt(57, 22, 4),
+  evt(75, 23, 4),
+];
+
+function withStopBarRun(onSec, offSec, downstreamOnSec, downstreamOffSec) {
+  return [
+    ...rlrEvents,
+    evt(onSec, 82, 2),
+    evt(offSec, 81, 2),
+    evt(downstreamOnSec, 82, 21),
+    evt(downstreamOffSec, 81, 21),
+  ].sort((a, b) => a.tsMs - b.tsMs);
+}
+
+const runOpts = {
+  stopBarChannel: 2,
+  downstreamChannel: 21,
+  vehiclePhase: 2,
+  detectorType: 'vehicle',
+  signalStates: 'yellow-red',
+  maxTravelSec: 6,
+};
+
+const rlrRule = {
+  id: 'rlr',
+  label: 'RLR ch2 → ch21 × Ped 4',
+  detectorChannel: 2,
+  downstreamChannel: 21,
+  vehiclePhase: 2,
+  detectorType: 'vehicle',
+  pedPhase: 4,
+  pedWindow: 'walk-clearance',
+  trigger: 'red-light-run',
+  signalStates: 'yellow-red',
+  maxTravelSec: 6,
+  leadSec: 0,
+  lagSec: 0,
+  movement: 'Through',
+};
+
+test('buildPhaseStateIntervals derives green, yellow, and full red', () => {
+  const intervals = buildPhaseStateIntervals(rlrEvents, 2, at(120));
+
+  assert.deepEqual(
+    intervals.map((i) => [i.state, (i.start - base) / 1000, (i.end - base) / 1000]),
+    [
+      ['green', 0, 40],
+      ['yellow', 40, 44],
+      ['red', 44, 100],
+      ['green', 100, 120],
+    ],
+  );
+});
+
+test('findRedLightRuns requires a stop bar drop-out in yellow or red', () => {
+  const inRed = findRedLightRuns({ events: withStopBarRun(50, 52, 53.5, 54.5), ...runOpts });
+  assert.equal(inRed.length, 1);
+  assert.equal(inRed[0].state, 'red');
+  assert.equal(inRed[0].secIntoState, 8);
+  assert.equal(inRed[0].travelSec, 1.5);
+  assert.equal(inRed[0].downstreamOccupancySec, 1);
+
+  const inYellow = findRedLightRuns({ events: withStopBarRun(38, 42, 44, 45), ...runOpts });
+  assert.equal(inYellow.length, 1);
+  assert.equal(inYellow[0].state, 'yellow');
+
+  const onGreen = findRedLightRuns({ events: withStopBarRun(10, 12, 13, 14), ...runOpts });
+  assert.equal(onGreen.length, 0, 'a departure on green is not a red-light run');
+});
+
+test('findRedLightRuns needs a completed downstream pulse in the travel window', () => {
+  const tooLate = findRedLightRuns({ events: withStopBarRun(50, 52, 60, 61), ...runOpts });
+  assert.equal(tooLate.length, 0, 'downstream arrival beyond the travel time is not a match');
+
+  const noDownstream = findRedLightRuns({
+    events: [...rlrEvents, evt(50, 82, 2), evt(52, 81, 2)].sort((a, b) => a.tsMs - b.tsMs),
+    ...runOpts,
+  });
+  assert.equal(noDownstream.length, 0, 'a queue shuffle with no downstream call is filtered out');
+
+  const noOffEdge = findRedLightRuns({
+    events: [...rlrEvents, evt(50, 82, 2), evt(52, 81, 2), evt(53, 82, 21)].sort((a, b) => a.tsMs - b.tsMs),
+    ...runOpts,
+  });
+  assert.equal(noOffEdge.length, 0, 'the downstream detector must turn on and back off');
+});
+
+test('findRedLightRuns honors the signal state filter', () => {
+  const events = withStopBarRun(50, 52, 53.5, 54.5);
+  assert.equal(findRedLightRuns({ events, ...runOpts, signalStates: 'red' }).length, 1);
+  assert.equal(findRedLightRuns({ events, ...runOpts, signalStates: 'yellow' }).length, 0);
+});
+
+test('a downstream pulse is only matched to one stop bar departure', () => {
+  const events = [
+    ...rlrEvents,
+    evt(50, 82, 2),
+    evt(51, 81, 2),
+    evt(51.5, 82, 2),
+    evt(52, 81, 2),
+    evt(53, 82, 21),
+    evt(54, 81, 21),
+  ].sort((a, b) => a.tsMs - b.tsMs);
+
+  assert.equal(findRedLightRuns({ events, ...runOpts }).length, 1);
+});
+
+test('correlateRule flags a red-light run that traverses a pedestrian crossing', () => {
+  const result = correlateRule({ events: withStopBarRun(50, 52, 53.5, 54.5), rule: rlrRule, contextSec: 10 });
+
+  assert.equal(result.isRedLightRun, true);
+  assert.equal(result.totals.redLightRuns, 1);
+  assert.equal(result.totals.conflictEvents, 1);
+  assert.equal(result.totals.conflictRunsRed, 1);
+  assert.equal(result.totals.conflictRunsYellow, 0);
+  assert.equal(result.totals.avgTravelSec, 1.5);
+
+  const [conflict] = result.conflicts;
+  assert.equal(conflict.eventType, 'Red-light run (red)');
+  assert.equal(conflict.offsetSec, 2, 'stop bar drop-out is 2s after WALK begins');
+  assert.equal(conflict.interval, 'Walk');
+  assert.equal(conflict.travelSec, 1.5);
+  assert.equal(conflict.overlapSec, 2.5, 'the whole traversal falls inside the ped window');
+  assert.equal(result.services[0].runs.length, 1);
+  assert.equal(result.services[0].pulses[0].conflict, false, 'stop bar pulses are context only');
+});
+
+test('a red-light run outside the pedestrian window is found but not flagged', () => {
+  // Stop bar drops out at 45s, before WALK begins at 50s.
+  const result = correlateRule({ events: withStopBarRun(43, 45, 46, 47), rule: rlrRule, contextSec: 10 });
+
+  assert.equal(result.totals.redLightRuns, 1);
+  assert.equal(result.totals.conflictEvents, 0);
+  assert.equal(result.services[0].runs.length, 1, 'it still appears on the timeline as context');
+  assert.equal(result.services[0].runs[0].conflict, false);
+
+  const padded = correlateRule({ events: withStopBarRun(43, 45, 46, 47), rule: { ...rlrRule, leadSec: 5 }, contextSec: 10 });
+  assert.equal(padded.totals.conflictEvents, 1, 'a lead buffer pulls it into the window');
+});
+
+test('summarizeEvents lists vehicle phases for red-light-run rules', () => {
+  assert.deepEqual(summarizeEvents(rlrEvents).vehiclePhases, [2]);
+});
+
+test('conflictsToCsv carries the red-light-run chain details', () => {
+  const result = correlateRule({ events: withStopBarRun(50, 52, 53.5, 54.5), rule: rlrRule, contextSec: 10 });
+  const [header, row] = conflictsToCsv([result], (ts) => String(ts)).split('\n');
+  const columns = header.split(',');
+  const values = row.split(',');
+  const valueFor = (name) => values[columns.indexOf(name)];
+
+  assert.equal(valueFor('downstream_channel'), '21');
+  assert.equal(valueFor('signal_state'), 'red');
+  assert.equal(valueFor('sec_into_state'), '8');
+  assert.equal(valueFor('travel_to_downstream_s'), '1.5');
+  assert.equal(valueFor('downstream_occupancy_s'), '1');
 });

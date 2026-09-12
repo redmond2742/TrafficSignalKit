@@ -11,6 +11,9 @@ import {
   conflictsToCsv,
   buildPhaseStateIntervals,
   findRedLightRuns,
+  formatIsoUtcStamp,
+  buildVideoClipRows,
+  videoClipRowsToCsv,
 } from '../src/utils/pedConflictCorrelator.js';
 
 const base = new Date(2024, 0, 6, 15, 0, 0, 0).getTime();
@@ -400,4 +403,124 @@ test('conflictsToCsv carries the red-light-run chain details', () => {
   assert.equal(valueFor('sec_into_state'), '8');
   assert.equal(valueFor('travel_to_downstream_s'), '1.5');
   assert.equal(valueFor('downstream_occupancy_s'), '1');
+});
+
+// --- Video clip CSV export --------------------------------------------------
+test('formatIsoUtcStamp marks controller wall clock as Z', () => {
+  assert.equal(formatIsoUtcStamp(new Date(2024, 0, 6, 7, 4, 7, 900).getTime()), '2024-01-06T07:04:07.900Z');
+  assert.equal(formatIsoUtcStamp(new Date(2024, 10, 3, 23, 0, 0, 0).getTime()), '2024-11-03T23:00:00.000Z');
+  assert.equal(formatIsoUtcStamp(Number.NaN), '');
+});
+
+test('buildVideoClipRows emits one row per correlated event by default', () => {
+  const result = correlateRule({ events: scenario, rule: conflictRule, contextSec: 10 });
+  const rows = buildVideoClipRows({
+    results: [result],
+    signalId: '1001',
+    signalName: 'Main St & 1st',
+    includeClipBounds: false,
+  });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].signalId, '1001');
+  assert.equal(rows[0].signalName, 'Main St & 1st');
+  assert.equal(rows[0].phase, 4, 'non-run rows report the pedestrian head');
+  assert.equal(rows[0].lightState, 'Walk');
+  assert.equal(rows[0].secondsIntoState, 3);
+  assert.equal(rows[0].moment, 'Detector ON');
+});
+
+test('clip bounds bracket the event and stay in time order', () => {
+  const result = correlateRule({ events: scenario, rule: conflictRule, contextSec: 10 });
+  const rows = buildVideoClipRows({ results: [result], includeClipBounds: true, clipPadSec: 4 });
+
+  assert.deepEqual(
+    rows.map((row) => row.moment),
+    ['Clip start (-4s)', 'Detector ON', 'Clip end (+4s)'],
+  );
+  assert.deepEqual(
+    rows.map((row) => row.offsetFromWalkSec),
+    [-1, 3, 7],
+  );
+  assert.ok(rows[0].timestampMs < rows[1].timestampMs && rows[1].timestampMs < rows[2].timestampMs);
+});
+
+test('red-light run rows report the vehicle head and can bracket the traversal', () => {
+  const result = correlateRule({ events: withStopBarRun(50, 52, 53.5, 54.5), rule: rlrRule, contextSec: 10 });
+  const rows = buildVideoClipRows({
+    results: [result],
+    signalId: '1001',
+    includeClipBounds: true,
+    includeWalkStart: true,
+    includeDownstream: true,
+    clipPadSec: 3,
+  });
+
+  assert.deepEqual(
+    rows.map((row) => row.moment),
+    ['Clip start (-3s)', 'WALK start', 'Stop bar off', 'Downstream arrival', 'Clip end (+3s)'],
+    'rows are ordered by time, so a pad before the event can precede WALK start',
+  );
+  const stopBarRow = rows.find((row) => row.moment === 'Stop bar off');
+  assert.equal(stopBarRow.phase, 2, 'the run reports the vehicle phase it ran');
+  assert.equal(stopBarRow.lightState, 'Red');
+  assert.equal(stopBarRow.secondsIntoState, 8);
+  assert.equal(stopBarRow.pedPhase, 4);
+  assert.equal(stopBarRow.pedInterval, 'Walk');
+
+  const clipEnd = rows[rows.length - 1];
+  assert.equal(
+    (clipEnd.timestampMs - at(54.5)) / 1000,
+    3,
+    'the clip ends a pad past the downstream drop-out, not the stop bar',
+  );
+});
+
+test('the clip CSV matches the Video Frame Extractor column contract', () => {
+  const result = correlateRule({ events: withStopBarRun(50, 52, 53.5, 54.5), rule: rlrRule, contextSec: 10 });
+  const rows = buildVideoClipRows({ results: [result], signalId: '1001', signalName: 'Main St', clipPadSec: 2 });
+  const lines = videoClipRowsToCsv(rows).split('\n');
+  const header = lines[0].toLowerCase();
+
+  // The extractor only skips the header when it sees both of these.
+  assert.ok(header.includes('iso') && header.includes('signal id'));
+
+  for (const line of lines.slice(1)) {
+    const parts = line.split(',').map((part) => part.trim());
+    assert.ok(parts.length >= 7, 'the extractor rejects rows with fewer than 7 columns');
+    const [timestamp, signalId, signalName, phase, detectorChannel, lightState] = parts;
+    assert.ok(!Number.isNaN(new Date(timestamp).getTime()), 'the extractor parses with new Date()');
+    assert.equal(signalId, '1001');
+    assert.equal(signalName, 'Main St');
+    assert.equal(phase, '2');
+    assert.equal(detectorChannel, '2');
+    // "red"/"yellow" is how the extractor recognizes a running event.
+    assert.equal(lightState.toLowerCase(), 'red');
+  }
+});
+
+test('parseHighResEvents reports signal IDs found in a leading column', () => {
+  const { events, signalIds } = parseHighResEvents(
+    ['1001, 1/6/2024 15:00:02.0, 82, 5', '1001, 1/6/2024 15:00:04.0, 81, 5'].join('\n'),
+  );
+
+  assert.deepEqual(signalIds, ['1001']);
+  assert.equal(events.length, 2);
+  assert.equal(events[0].signalId, undefined, 'IDs are not stored on every event row');
+});
+
+test('clip CSV strips separators from the seven columns the extractor reads', () => {
+  const result = correlateRule({ events: scenario, rule: conflictRule, contextSec: 10 });
+  const rows = buildVideoClipRows({
+    results: [result],
+    signalId: '1001',
+    signalName: 'Main St & 1st Ave, NB',
+    includeClipBounds: false,
+  });
+  const [, dataLine] = videoClipRowsToCsv(rows).split('\n');
+  const parts = dataLine.split(',');
+
+  assert.equal(parts[2], 'Main St & 1st Ave NB', 'the comma is removed, not quoted');
+  assert.equal(parts[3], '4', 'the phase stays in column four');
+  assert.equal(parts[5], 'Walk');
 });

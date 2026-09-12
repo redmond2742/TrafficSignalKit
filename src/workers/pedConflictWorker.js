@@ -9,11 +9,11 @@ self.onmessage = (event) => {
 
   try {
     if (type === 'parse') {
-      const { events, skipped } = parseHighResEvents(payload.text || '');
+      const { events, skipped, signalIds } = parseHighResEvents(payload.text || '');
       cachedEvents = events;
       self.postMessage({
         type: 'parsed',
-        payload: { summary: summarizeEvents(events), skipped },
+        payload: { summary: summarizeEvents(events), skipped, signalIds },
       });
       return;
     }

@@ -125,7 +125,9 @@ function parseCells(cells) {
     if (!NUMERIC_RE.test(codeCell || '') || !NUMERIC_RE.test(paramCell || '')) continue;
     const tsMs = parseTimestamp(cells[start]);
     if (!Number.isFinite(tsMs)) continue;
-    return { tsMs, code: Number(codeCell), param: Number(paramCell) };
+    // Anything ahead of the timestamp column is the exporting signal's ID.
+    const signalId = start > 0 ? cells[start - 1] : '';
+    return { tsMs, code: Number(codeCell), param: Number(paramCell), signalId };
   }
   return null;
 }
@@ -137,6 +139,7 @@ function parseCells(cells) {
  */
 export function parseHighResEvents(text) {
   const events = [];
+  const signalIds = new Set();
   let skipped = 0;
   const lines = String(text || '').split(/\r?\n/);
   for (const raw of lines) {
@@ -148,11 +151,17 @@ export function parseHighResEvents(text) {
       continue;
     }
     const parsed = parseCells(cells);
-    if (parsed) events.push(parsed);
-    else skipped += 1;
+    if (!parsed) {
+      skipped += 1;
+      continue;
+    }
+    // Signal IDs are kept out of the event rows to keep large files small.
+    if (parsed.signalId && signalIds.size < 10) signalIds.add(parsed.signalId);
+    delete parsed.signalId;
+    events.push(parsed);
   }
   events.sort((a, b) => a.tsMs - b.tsMs);
-  return { events, skipped };
+  return { events, skipped, signalIds: [...signalIds] };
 }
 
 /** Inventory of what is available in the data so the UI can populate pickers. */
@@ -464,6 +473,17 @@ function intervalLabel(ts, service, window) {
   return 'Ped call waiting';
 }
 
+/** Seconds since the pedestrian indication showing at `ts` began. */
+function intervalSeconds(ts, service) {
+  if (service.clearanceStart != null && ts >= service.clearanceStart) {
+    if (service.dontWalkStart != null && ts >= service.dontWalkStart) {
+      return (ts - service.dontWalkStart) / 1000;
+    }
+    return (ts - service.clearanceStart) / 1000;
+  }
+  return (ts - service.walkStart) / 1000;
+}
+
 function buildHistogram(samples, binSec) {
   if (!samples.length) return [];
   const size = binSec > 0 ? binSec : 1;
@@ -603,6 +623,7 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
             offsetSec: round((Math.max(pulse.start, conflictStart) - anchor) / 1000),
             overlapSec: round(overlapSec),
             interval: intervalLabel(Math.max(pulse.start, conflictStart), service, window),
+            intervalSec: round(intervalSeconds(Math.max(pulse.start, conflictStart), service)),
             detectorChannel: rule.detectorChannel,
             pedPhase: rule.pedPhase,
             movement: rule.movement,
@@ -632,6 +653,7 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
           offsetSec,
           overlapSec: round(overlapSec),
           interval: intervalLabel(edge.ts, service, window),
+          intervalSec: round(intervalSeconds(edge.ts, service)),
           detectorChannel: rule.detectorChannel,
           pedPhase: rule.pedPhase,
           movement: rule.movement,
@@ -681,9 +703,13 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
           offsetSec,
           overlapSec: round(overlapSec),
           interval: intervalLabel(Math.max(run.stopBarOffTs, conflictStart), service, window),
+          intervalSec: round(intervalSeconds(Math.max(run.stopBarOffTs, conflictStart), service)),
           detectorChannel: rule.detectorChannel,
           downstreamChannel: rule.downstreamChannel,
+          downstreamOnTs: run.downstreamOnTs,
+          downstreamOffTs: run.downstreamOffTs,
           pedPhase: rule.pedPhase,
+          vehiclePhase: rule.vehiclePhase,
           movement: rule.movement,
           signalState: run.state,
           secIntoStateSec: round(run.secIntoState),
@@ -832,4 +858,157 @@ export function conflictsToCsv(results, formatTs = (ts) => new Date(ts).toISOStr
     ),
   );
   return [CSV_HEADER.join(','), ...rows].join('\n');
+}
+
+/**
+ * ISO 8601 stamp of the controller's wall-clock time, marked Z.
+ *
+ * The Video Frame Extractor reads a CSV timestamp with `new Date(value)` and,
+ * in clock sync mode, compares its UTC time of day against the sync clock the
+ * user typed off the video. Stamping local wall clock as Z is what makes those
+ * two line up; a real zone offset would shift every frame by that offset.
+ */
+export function formatIsoUtcStamp(ms) {
+  if (!Number.isFinite(ms)) return '';
+  const date = new Date(ms);
+  const pad = (value, width = 2) => String(value).padStart(width, '0');
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}` +
+    `.${pad(date.getMilliseconds(), 3)}Z`
+  );
+}
+
+// The first seven columns are the contract with the Video Frame Extractor, in
+// its order. It ignores anything after them, so the rest is context for people.
+export const CLIP_CSV_HEADER = [
+  'timestamp_iso',
+  'signal id',
+  'signal name',
+  'phase',
+  'detector channel',
+  'light state',
+  'seconds into state',
+  'moment',
+  'rule',
+  'movement',
+  'ped phase',
+  'ped interval',
+  'offset from walk start (s)',
+];
+
+// The extractor splits rows on "," with no quote handling, so the seven columns
+// it reads are stripped of separators rather than quoted.
+export function sanitizeClipField(value) {
+  return String(value == null ? '' : value)
+    .replace(/[",\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function titleCase(value) {
+  const text = String(value || '');
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+}
+
+/**
+ * One row per moment worth pulling a frame for. Every correlated event always
+ * contributes its own moment; the options add the bracketing moments that make
+ * a clip rather than a single frame.
+ */
+export function buildVideoClipRows({
+  results,
+  signalId = '',
+  signalName = '',
+  clipPadSec = 5,
+  includeClipBounds = true,
+  includeWalkStart = false,
+  includeDownstream = false,
+}) {
+  const pad = Math.max(0, Number(clipPadSec) || 0);
+  const padMs = pad * 1000;
+  const rows = [];
+
+  for (const result of results || []) {
+    for (const conflict of result.conflicts) {
+      // Red-light runs report the vehicle head they ran; everything else
+      // reports the pedestrian head the person was facing.
+      const isRun = Boolean(conflict.signalState);
+      const phase = isRun ? conflict.vehiclePhase : conflict.pedPhase;
+      const lightState = isRun ? titleCase(conflict.signalState) : conflict.interval;
+      const stateSec = isRun ? conflict.secIntoStateSec : conflict.intervalSec;
+
+      const push = (ts, moment, stateSeconds) => {
+        if (!Number.isFinite(ts)) return;
+        rows.push({
+          timestampIso: formatIsoUtcStamp(ts),
+          timestampMs: ts,
+          // Only the operator-typed fields can carry a separator; sanitizing
+          // them here keeps the on-screen preview identical to the CSV.
+          signalId: sanitizeClipField(signalId),
+          signalName: sanitizeClipField(signalName),
+          phase,
+          detectorChannel: conflict.detectorChannel,
+          lightState,
+          secondsIntoState: stateSeconds == null ? '' : round(stateSeconds),
+          moment,
+          rule: conflict.ruleLabel,
+          movement: conflict.movement,
+          pedPhase: conflict.pedPhase,
+          pedInterval: conflict.interval,
+          offsetFromWalkSec: round((ts - conflict.walkStartTs) / 1000),
+        });
+      };
+
+      const eventMoment = isRun ? 'Stop bar off' : conflict.eventType;
+      const traversalEndTs = conflict.downstreamOffTs ?? conflict.eventTs;
+
+      if (includeClipBounds) {
+        push(conflict.eventTs - padMs, `Clip start (-${pad}s)`, stateSec == null ? null : stateSec - pad);
+      }
+      if (includeWalkStart) {
+        push(conflict.walkStartTs, 'WALK start', 0);
+      }
+      push(conflict.eventTs, eventMoment, stateSec);
+      if (isRun && includeDownstream) {
+        push(
+          conflict.downstreamOnTs,
+          'Downstream arrival',
+          stateSec == null ? null : stateSec + (conflict.travelSec || 0),
+        );
+      }
+      if (includeClipBounds) {
+        push(
+          traversalEndTs + padMs,
+          `Clip end (+${pad}s)`,
+          stateSec == null ? null : stateSec + (traversalEndTs - conflict.eventTs) / 1000 + pad,
+        );
+      }
+    }
+  }
+
+  return rows.sort((a, b) => a.timestampMs - b.timestampMs);
+}
+
+export function videoClipRowsToCsv(rows) {
+  const lines = (rows || []).map((row) =>
+    [
+      sanitizeClipField(row.timestampIso),
+      sanitizeClipField(row.signalId),
+      sanitizeClipField(row.signalName),
+      sanitizeClipField(row.phase),
+      sanitizeClipField(row.detectorChannel),
+      sanitizeClipField(row.lightState),
+      sanitizeClipField(row.secondsIntoState),
+      row.moment,
+      row.rule,
+      row.movement,
+      row.pedPhase,
+      row.pedInterval,
+      row.offsetFromWalkSec,
+    ]
+      .map((value, index) => (index < 7 ? value : csvCell(value)))
+      .join(','),
+  );
+  return [CLIP_CSV_HEADER.join(','), ...lines].join('\n');
 }

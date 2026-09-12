@@ -66,6 +66,25 @@
             and <b>10</b> (begin red clearance).
           </v-expansion-panel-text>
         </v-expansion-panel>
+        <v-expansion-panel title="Exporting clips for video review" value="clips">
+          <v-expansion-panel-text>
+            Once conflicts are found, section 6 exports a timestamp CSV for the
+            <router-link to="/video-frame-extractor">Video Frame Extractor</router-link>.
+            It carries the seven columns that tool reads &mdash; timestamp,
+            signal ID, signal name, phase, detector channel, light state, and
+            seconds into that state &mdash; plus the rule, movement, ped phase,
+            ped interval, and offset from WALK start for your own review.
+            Timestamps are ISO 8601 written as the controller's wall clock
+            marked <code>Z</code>, because the extractor compares a row's UTC
+            time of day against the sync clock you read off the video. Turn on
+            clip start/end rows to bracket each incident by the padding you set,
+            and the downstream arrival row to catch the vehicle mid-intersection;
+            a red-light run therefore yields a lead-in frame, the stop bar
+            drop-out, the downstream arrival, and a trailing frame. Rows whose
+            light state reads yellow or red are flagged as running events by the
+            extractor, which also numbers the event frame.
+          </v-expansion-panel-text>
+        </v-expansion-panel>
         <v-expansion-panel title="How to read the results" value="reading">
           <v-expansion-panel-text>
             The conflict timeline draws one row per pedestrian service, with
@@ -106,6 +125,27 @@
           detector on channel 21 that confirms vehicles entering on yellow or
           red.
         </p>
+
+        <v-row dense class="signal-identity">
+          <v-col cols="12" md="4">
+            <v-text-field
+              v-model="signalId"
+              label="Signal ID (for exports)"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="12" md="5">
+            <v-text-field
+              v-model="signalName"
+              label="Signal name (for exports)"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+          </v-col>
+        </v-row>
 
         <div v-if="dataLoaded" class="scan-summary">
           <v-chip class="ma-1" color="primary" variant="tonal">
@@ -747,6 +787,107 @@
           />
         </v-card-text>
       </v-card>
+
+      <v-card class="mt-6" variant="outlined">
+        <v-card-title>6. Video Clip Timestamps</v-card-title>
+        <v-card-text>
+          <p>
+            Export the correlated events as a timestamp CSV for the
+            <router-link to="/video-frame-extractor">Video Frame Extractor</router-link>,
+            which pulls a frame (and optionally a GIF clip) at each row using the
+            sync time you set from the video. Timestamps are ISO 8601, written as
+            the controller's wall clock marked <code>Z</code>, which is what the
+            extractor's sync clock compares against.
+          </p>
+
+          <v-row dense class="mt-2">
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model.number="clipPadSec"
+                type="number"
+                min="0"
+                step="1"
+                label="Clip padding (s)"
+                density="compact"
+                variant="outlined"
+                hide-details
+                :disabled="!includeClipBounds"
+              />
+            </v-col>
+            <v-col cols="12" md="9" class="clip-toggles">
+              <v-switch
+                v-model="includeClipBounds"
+                color="primary"
+                density="compact"
+                hide-details
+                label="Clip start & end rows"
+              />
+              <v-switch
+                v-model="includeWalkStart"
+                color="primary"
+                density="compact"
+                hide-details
+                label="WALK start row"
+              />
+              <v-switch
+                v-model="includeDownstream"
+                color="primary"
+                density="compact"
+                hide-details
+                label="Downstream arrival row (red-light runs)"
+              />
+            </v-col>
+          </v-row>
+
+          <div class="action-row">
+            <v-btn color="secondary" :disabled="!clipRows.length" @click="downloadClipCsv">
+              Download Timestamp CSV
+            </v-btn>
+            <span class="note-text">
+              {{ clipRows.length }} rows from {{ allConflicts.length }} correlated events
+            </span>
+            <span v-if="clipRows.length && !signalId" class="note-text">
+              Add a Signal ID above to label the extracted frames.
+            </span>
+          </div>
+
+          <template v-if="clipRows.length">
+            <h3 class="section-title">Preview</h3>
+            <v-table density="compact">
+              <thead>
+                <tr>
+                  <th>Timestamp (ISO)</th>
+                  <th>Signal ID</th>
+                  <th>Signal name</th>
+                  <th>Phase</th>
+                  <th>Detector</th>
+                  <th>Light state</th>
+                  <th class="numeric">Into state (s)</th>
+                  <th>Moment</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, index) in clipPreviewRows" :key="`clip-${index}`">
+                  <td>{{ row.timestampIso }}</td>
+                  <td>{{ row.signalId || "—" }}</td>
+                  <td>{{ row.signalName || "—" }}</td>
+                  <td>{{ row.phase }}</td>
+                  <td>{{ row.detectorChannel }}</td>
+                  <td>{{ row.lightState }}</td>
+                  <td class="numeric">{{ row.secondsIntoState }}</td>
+                  <td>{{ row.moment }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+            <p v-if="clipRows.length > clipPreviewRows.length" class="note-text">
+              Showing the first {{ clipPreviewRows.length }} of
+              {{ clipRows.length }} rows. The download includes all of them, plus
+              columns for the rule, movement, ped phase, ped interval, and offset
+              from WALK start.
+            </p>
+          </template>
+        </v-card-text>
+      </v-card>
     </template>
 
     <p class="disclaimer">
@@ -779,6 +920,8 @@ import {
   summarizeEvents,
   correlateAll,
   conflictsToCsv,
+  buildVideoClipRows,
+  videoClipRowsToCsv,
 } from "../utils/pedConflictCorrelator";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
@@ -842,6 +985,13 @@ export default {
       contextSec: 10,
       conflictsOnly: false,
       sampleLoaded: false,
+      detectedSignalIds: [],
+      signalId: "",
+      signalName: "",
+      clipPadSec: 5,
+      includeClipBounds: true,
+      includeWalkStart: false,
+      includeDownstream: true,
       timelinePage: 1,
       timelinePageSize: 25,
       tableFilter: "",
@@ -1055,6 +1205,21 @@ export default {
     allConflicts() {
       return this.results.flatMap((result) => result.conflicts);
     },
+    clipRows() {
+      if (!this.results.length) return [];
+      return buildVideoClipRows({
+        results: this.results,
+        signalId: this.signalId,
+        signalName: this.signalName,
+        clipPadSec: this.clipPadSec,
+        includeClipBounds: this.includeClipBounds,
+        includeWalkStart: this.includeWalkStart,
+        includeDownstream: this.includeDownstream,
+      });
+    },
+    clipPreviewRows() {
+      return this.clipRows.slice(0, 10);
+    },
     filteredConflicts() {
       const filter = (this.tableFilter || "").trim().toLowerCase();
       if (!filter) return this.allConflicts;
@@ -1193,7 +1358,7 @@ export default {
     },
     handleWorkerMessage({ type, payload }) {
       if (type === "parsed") {
-        this.applyParsed(payload.summary, payload.skipped);
+        this.applyParsed(payload.summary, payload.skipped, payload.signalIds);
         return;
       }
       if (type === "results") {
@@ -1206,10 +1371,12 @@ export default {
         this.errorMessage = payload;
       }
     },
-    applyParsed(summary, skipped) {
+    applyParsed(summary, skipped, signalIds = []) {
       this.parsing = false;
       this.summary = summary;
       this.skippedRows = skipped;
+      if (!this.signalId && signalIds.length === 1) this.signalId = signalIds[0];
+      this.detectedSignalIds = signalIds;
       this.results = [];
       if (!summary.eventCount) {
         this.dataLoaded = false;
@@ -1259,9 +1426,9 @@ export default {
       }
       // Fallback: parse on the main thread when workers are unavailable.
       try {
-        const { events, skipped } = parseHighResEvents(this.rawData);
+        const { events, skipped, signalIds } = parseHighResEvents(this.rawData);
         this.events = events;
-        this.applyParsed(summarizeEvents(events), skipped);
+        this.applyParsed(summarizeEvents(events), skipped, signalIds);
       } catch (error) {
         this.parsing = false;
         this.errorMessage = String(error.message || error);
@@ -1301,14 +1468,28 @@ export default {
       if (this.worker) this.worker.postMessage({ type: "reset" });
     },
     downloadCsv() {
-      const csv = conflictsToCsv(this.results, (ts) => this.fullTime(ts));
-      const blob = new Blob([csv], { type: "text/csv" });
+      this.downloadBlob(
+        conflictsToCsv(this.results, (ts) => this.fullTime(ts)),
+        "ped-conflict-correlations.csv",
+        "text/csv",
+      );
+    },
+    downloadBlob(content, name, type) {
+      const blob = new Blob([content], { type });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "ped-conflict-correlations.csv";
+      link.download = name;
       link.click();
       URL.revokeObjectURL(url);
+    },
+    downloadClipCsv() {
+      const name = (this.signalId || "signal").toString().replace(/[^A-Za-z0-9_-]+/g, "-");
+      this.downloadBlob(
+        videoClipRowsToCsv(this.clipRows),
+        `${name}-ped-conflict-clip-timestamps.csv`,
+        "text/csv",
+      );
     },
     clamp(seconds) {
       const { min, max } = this.domain;
@@ -1744,6 +1925,17 @@ export default {
 
 .numeric {
   text-align: right;
+}
+
+.signal-identity {
+  margin-top: 16px;
+}
+
+.clip-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
 }
 
 .table-controls {

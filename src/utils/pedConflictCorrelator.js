@@ -360,12 +360,43 @@ function findStateInterval(intervals, ts) {
   return null;
 }
 
+export const DEFAULT_VEHICLE_LENGTH_FT = 20;
+const FPS_TO_MPH = 3600 / 5280;
+
+/**
+ * Distance the front bumper covers between the two detection events.
+ *
+ * The stop bar detector drops out when the vehicle's REAR bumper clears it, and
+ * the downstream detector picks up when its FRONT bumper arrives. The front
+ * bumper is already a vehicle length past the stop bar loop at the first event,
+ * so it only travels the setback minus the vehicle length. A setback shorter
+ * than the vehicle means the two detectors overlap in time and no speed can be
+ * derived, which is reported as null rather than a negative distance.
+ */
+export function travelDistanceFt(setbackFt, vehicleLengthFt = DEFAULT_VEHICLE_LENGTH_FT) {
+  const setback = Number(setbackFt);
+  const length = Number(vehicleLengthFt);
+  if (!Number.isFinite(setback) || setback <= 0) return null;
+  const distance = setback - (Number.isFinite(length) ? length : 0);
+  return distance > 0 ? distance : null;
+}
+
+/** Speed over a known distance, as feet per second and miles per hour. */
+export function estimateSpeed(distanceFt, travelSec) {
+  if (distanceFt == null || !(travelSec > 0)) return { speedFps: null, speedMph: null };
+  const speedFps = distanceFt / travelSec;
+  return { speedFps, speedMph: speedFps * FPS_TO_MPH };
+}
+
 /**
  * Confirmed red-light runs: a stop bar detector drops out while the phase is
  * showing yellow or red, and a downstream detector then turns on and back off
  * within the travel time allowed. The downstream pulse is the confirmation that
  * the vehicle actually entered the intersection rather than shuffling in queue,
  * and each downstream pulse is only matched once.
+ *
+ * When a setback distance is supplied, each run also carries an estimated speed
+ * through the intersection.
  */
 export function findRedLightRuns({
   events,
@@ -375,6 +406,8 @@ export function findRedLightRuns({
   detectorType = 'vehicle',
   signalStates = 'yellow-red',
   maxTravelSec = 6,
+  setbackFt = 0,
+  vehicleLengthFt = DEFAULT_VEHICLE_LENGTH_FT,
 }) {
   const type = DETECTOR_TYPES[detectorType] || DETECTOR_TYPES.vehicle;
   const datasetEndTs = events.length ? events[events.length - 1].tsMs : null;
@@ -383,6 +416,7 @@ export function findRedLightRuns({
   const intervals = buildPhaseStateIntervals(events, vehiclePhase, datasetEndTs);
   const wanted = new Set(signalStates === 'yellow-red' ? ['yellow', 'red'] : [signalStates]);
   const maxTravelMs = Math.max(0, Number(maxTravelSec) || 0) * 1000;
+  const distanceFt = travelDistanceFt(setbackFt, vehicleLengthFt);
 
   const runs = [];
   let lastMatchedDownstream = -1;
@@ -400,6 +434,8 @@ export function findRedLightRuns({
       if (downstream.start > offTs + maxTravelMs) break;
       if (downstream.openEnded) break;
       lastMatchedDownstream = i;
+      const travelSec = (downstream.start - offTs) / 1000;
+      const { speedFps, speedMph } = estimateSpeed(distanceFt, travelSec);
       runs.push({
         stopBarOnTs: pulse.start,
         stopBarOffTs: offTs,
@@ -409,7 +445,10 @@ export function findRedLightRuns({
         downstreamOnTs: downstream.start,
         downstreamOffTs: downstream.end,
         downstreamOccupancySec: downstream.durationSec,
-        travelSec: (downstream.start - offTs) / 1000,
+        travelSec,
+        travelDistanceFt: distanceFt,
+        speedFps,
+        speedMph,
       });
       break;
     }
@@ -545,8 +584,11 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
         detectorType: detectorType.key,
         signalStates: rule.signalStates,
         maxTravelSec: rule.maxTravelSec,
+        setbackFt: rule.setbackFt,
+        vehicleLengthFt: rule.vehicleLengthFt,
       })
     : [];
+  const runDistanceFt = rlrMode ? travelDistanceFt(rule.setbackFt, rule.vehicleLengthFt) : null;
 
   const serviceRows = [];
   const conflicts = [];
@@ -559,6 +601,9 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
   let evaluatedWindowSec = 0;
   let skippedServices = 0;
   let totalTravelSec = 0;
+  let totalSpeedMph = 0;
+  let speedSamples = 0;
+  let maxSpeedMph = null;
   const stateCounts = { yellow: 0, red: 0 };
 
   for (const service of services) {
@@ -683,6 +728,7 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
           downstreamOffSec: round((run.downstreamOffTs - anchor) / 1000),
           state: run.state,
           travelSec: round(run.travelSec),
+          speedMph: round(run.speedMph, 1),
           overlapSec: round(overlapSec),
           conflict,
         });
@@ -693,6 +739,11 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
         serviceOverlapSec += overlapSec;
         totalTravelSec += run.travelSec;
         stateCounts[run.state] += 1;
+        if (run.speedMph != null) {
+          totalSpeedMph += run.speedMph;
+          speedSamples += 1;
+          maxSpeedMph = maxSpeedMph == null ? run.speedMph : Math.max(maxSpeedMph, run.speedMph);
+        }
         conflicts.push({
           ruleId: rule.id,
           ruleLabel: rule.label,
@@ -715,6 +766,9 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
           secIntoStateSec: round(run.secIntoState),
           travelSec: round(run.travelSec),
           downstreamSec: round(run.downstreamOccupancySec),
+          travelDistanceFt: round(run.travelDistanceFt, 1),
+          speedMph: round(run.speedMph, 1),
+          speedFps: round(run.speedFps, 1),
         });
       }
     }
@@ -774,6 +828,10 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
     triggerLabel: TRIGGER_MODES[rule.trigger]?.label || rule.trigger,
     signalStateLabel: rlrMode ? SIGNAL_STATE_MODES[rule.signalStates]?.label || rule.signalStates : null,
     isRedLightRun: rlrMode,
+    speedWarning:
+      rlrMode && Number(rule.setbackFt) > 0 && runDistanceFt == null
+        ? `A ${rule.setbackFt} ft setback is not longer than the ${rule.vehicleLengthFt} ft vehicle length, so no speed can be derived. The front bumper has not left the stop bar loop by the time the downstream detector picks it up.`
+        : '',
     services: serviceRows,
     conflicts,
     histogram: buildHistogram(histogramSamples, binSec),
@@ -792,6 +850,10 @@ export function correlateRule({ events, rule, binSec = 1, contextSec = 10 }) {
       baselineEvents,
       redLightRuns: rlrMode ? runs.length : null,
       avgTravelSec: conflictEvents > 0 && rlrMode ? round(totalTravelSec / conflictEvents) : null,
+      travelDistanceFt: round(runDistanceFt, 1),
+      avgSpeedMph: speedSamples > 0 ? round(totalSpeedMph / speedSamples, 1) : null,
+      maxSpeedMph: round(maxSpeedMph, 1),
+      speedSamples,
       conflictRunsYellow: rlrMode ? stateCounts.yellow : null,
       conflictRunsRed: rlrMode ? stateCounts.red : null,
       baselineRatePerHour: round(baselineRatePerHour),
@@ -825,6 +887,9 @@ const CSV_HEADER = [
   'sec_into_state',
   'travel_to_downstream_s',
   'downstream_occupancy_s',
+  'travel_distance_ft',
+  'speed_mph',
+  'speed_fps',
 ];
 
 function csvCell(value) {
@@ -852,6 +917,9 @@ export function conflictsToCsv(results, formatTs = (ts) => new Date(ts).toISOStr
         row.secIntoStateSec,
         row.travelSec,
         row.downstreamSec,
+        row.travelDistanceFt,
+        row.speedMph,
+        row.speedFps,
       ]
         .map(csvCell)
         .join(','),
@@ -895,6 +963,7 @@ export const CLIP_CSV_HEADER = [
   'ped phase',
   'ped interval',
   'offset from walk start (s)',
+  'speed (mph)',
 ];
 
 // The extractor splits rows on "," with no quote handling, so the seven columns
@@ -957,6 +1026,7 @@ export function buildVideoClipRows({
           pedPhase: conflict.pedPhase,
           pedInterval: conflict.interval,
           offsetFromWalkSec: round((ts - conflict.walkStartTs) / 1000),
+          speedMph: conflict.speedMph ?? '',
         });
       };
 
@@ -1006,6 +1076,7 @@ export function videoClipRowsToCsv(rows) {
       row.pedPhase,
       row.pedInterval,
       row.offsetFromWalkSec,
+      row.speedMph,
     ]
       .map((value, index) => (index < 7 ? value : csvCell(value)))
       .join(','),

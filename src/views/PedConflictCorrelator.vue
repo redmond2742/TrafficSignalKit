@@ -66,6 +66,31 @@
             and <b>10</b> (begin red clearance).
           </v-expansion-panel-text>
         </v-expansion-panel>
+        <v-expansion-panel title="Estimating speed through the intersection" value="speed">
+          <v-expansion-panel-text>
+            Give a red-light-run rule a <b>detector setback</b> and it also
+            estimates how fast each vehicle crossed. Measure the setback as the
+            distance the vehicle travels between the two detection points
+            &mdash; from the downstream edge of the stop bar loop to the leading
+            edge of the downstream loop.
+            <br /><br />
+            The vehicle length is subtracted because the two events watch
+            different ends of the car: the stop bar detector drops out when the
+            <b>rear</b> bumper clears it, and the downstream detector picks up
+            when the <b>front</b> bumper arrives. The front bumper is therefore
+            already a vehicle length down the road at the first event, so it
+            only covers <b>setback &minus; vehicle length</b>. With the 20 ft
+            default, a 100 ft setback means 80 ft of travel; cover it in 2.0
+            seconds and the estimate is 40 ft/s, or 27.3 mph.
+            <br /><br />
+            This is an average over that distance, not a spot speed, and it
+            inherits the controller's 0.1 second resolution &mdash; over a short
+            setback, one tenth of a second moves the answer several mph. A
+            setback no longer than the vehicle produces no estimate rather than
+            a negative distance. Leave the setback at 0 to skip the calculation
+            entirely; everything else about the rule works the same.
+          </v-expansion-panel-text>
+        </v-expansion-panel>
         <v-expansion-panel title="Exporting clips for video review" value="clips">
           <v-expansion-panel-text>
             Once conflicts are found, section 6 exports a timestamp CSV for the
@@ -73,7 +98,8 @@
             It carries the seven columns that tool reads &mdash; timestamp,
             signal ID, signal name, phase, detector channel, light state, and
             seconds into that state &mdash; plus the rule, movement, ped phase,
-            ped interval, and offset from WALK start for your own review.
+            ped interval, offset from WALK start, and the estimated speed for
+            your own review.
             Timestamps are ISO 8601 written as the controller's wall clock
             marked <code>Z</code>, because the extractor compares a row's UTC
             time of day against the sync clock you read off the video. Turn on
@@ -344,6 +370,38 @@
             </v-col>
           </v-row>
 
+          <v-row v-if="isRlr(rule)" dense class="rlr-row">
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model.number="rule.setbackFt"
+                type="number"
+                min="0"
+                step="5"
+                label="Detector setback (ft)"
+                hint="0 skips the speed estimate"
+                persistent-hint
+                density="compact"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model.number="rule.vehicleLengthFt"
+                type="number"
+                min="1"
+                step="1"
+                label="Assumed vehicle length (ft)"
+                density="compact"
+                variant="outlined"
+                hide-details
+                :disabled="!Number(rule.setbackFt)"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <p class="rule-summary">{{ speedSentence(rule) }}</p>
+            </v-col>
+          </v-row>
+
           <v-row dense>
             <v-col cols="12" md="3">
               <v-text-field
@@ -516,6 +574,13 @@
               <span class="stat-value">{{ fmt(selectedResult.totals.avgTravelSec) }}s</span>
               <span class="stat-label">Avg stop bar to downstream</span>
             </div>
+            <div v-if="selectedResult.totals.speedSamples" class="stat-tile">
+              <span class="stat-value">{{ fmt(selectedResult.totals.avgSpeedMph, 1) }} mph</span>
+              <span class="stat-label">
+                Avg speed over {{ fmt(selectedResult.totals.travelDistanceFt, 0) }} ft
+                (peak {{ fmt(selectedResult.totals.maxSpeedMph, 1) }})
+              </span>
+            </div>
           </div>
           <div v-else class="stat-row">
             <div class="stat-tile">
@@ -539,6 +604,10 @@
               <span class="stat-label">Exposure index</span>
             </div>
           </div>
+
+          <p v-if="selectedResult.speedWarning" class="warning-text">
+            {{ selectedResult.speedWarning }}
+          </p>
 
           <p class="rule-sentence-banner">{{ ruleSentence(selectedResult.rule) }}</p>
 
@@ -661,7 +730,9 @@
                       Stop bar off during {{ run.state }} at {{ run.offsetSec }}s;
                       downstream detector on {{ run.travelSec }}s later
                       ({{ run.downstreamOnSec }}s to {{ run.downstreamOffSec }}s);
-                      {{ run.overlapSec }}s of the crossing overlapped
+                      {{ run.overlapSec }}s of the crossing overlapped<template
+                        v-if="run.speedMph != null"
+                      >; about {{ run.speedMph }} mph through the intersection</template>
                     </title>
                   </polygon>
                 </g>
@@ -751,6 +822,7 @@
                   <th class="numeric">Into state (s)</th>
                   <th class="numeric">Travel (s)</th>
                   <th class="numeric">Downstream (s)</th>
+                  <th class="numeric">Speed (mph)</th>
                 </template>
               </tr>
             </thead>
@@ -770,6 +842,7 @@
                   <td class="numeric">{{ fmt(row.secIntoStateSec, 1) }}</td>
                   <td class="numeric">{{ fmt(row.travelSec) }}</td>
                   <td class="numeric">{{ fmt(row.downstreamSec) }}</td>
+                  <td class="numeric">{{ fmt(row.speedMph, 1) }}</td>
                 </template>
               </tr>
             </tbody>
@@ -864,6 +937,7 @@
                   <th>Light state</th>
                   <th class="numeric">Into state (s)</th>
                   <th>Moment</th>
+                  <th v-if="clipHasSpeed" class="numeric">Speed (mph)</th>
                 </tr>
               </thead>
               <tbody>
@@ -876,6 +950,7 @@
                   <td>{{ row.lightState }}</td>
                   <td class="numeric">{{ row.secondsIntoState }}</td>
                   <td>{{ row.moment }}</td>
+                  <td v-if="clipHasSpeed" class="numeric">{{ row.speedMph || "—" }}</td>
                 </tr>
               </tbody>
             </v-table>
@@ -916,6 +991,7 @@ import {
   PED_WINDOW_MODES,
   TRIGGER_MODES,
   SIGNAL_STATE_MODES,
+  DEFAULT_VEHICLE_LENGTH_FT,
   parseHighResEvents,
   summarizeEvents,
   correlateAll,
@@ -958,6 +1034,8 @@ function makeRule(overrides = {}) {
     vehiclePhase: 2,
     signalStates: "yellow-red",
     maxTravelSec: 6,
+    setbackFt: 0,
+    vehicleLengthFt: DEFAULT_VEHICLE_LENGTH_FT,
     ...overrides,
   };
 }
@@ -1220,6 +1298,9 @@ export default {
     clipPreviewRows() {
       return this.clipRows.slice(0, 10);
     },
+    clipHasSpeed() {
+      return this.clipRows.some((row) => row.speedMph !== "" && row.speedMph != null);
+    },
     filteredConflicts() {
       const filter = (this.tableFilter || "").trim().toLowerCase();
       if (!filter) return this.allConflicts;
@@ -1281,6 +1362,18 @@ export default {
     isRlr(rule) {
       return rule.trigger === "red-light-run";
     },
+    speedSentence(rule) {
+      const setback = Number(rule.setbackFt) || 0;
+      if (!setback) {
+        return "Enter a setback distance to estimate speed through the intersection.";
+      }
+      const length = Number(rule.vehicleLengthFt) || DEFAULT_VEHICLE_LENGTH_FT;
+      const distance = setback - length;
+      if (distance <= 0) {
+        return `A ${setback} ft setback is not longer than the ${length} ft vehicle, so no speed can be derived.`;
+      }
+      return `Speed is measured over ${distance} ft: the ${setback} ft between detectors less the ${length} ft the front bumper is already past the stop bar loop.`;
+    },
     channelLabel(rule) {
       return this.isRlr(rule) ? "Stop bar detector channel" : "Detector channel";
     },
@@ -1336,6 +1429,8 @@ export default {
         downstreamChannel: Number(rule.downstreamChannel),
         vehiclePhase: Number(rule.vehiclePhase),
         maxTravelSec: Number(rule.maxTravelSec) || 0,
+        setbackFt: Number(rule.setbackFt) || 0,
+        vehicleLengthFt: Number(rule.vehicleLengthFt) || DEFAULT_VEHICLE_LENGTH_FT,
       }));
     },
     ensureWorker() {
@@ -1692,6 +1787,7 @@ export default {
   flex-direction: column;
   min-width: 160px;
   flex: 1 1 160px;
+  max-width: 320px;
   padding: 12px;
   border: 1px solid rgba(128, 128, 128, 0.35);
   border-radius: 8px;

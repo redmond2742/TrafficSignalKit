@@ -14,6 +14,8 @@ import {
   formatIsoUtcStamp,
   buildVideoClipRows,
   videoClipRowsToCsv,
+  travelDistanceFt,
+  estimateSpeed,
 } from '../src/utils/pedConflictCorrelator.js';
 
 const base = new Date(2024, 0, 6, 15, 0, 0, 0).getTime();
@@ -523,4 +525,94 @@ test('clip CSV strips separators from the seven columns the extractor reads', ()
   assert.equal(parts[2], 'Main St & 1st Ave NB', 'the comma is removed, not quoted');
   assert.equal(parts[3], '4', 'the phase stays in column four');
   assert.equal(parts[5], 'Walk');
+});
+
+// --- Speed through the intersection -----------------------------------------
+test('travelDistanceFt subtracts the vehicle length from the setback', () => {
+  // The front bumper is already a vehicle length past the stop bar loop when
+  // that loop drops out, so it only covers the remainder.
+  assert.equal(travelDistanceFt(100, 20), 80);
+  assert.equal(travelDistanceFt(100), 80, 'a 20 ft vehicle is assumed by default');
+  assert.equal(travelDistanceFt(45, 20), 25);
+
+  assert.equal(travelDistanceFt(20, 20), null, 'a setback equal to the vehicle leaves no travel');
+  assert.equal(travelDistanceFt(15, 20), null, 'a setback shorter than the vehicle is not negative');
+  assert.equal(travelDistanceFt(0, 20), null, 'no setback means no estimate');
+  assert.equal(travelDistanceFt('', 20), null);
+});
+
+test('estimateSpeed converts feet per second to miles per hour', () => {
+  const { speedFps, speedMph } = estimateSpeed(88, 2);
+  assert.equal(speedFps, 44);
+  assert.equal(Math.round(speedMph * 10) / 10, 30, '44 ft/s is 30 mph');
+
+  assert.deepEqual(estimateSpeed(80, 0), { speedFps: null, speedMph: null }, 'no speed from zero elapsed time');
+  assert.deepEqual(estimateSpeed(null, 2), { speedFps: null, speedMph: null });
+});
+
+test('findRedLightRuns estimates speed when a setback is given', () => {
+  // Stop bar drops out at 50s, downstream picks up at 52s: 2 seconds for the
+  // front bumper to cover 100 - 20 = 80 ft, which is 40 ft/s or 27.3 mph.
+  const events = withStopBarRun(48, 50, 52, 53);
+  const [run] = findRedLightRuns({ ...runOpts, events, setbackFt: 100, vehicleLengthFt: 20 });
+
+  assert.equal(run.travelSec, 2);
+  assert.equal(run.travelDistanceFt, 80);
+  assert.equal(run.speedFps, 40);
+  assert.equal(Math.round(run.speedMph * 10) / 10, 27.3);
+
+  const [noSetback] = findRedLightRuns({ ...runOpts, events });
+  assert.equal(noSetback.speedMph, null, 'speed is opt-in');
+  assert.equal(noSetback.travelSec, 2, 'the rest of the run is unaffected');
+});
+
+test('correlateRule reports average and peak speed for flagged runs', () => {
+  const result = correlateRule({
+    events: withStopBarRun(48, 50, 52, 53),
+    rule: { ...rlrRule, setbackFt: 100, vehicleLengthFt: 20 },
+    contextSec: 10,
+  });
+
+  assert.equal(result.totals.travelDistanceFt, 80);
+  assert.equal(result.totals.avgSpeedMph, 27.3);
+  assert.equal(result.totals.maxSpeedMph, 27.3);
+  assert.equal(result.totals.speedSamples, 1);
+  assert.equal(result.conflicts[0].speedMph, 27.3);
+  assert.equal(result.conflicts[0].speedFps, 40);
+  assert.equal(result.services[0].runs[0].speedMph, 27.3, 'the timeline tooltip gets it too');
+  assert.equal(result.speedWarning, '');
+});
+
+test('a setback shorter than the vehicle explains itself instead of guessing', () => {
+  const result = correlateRule({
+    events: withStopBarRun(48, 50, 52, 53),
+    rule: { ...rlrRule, setbackFt: 18, vehicleLengthFt: 20 },
+    contextSec: 10,
+  });
+
+  assert.equal(result.totals.conflictEvents, 1, 'the run is still detected');
+  assert.equal(result.totals.avgSpeedMph, null);
+  assert.equal(result.totals.speedSamples, 0);
+  assert.match(result.speedWarning, /not longer than/);
+});
+
+test('speed reaches both CSV exports', () => {
+  const result = correlateRule({
+    events: withStopBarRun(48, 50, 52, 53),
+    rule: { ...rlrRule, setbackFt: 100, vehicleLengthFt: 20 },
+    contextSec: 10,
+  });
+
+  const conflictCsv = conflictsToCsv([result], (ts) => String(ts)).split('\n');
+  const conflictColumns = conflictCsv[0].split(',');
+  const conflictValues = conflictCsv[1].split(',');
+  assert.equal(conflictValues[conflictColumns.indexOf('travel_distance_ft')], '80');
+  assert.equal(conflictValues[conflictColumns.indexOf('speed_mph')], '27.3');
+  assert.equal(conflictValues[conflictColumns.indexOf('speed_fps')], '40');
+
+  const clipCsv = videoClipRowsToCsv(
+    buildVideoClipRows({ results: [result], signalId: '1001', includeClipBounds: false }),
+  ).split('\n');
+  const clipColumns = clipCsv[0].split(',');
+  assert.equal(clipCsv[1].split(',')[clipColumns.indexOf('speed (mph)')], '27.3');
 });

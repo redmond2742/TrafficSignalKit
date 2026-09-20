@@ -90,3 +90,18 @@ A new tool is available at `/tools/block-logic` for visual, rule-based diagnosti
 - **Video clip timestamp CSV** for the [Video Frame Extractor](https://trafficsignalkit.com/video-frame-extractor): ISO 8601 timestamps written as the controller's wall clock marked `Z` (what the extractor's sync clock compares against), in that tool's seven-column order — timestamp, signal ID, signal name, phase, detector channel, light state, seconds into state — followed by the rule, movement, ped phase, ped interval, and offset from WALK start. Optional rows bracket each incident: clip start/end at the padding you choose, the WALK start of the affected crossing, and the downstream arrival for red-light runs. Rows reading yellow or red are picked up by the extractor as running events.
 
 All parsing and analysis happen in the browser in a Web Worker — pasted text and selected files never leave the machine. Core logic lives in `src/utils/pedConflictCorrelator.js` and is covered by `tests/pedConflictCorrelator.test.mjs` (`npm test`).
+
+## YOLO Image Annotator
+
+`/yolo-image-annotator` turns roadway images into a YOLO training dataset for a traffic-signal detector. It pairs with the [Video Frame Extractor](https://trafficsignalkit.com/video-frame-extractor): pull frames from intersection video there, label them here.
+
+### What it does
+- **Draw, edit, move fast:** drag to box a signal head, drag the body to move it, corner handles to resize, with zoom, pan and per-image undo/redo. Zoom matters — signal heads are often 20–40 px across and cannot be boxed tightly at fit-to-screen scale. `Enter` marks an image reviewed and advances; `N` marks it reviewed with no signals.
+- **Full screen** (`F`) hands the whole display to the canvas, keeping the toolbar, progress and status strip so the review loop never leaves the keyboard. Where the Fullscreen API is blocked — an embedded frame, a locked-down browser — it maximizes inside the page instead and says so, rather than failing. Every toolbar button carries a tooltip naming its shortcut.
+- **Single class** by design: every box is class 0 (`traffic_signal`, renameable). The class name only reaches `data.yaml`.
+- **Reviewed / negative / pending are distinct.** A reviewed image with no boxes exports as a genuine negative sample (a zero-byte `.txt`). Unreviewed images are excluded from the export by default — shipping them as negatives would teach the detector that signals are background.
+- **Deterministic train/val split:** filenames are hashed rather than shuffled, so adding images later never reshuffles the existing split. Frames sharing a trailing number can be grouped so near-duplicate video frames stay on the same side, and the tool warns when a split would come out empty.
+- **Export** is a zip with `images/train`, `images/val`, matching `labels/…`, `data.yaml`, a README, and the project JSON. Images are the original files copied byte for byte — never re-encoded through a canvas, which would add exactly the compression artifacts that hurt a detector on small objects.
+- **Auto-save** keeps boxes in `localStorage` keyed by filename and size (quota-safe, evicting oldest first), plus explicit project JSON save/load. Nothing is uploaded; the zip is assembled in the browser.
+
+Logic lives in `src/utils/annotatorGeometry.js`, `src/utils/yoloDataset.js`, `src/utils/zipWriter.js`, `src/utils/annotationStore.js` and `src/utils/hash.js`, each covered by `npm test`. The zip writer is a hand-rolled store-mode implementation with no new dependency — images are already compressed, so storing them loses nothing and keeps the extracted files byte-identical.

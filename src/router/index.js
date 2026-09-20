@@ -50,6 +50,7 @@ import BlockLogic from '../views/BlockLogic'
 import GeoJSONMapper from '../views/GeoJSONMapper'
 import CoordinationLearningTool from '../views/CoordinationLearningTool'
 import PedConflictCorrelator from '../views/PedConflictCorrelator'
+import ImageAnnotator from '../views/ImageAnnotator'
 
 
 
@@ -308,6 +309,11 @@ const routes = [
     {
         path: '/practiceExam',
         redirect: '/practice-exam',
+    },
+    {
+        path: '/yolo-image-annotator',
+        name: 'imageAnnotator',
+        component: ImageAnnotator,
     },
     {
         path: '/reference',

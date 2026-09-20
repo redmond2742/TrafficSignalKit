@@ -86,6 +86,16 @@ export default {
           topics: ["Controller Data", "Delay", "Enumerations"],
         },
         {
+          // TODO: replace with a purpose-made cover shot uploaded to S3.
+          image:
+            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-Yellow+and+Red+Light+Running+Detection.png",
+          title: "YOLO Image Annotator",
+          description:
+            "Box traffic signal heads in roadway images and export a YOLO training dataset.",
+          link: "/yolo-image-annotator",
+          topics: ["Machine Learning", "Detection", "Datasets", "Video"],
+        },
+        {
           image:
             "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Vehicle+and+Pedestrian+Delay.png",
           title: "Pedestrian Conflict Correlator",

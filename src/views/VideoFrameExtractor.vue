@@ -103,7 +103,11 @@
         <p class="csv-description">
           Upload a CSV with ISO 8601 timestamps to extract frames using the sync time. The
           file should include columns for signal ID, name, phase, light state, and the
-          timestamp.
+          timestamp. The
+          <router-link to="/ped-conflict-correlator">Pedestrian Conflict Correlator</router-link>
+          exports one of these directly. Once you have frames, the
+          <router-link to="/yolo-image-annotator">YOLO Image Annotator</router-link>
+          turns them into a training dataset.
         </p>
         <label class="control">
           <span>CSV file</span>

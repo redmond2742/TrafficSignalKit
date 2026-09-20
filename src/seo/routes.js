@@ -258,6 +258,29 @@ export const routeMeta = {
       "Practice multiple-choice questions for traffic engineering and signal timing.",
     path: "/practice-exam",
   },
+  imageAnnotator: {
+    title: "YOLO Image Annotator | Traffic Signal Training Dataset Builder",
+    description:
+      "Draw bounding boxes around traffic signal heads in roadway images and export a YOLO training dataset with train/val splits, entirely in your browser.",
+    path: "/yolo-image-annotator",
+    faq: [
+      {
+        question: "Does my image data leave my computer?",
+        answer:
+          "No. Images are decoded, annotated, and packed into the export zip entirely in your browser. There is no server, no account, and no upload.",
+      },
+      {
+        question: "What format does the export use?",
+        answer:
+          "A zip containing images/train, images/val, matching labels folders of normalized class cx cy w h text files, and a data.yaml. Images are copied byte for byte, never re-encoded.",
+      },
+      {
+        question: "How are train and validation images split?",
+        answer:
+          "By hashing each filename, so adding more images later never reshuffles the existing split. Frames sharing a trailing number can be grouped so near-duplicate video frames stay on the same side.",
+      },
+    ],
+  },
   videoFrameExtractor: {
     title: "Video Frame Extractor | Sync Frames to Timestamps",
     description:

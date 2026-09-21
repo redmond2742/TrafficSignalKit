@@ -52,12 +52,19 @@
           </v-expansion-panel-text>
         </v-expansion-panel>
 
-        <v-expansion-panel title="How train and val are split" value="split">
+        <v-expansion-panel title="How train, val and test are split" value="split">
           <v-expansion-panel-text>
-            The split is decided by hashing each filename, not by shuffling, so
+            The export builds up to three folders &mdash;
+            <code>train</code>, <code>val</code> and <code>test</code> &mdash;
+            and fills them for you. Set the validation and test shares; whatever
+            is left over becomes training. A test share of 0 skips that folder
+            entirely, and <code>data.yaml</code> then omits its <code>test:</code>
+            line rather than pointing at nothing.
+            <br /><br />
+            Membership is decided by hashing each filename, not by shuffling, so
             adding more images later leaves every existing assignment untouched
             and two models trained weeks apart stay comparable. That makes the
-            ratio approximate rather than exact &mdash; the achieved counts are
+            shares approximate rather than exact &mdash; the achieved counts are
             shown before you export, and the split seed re-rolls a bad draw on a
             small set.
             <br /><br />
@@ -345,6 +352,20 @@
           </v-col>
           <v-col cols="12" md="3">
             <v-text-field
+              v-model.number="testRatio"
+              type="number"
+              min="0"
+              max="1"
+              step="0.05"
+              label="Test share"
+              hint="0 skips the test folder"
+              persistent-hint
+              density="compact"
+              variant="outlined"
+            />
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-text-field
               v-model="splitSeed"
               label="Split seed"
               hint="Change to re-roll the split"
@@ -386,11 +407,16 @@
             <span class="stat-label">Images in dataset</span>
           </div>
           <div class="stat-tile">
-            <span class="stat-value">{{ exportPlan.counts.train }} / {{ exportPlan.counts.val }}</span>
+            <span class="stat-value">
+              {{ exportPlan.counts.train }} / {{ exportPlan.counts.val }}
+              <template v-if="exportPlan.counts.test"> / {{ exportPlan.counts.test }}</template>
+            </span>
             <span class="stat-label">
-              Train / val
+              Train / val<template v-if="exportPlan.counts.test"> / test</template>
               <template v-if="exportPlan.count">
-                ({{ ((exportPlan.counts.val / exportPlan.count) * 100).toFixed(1) }}% val)
+                &mdash; {{ ((exportPlan.counts.val / exportPlan.count) * 100).toFixed(1) }}% val<template
+                  v-if="exportPlan.counts.test"
+                >, {{ ((exportPlan.counts.test / exportPlan.count) * 100).toFixed(1) }}% test</template>
               </template>
             </span>
           </div>
@@ -420,6 +446,7 @@
           them actually contain signal heads, you are teaching the detector that
           signals are background.
         </p>
+        <p v-if="ratioWarning" class="warning-text">{{ ratioWarning }}</p>
         <p v-if="emptySplitWarning" class="warning-text">{{ emptySplitWarning }}</p>
         <p v-if="stats.tiny" class="note-text">
           {{ stats.tiny }} box(es) are smaller than {{ warnBelowPx }} px. They are still exported
@@ -506,6 +533,7 @@ import {
 } from "../utils/annotatorGeometry";
 import {
   DEFAULT_CLASS_NAME,
+  deriveGroupKey,
   buildLabelFile,
   buildDataYaml,
   buildReadme,
@@ -566,6 +594,7 @@ export default {
 
       className: DEFAULT_CLASS_NAME,
       valRatio: 0.2,
+      testRatio: 0.1,
       splitSeed: "",
       groupSplit: true,
       warnBelowPx: 8,
@@ -645,26 +674,51 @@ export default {
       const bases = dedupeBasenames(chosen.map((image) => image.name));
       const { counts } = assignSplits(bases, {
         valRatio: this.valRatio,
+        testRatio: this.testRatio,
         seed: this.splitSeed,
         groupSplit: this.groupSplit,
       });
       return {
         count: chosen.length,
         counts,
+        // How many independent things the hash actually has to work with —
+        // grouping can collapse hundreds of frames down to a handful.
+        groups: new Set(bases.map((base) => (this.groupSplit ? deriveGroupKey(base) : base))).size,
         bytes: chosen.reduce((sum, image) => sum + image.size, 0),
       };
     },
+    ratioWarning() {
+      const val = Number(this.valRatio) || 0;
+      const test = Number(this.testRatio) || 0;
+      if (val + test >= 1) {
+        return `A ${(val * 100).toFixed(0)}% validation share plus a ${(test * 100).toFixed(0)}% test share leaves nothing to train on. The test share is capped so training keeps what is left.`;
+      }
+      return "";
+    },
     emptySplitWarning() {
-      const { count, counts } = this.exportPlan;
-      if (!count || this.valRatio <= 0 || this.valRatio >= 1) return "";
-      if (counts.train && counts.val) return "";
+      const { count, counts, groups } = this.exportPlan;
+      if (!count) return "";
 
-      const empty = counts.val ? "training" : "validation";
-      // Grouping is the usual cause: one video's frames share a group key, so
-      // the whole set lands on one side of an otherwise reasonable ratio.
-      return this.groupSplit
-        ? `Every image would go to ${counts.val ? "validation" : "training"}, leaving the ${empty} set empty. These images all group to one source, so grouping puts them on the same side — turn off grouping, or add images from another location.`
-        : `Every image would go to ${counts.val ? "validation" : "training"}, leaving the ${empty} set empty. Change the split seed or the validation share.`;
+      // Only complain about a split the user actually asked for.
+      const wanted = [
+        { key: "train", label: "training", asked: true },
+        { key: "val", label: "validation", asked: Number(this.valRatio) > 0 },
+        { key: "test", label: "test", asked: Number(this.testRatio) > 0 },
+      ];
+      const missing = wanted.filter((split) => split.asked && !counts[split.key]);
+      if (!missing.length) return "";
+
+      const names = missing.map((split) => split.label).join(" and ");
+      const plural = missing.length > 1 ? "sets would be" : "set would be";
+      const opening = `The ${names} ${plural} empty.`;
+
+      // Diagnose the real cause rather than always blaming grouping: with few
+      // independent groups the hash has nothing to spread, but with plenty of
+      // groups an empty split is just how a small sample fell.
+      if (this.groupSplit && groups < 4 && groups < count) {
+        return `${opening} These ${count} images collapse to ${groups} group${groups === 1 ? "" : "s"} for splitting, so grouping keeps them together — turn off grouping, or add images from another location.`;
+      }
+      return `${opening} With ${groups} independent image${groups === 1 ? "" : "s"} that is simply how the split fell; change the split seed, or raise the validation and test shares.`;
     },
     isMaximized() {
       return this.nativeFullscreen || this.focusMode;
@@ -1606,6 +1660,7 @@ export default {
         className: this.className,
         settings: {
           valRatio: this.valRatio,
+          testRatio: this.testRatio,
           splitSeed: this.splitSeed,
           groupSplit: this.groupSplit,
           warnBelowPx: this.warnBelowPx,
@@ -1632,6 +1687,7 @@ export default {
       if (project.className) this.className = project.className;
       const settings = project.settings || {};
       if (Number.isFinite(settings.valRatio)) this.valRatio = settings.valRatio;
+      if (Number.isFinite(settings.testRatio)) this.testRatio = settings.testRatio;
       if (typeof settings.splitSeed === "string") this.splitSeed = settings.splitSeed;
       if (typeof settings.groupSplit === "boolean") this.groupSplit = settings.groupSplit;
       if (Number.isFinite(settings.warnBelowPx)) this.warnBelowPx = settings.warnBelowPx;
@@ -1689,6 +1745,7 @@ export default {
         const bases = dedupeBasenames(chosen.map((image) => image.name));
         const { assign, counts } = assignSplits(bases, {
           valRatio: this.valRatio,
+          testRatio: this.testRatio,
           seed: this.splitSeed,
           groupSplit: this.groupSplit,
         });
@@ -1726,7 +1783,10 @@ export default {
         }
 
         const stats = datasetStats(chosen, { warnBelowPx: this.warnBelowPx });
-        entries.push({ name: "data.yaml", data: buildDataYaml(this.className) });
+        entries.push({
+          name: "data.yaml",
+          data: buildDataYaml(this.className, { hasTest: counts.test > 0 }),
+        });
         entries.push({ name: "README.txt", data: buildReadme({ className: this.className, counts, stats }) });
         entries.push({
           name: "annotations-project.json",

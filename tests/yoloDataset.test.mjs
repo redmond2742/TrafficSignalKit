@@ -106,12 +106,12 @@ test('deriveGroupKey folds sibling video frames together', () => {
 });
 
 test('splitFor is stable and honors the extremes', () => {
-  assert.equal(splitFor('frame-001', 0.2, 'seed'), splitFor('frame-001', 0.2, 'seed'));
-  assert.equal(splitFor('anything', 0), 'train');
-  assert.equal(splitFor('anything', 1), 'val');
+  assert.equal(splitFor('frame-001', { valRatio: 0.2 }, 'seed'), splitFor('frame-001', { valRatio: 0.2 }, 'seed'));
+  assert.equal(splitFor('anything', { valRatio: 0 }), 'train');
+  assert.equal(splitFor('anything', { valRatio: 1 }), 'val');
 
   const names = Array.from({ length: 400 }, (unused, i) => `img-${i}`);
-  const valCount = names.filter((n) => splitFor(n, 0.2) === 'val').length;
+  const valCount = names.filter((n) => splitFor(n, { valRatio: 0.2 }) === 'val').length;
   assert.ok(valCount > 40 && valCount < 120, `roughly a fifth land in val (got ${valCount})`);
 });
 
@@ -124,7 +124,7 @@ test('the requested ratio is actually achieved, for every seed', () => {
 
   for (const seed of ['', 'a', 'run-2026']) {
     for (const ratio of [0.1, 0.2, 0.3]) {
-      const share = names.filter((n) => splitFor(n, ratio, seed) === 'val').length / names.length;
+      const share = names.filter((n) => splitFor(n, { valRatio: ratio }, seed) === 'val').length / names.length;
       assert.ok(
         Math.abs(share - ratio) < 0.04,
         `seed ${JSON.stringify(seed)} at ${ratio}: got ${(share * 100).toFixed(1)}%`,
@@ -187,4 +187,90 @@ test('unreviewed images are excluded from export unless asked for', () => {
   assert.equal(selectExportImages(images).length, 3);
   assert.ok(!selectExportImages(images).some((i) => i.name === 'c.jpg'));
   assert.equal(selectExportImages(images, { includeUnreviewed: true }).length, 4);
+});
+
+// --- Three-way train / val / test split -------------------------------------
+test('a test share carves a third band out of the same hash', () => {
+  const names = Array.from({ length: 3000 }, (unused, i) => `frame-${i}`);
+  const { counts } = assignSplits(names, {
+    valRatio: 0.2,
+    testRatio: 0.1,
+    seed: 'x',
+    groupSplit: false,
+  });
+
+  assert.equal(counts.train + counts.val + counts.test, 3000, 'every image lands somewhere');
+  assert.ok(Math.abs(counts.val / 3000 - 0.2) < 0.03, `val ~20% (got ${(counts.val / 30).toFixed(1)}%)`);
+  assert.ok(Math.abs(counts.test / 3000 - 0.1) < 0.03, `test ~10% (got ${(counts.test / 30).toFixed(1)}%)`);
+  assert.ok(Math.abs(counts.train / 3000 - 0.7) < 0.03, `train ~70% (got ${(counts.train / 30).toFixed(1)}%)`);
+});
+
+test('testRatio 0 reproduces the old two-way split exactly', () => {
+  // Val occupies the first band precisely so that adding test splits to the
+  // tool did not silently re-assign anyone's existing dataset.
+  const names = Array.from({ length: 500 }, (unused, i) => `img-${i}`);
+  const twoWay = assignSplits(names, { valRatio: 0.2, seed: 's', groupSplit: false });
+  const explicitZero = assignSplits(names, { valRatio: 0.2, testRatio: 0, seed: 's', groupSplit: false });
+
+  for (const name of names) {
+    assert.equal(explicitZero.assign.get(name), twoWay.assign.get(name));
+  }
+  assert.equal(twoWay.counts.test, 0);
+  assert.ok(!names.some((n) => twoWay.assign.get(n) === 'test'));
+});
+
+test('adding a test share never moves anything out of val', () => {
+  // The bands are ordered val-first, so test is carved out of what was train.
+  const names = Array.from({ length: 1000 }, (unused, i) => `shot_${i}`);
+  const before = assignSplits(names, { valRatio: 0.2, testRatio: 0, seed: 'k', groupSplit: false });
+  const after = assignSplits(names, { valRatio: 0.2, testRatio: 0.15, seed: 'k', groupSplit: false });
+
+  for (const name of names) {
+    const was = before.assign.get(name);
+    const now = after.assign.get(name);
+    if (was === 'val') assert.equal(now, 'val', `${name} stayed in val`);
+    if (now === 'test') assert.equal(was, 'train', `${name} came from train, not val`);
+  }
+  assert.ok(after.counts.test > 0);
+  assert.equal(after.counts.val, before.counts.val);
+});
+
+test('splitFor bands are contiguous and stable under set growth', () => {
+  const first = Array.from({ length: 400 }, (unused, i) => `a-${i}`);
+  const opts = { valRatio: 0.25, testRatio: 0.15, seed: 'g', groupSplit: false };
+  const before = assignSplits(first, opts);
+  const after = assignSplits([...first, ...Array.from({ length: 100 }, (u, i) => `b-${i}`)], opts);
+
+  for (const name of first) {
+    assert.equal(after.assign.get(name), before.assign.get(name), `${name} kept its split`);
+  }
+});
+
+test('an over-subscribed test share cannot starve training', () => {
+  const names = Array.from({ length: 600 }, (unused, i) => `n-${i}`);
+  // 0.8 val + 0.9 test would exceed 100%; test is capped at what is left.
+  const { counts } = assignSplits(names, { valRatio: 0.8, testRatio: 0.9, seed: 'z', groupSplit: false });
+
+  assert.equal(counts.train + counts.val + counts.test, 600);
+  assert.ok(counts.val > 0 && counts.test > 0);
+  assert.ok(Math.abs(counts.val / 600 - 0.8) < 0.05, 'val keeps its requested share');
+  assert.ok(Math.abs(counts.test / 600 - 0.2) < 0.05, 'test gets only the remaining 20%');
+});
+
+test('group splitting keeps a video whole across all three splits', () => {
+  const frames = Array.from({ length: 40 }, (unused, i) => `Elm-St-Frame-${i}`);
+  const { assign } = assignSplits(frames, { valRatio: 0.3, testRatio: 0.2, seed: 'q', groupSplit: true });
+  assert.equal(new Set(frames.map((f) => assign.get(f))).size, 1);
+});
+
+test('data.yaml only declares a test path when there is a test split', () => {
+  assert.ok(!buildDataYaml('traffic_signal').includes('test:'));
+  assert.ok(!buildDataYaml('traffic_signal', { hasTest: false }).includes('test:'));
+
+  const withTest = buildDataYaml('traffic_signal', { hasTest: true });
+  assert.match(withTest, /^test: images\/test$/m);
+  assert.match(withTest, /^val: images\/val$/m);
+  assert.match(withTest, /^nc: 1$/m);
+  // Order matters to some readers: paths before the class block.
+  assert.ok(withTest.indexOf('test: images/test') < withTest.indexOf('nc: 1'));
 });

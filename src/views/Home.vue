@@ -23,13 +23,58 @@
         </v-btn>
       </v-card-actions>
     </v-card>
-    <p class="tool-count">Browse {{ posts.length }} practical tools for traffic signal analysis and operations.</p>
+    <v-container class="search-section">
+      <v-row justify="center" no-gutters>
+        <v-col cols="12" md="8" lg="6">
+          <v-text-field
+            v-model="searchQuery"
+            label="Search tools and topics"
+            placeholder="detection, pedestrians, GPX, red light running…"
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+            density="comfortable"
+            clearable
+            hide-details
+            autocomplete="off"
+          />
+        </v-col>
+      </v-row>
+
+      <div class="topic-filter">
+        <v-chip
+          v-for="topic in visibleTopics"
+          :key="topic.name"
+          class="ma-1"
+          size="small"
+          role="button"
+          :aria-pressed="String(activeTopic === topic.name)"
+          :color="activeTopic === topic.name ? 'primary' : undefined"
+          :variant="activeTopic === topic.name ? 'flat' : 'outlined'"
+          @click="toggleTopic(topic.name)"
+        >
+          {{ topic.name }} ({{ topic.count }})
+        </v-chip>
+        <v-chip
+          v-if="hiddenTopicCount"
+          class="ma-1"
+          size="small"
+          variant="text"
+          role="button"
+          :aria-expanded="String(showAllTopics)"
+          @click="showAllTopics = !showAllTopics"
+        >
+          {{ showAllTopics ? "Show fewer" : `+${hiddenTopicCount} more topics` }}
+        </v-chip>
+      </div>
+
+      <p class="tool-count">{{ resultSummary }}</p>
+    </v-container>
 
     <v-container>
-      <v-row no-gutters>
+      <v-row v-if="filteredPosts.length" no-gutters>
         <v-col
-          v-for="(post, index) in posts"
-          :key="index"
+          v-for="post in filteredPosts"
+          :key="post.link"
           cols="12"
           sm="6"
           md="4"
@@ -44,6 +89,10 @@
           /></v-sheet>
         </v-col>
       </v-row>
+      <div v-else class="no-results">
+        <p>No tools match that search.</p>
+        <v-btn variant="outlined" @click="clearSearch">Clear search</v-btn>
+      </div>
     </v-container>
   </main>
 </template>
@@ -58,6 +107,9 @@ export default {
   data() {
     return {
       panel: ["detailed-explain"],
+      searchQuery: "",
+      activeTopic: null,
+      showAllTopics: false,
       posts: [
         {
           image:
@@ -86,9 +138,7 @@ export default {
           topics: ["Controller Data", "Delay", "Enumerations"],
         },
         {
-          // TODO: replace with a purpose-made cover shot uploaded to S3.
-          image:
-            "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-Yellow+and+Red+Light+Running+Detection.png",
+          image: "/images/yolo-image-annotator.png",
           title: "YOLO Image Annotator",
           description:
             "Box traffic signal heads in roadway images and export a YOLO training dataset.",
@@ -363,9 +413,69 @@ export default {
       ],
     };
   },
+  computed: {
+    /** Every topic with how many tools carry it, busiest first. */
+    topicCounts() {
+      const counts = new Map();
+      for (const post of this.posts) {
+        for (const topic of post.topics || []) {
+          counts.set(topic, (counts.get(topic) || 0) + 1);
+        }
+      }
+      return [...counts.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    },
+    /**
+     * Only topics shared by more than one tool earn a chip by default: of the
+     * 40-odd topics in use, most appear on a single tool and would bury the
+     * ones that actually group things. The rest stay reachable through the
+     * text search and the "more topics" toggle.
+     */
+    visibleTopics() {
+      return this.showAllTopics ? this.topicCounts : this.topicCounts.filter((t) => t.count > 1);
+    },
+    hiddenTopicCount() {
+      return this.topicCounts.filter((t) => t.count === 1).length;
+    },
+    searchTerms() {
+      return (this.searchQuery || "")
+        .toLowerCase()
+        .split(/\s+/)
+        .map((term) => term.trim())
+        .filter(Boolean);
+    },
+    filteredPosts() {
+      const terms = this.searchTerms;
+      return this.posts.filter((post) => {
+        if (this.activeTopic && !(post.topics || []).includes(this.activeTopic)) return false;
+        if (!terms.length) return true;
+        // Title, blurb and topics are all searchable, so "pedestrians" finds a
+        // tool whether the word is in its name or only in its topics.
+        const haystack = [post.title, post.description, ...(post.topics || [])]
+          .join(" ")
+          .toLowerCase();
+        // Every term has to land somewhere, so extra words narrow the list.
+        return terms.every((term) => haystack.includes(term));
+      });
+    },
+    resultSummary() {
+      const total = this.posts.length;
+      const shown = this.filteredPosts.length;
+      if (shown === total) {
+        return `Browse ${total} practical tools for traffic signal analysis and operations.`;
+      }
+      const scope = this.activeTopic ? ` in ${this.activeTopic}` : "";
+      return `${shown} of ${total} tools${scope} ${shown === 1 ? "matches" : "match"} your search.`;
+    },
+  },
   methods: {
-    checkImg() {
-      console.log(image);
+    toggleTopic(topic) {
+      this.activeTopic = this.activeTopic === topic ? null : topic;
+    },
+    clearSearch() {
+      this.searchQuery = "";
+      this.activeTopic = null;
     },
   },
 };
@@ -379,6 +489,28 @@ export default {
 .page-title {
   margin-top: 1rem;
   margin-bottom: 0.25rem;
+}
+
+.search-section {
+  padding-top: 8px;
+  padding-bottom: 0;
+}
+
+.topic-filter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.no-results {
+  text-align: center;
+  padding: 40px 16px;
+  opacity: 0.8;
+}
+
+.no-results p {
+  margin-bottom: 12px;
 }
 
 .tool-count {

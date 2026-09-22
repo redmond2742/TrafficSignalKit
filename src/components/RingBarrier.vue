@@ -22,11 +22,10 @@
           <v-col cols="12" md="3">
             <v-text-field
               class="mt-2"
-              auto-grow
               variant="outlined"
-              counter="number"
-              :rules="[(v) => /^-?\\d+$/.test(v)]"
-              row-height="15"
+              type="number"
+              min="0"
+              :rules="cycleLengthRules"
               v-model="desiredCL"
               label="Desired cycle length (sec)"
             >
@@ -34,7 +33,7 @@
           </v-col>
           <v-col cols="12" md="5">
             <v-slider
-              v-model="desiredCL"
+              v-model="desiredSlider"
               :min="0"
               :max="500"
               :step="1"
@@ -92,7 +91,7 @@
           <v-col cols="12" md="3">
             <v-sheet class="pa-3 summary-tile">
               <div class="text-caption">Desired Cycle</div>
-              <div class="text-h6">{{ desiredCL }}s</div>
+              <div class="text-h6">{{ desiredSeconds }}s</div>
             </v-sheet>
           </v-col>
         </v-row>
@@ -202,6 +201,7 @@
     </v-card>
 
   <!-- First Ring-->
+  <div class="ring-scroll">
   <v-table density="compact">
     <thead>
       <tr>
@@ -219,32 +219,32 @@
       <tr>
         <td class="add-border">
           <PhaseBox
-            v-model="propSplitCount"
+            :prop-split-count="r1ph1"
+            default-label="Ph1"
             @changedCL="r1p1"
-            :propSplitCount="r1ph1"
           ></PhaseBox>
         </td>
         <td class="add-border">
           <PhaseBox
-            v-model="propSplitCount"
+            :prop-split-count="r1ph2"
+            default-label="Ph2"
             @changedCL="r1p2"
-            :propSplitCount="r1ph2"
           ></PhaseBox>
         </td>
         <td class="black add-slim"></td>
 
         <td class="add-border">
           <PhaseBox
-            v-model="propSplitCount"
+            :prop-split-count="r1ph3"
+            default-label="Ph3"
             @changedCL="r1p3"
-            :propSplitCount="r1ph3"
           ></PhaseBox>
         </td>
         <td class="add-border">
           <PhaseBox
-            v-model="propSplitCount"
+            :prop-split-count="r1ph4"
+            default-label="Ph4"
             @changedCL="r1p4"
-            :propSplitCount="r1ph4"
           ></PhaseBox>
         </td>
         <td class="black add-slim"></td>
@@ -274,7 +274,10 @@
     </tbody>
   </v-table>
 
+  </div>
+
   <!-- Second Ring-->
+  <div class="ring-scroll">
   <v-table density="compact">
     <thead>
       <tr>
@@ -292,32 +295,32 @@
       <tr>
         <td class="add-border">
           <PhaseBox
-            v-model="propSplitCount"
+            :prop-split-count="r2ph1"
+            default-label="Ph5"
             @changedCL="r2p1"
-            :propSplitCount="r2ph1"
           ></PhaseBox>
         </td>
         <td class="add-border">
           <PhaseBox
-            v-model="propSplitCount"
+            :prop-split-count="r2ph2"
+            default-label="Ph6"
             @changedCL="r2p2"
-            :propSplitCount="r2ph2"
           ></PhaseBox>
         </td>
         <td class="black add-slim"></td>
 
         <td class="add-border">
           <PhaseBox
-            v-model="propSplitCount"
+            :prop-split-count="r2ph3"
+            default-label="Ph7"
             @changedCL="r2p3"
-            :propSplitCount="r2ph3"
           ></PhaseBox>
         </td>
         <td class="add-border">
           <PhaseBox
-            v-model="propSplitCount"
+            :prop-split-count="r2ph4"
+            default-label="Ph8"
             @changedCL="r2p4"
-            :propSplitCount="r2ph4"
           ></PhaseBox>
         </td>
         <td class="black add-slim"></td>
@@ -359,16 +362,31 @@
       </tr>
     </tbody>
   </v-table>
+  </div>
 
   </v-container>
 </template>
 
 <script>
+/**
+ * Split `total` seconds into `count` whole-second values that still add up to
+ * `total`. Signal controllers take whole seconds, and the distribute buttons
+ * used to emit things like 22.5s for a 90s cycle.
+ */
+function apportion(total, count) {
+  const base = Math.floor(total / count);
+  let remainder = total - base * count;
+  return Array.from({ length: count }, () => {
+    const extra = remainder > 0 ? 1 : 0;
+    remainder -= extra;
+    return base + extra;
+  });
+}
+
 export default {
-  name: "app",
+  name: "RingBarrier",
   data() {
     return {
-      propSplitCount: 10,
       desiredCL: 80,
       r1ph1: 20,
       r1ph2: 20,
@@ -378,10 +396,6 @@ export default {
       r2ph2: 20,
       r2ph3: 20,
       r2ph4: 20,
-      minValue: 0,
-      maxValue: 0,
-      cl20: 0,
-      cl80: 0,
       currentStatusInput: "",
       currentStatusSet: false,
       baselineStatus: null,
@@ -391,6 +405,28 @@ export default {
     };
   },
   computed: {
+    /**
+     * The text field yields a string, and an empty or half-typed value yields
+     * NaN, so every calculation goes through this rather than the raw model.
+     */
+    desiredSeconds() {
+      const value = Number(this.desiredCL);
+      return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+    },
+    desiredSlider: {
+      get() {
+        return this.desiredSeconds;
+      },
+      set(value) {
+        this.desiredCL = value;
+      },
+    },
+    cycleLengthRules() {
+      return [
+        (v) => (v !== null && v !== "" && Number.isFinite(Number(v))) || "Enter a number",
+        (v) => Number(v) >= 0 || "Cycle length cannot be negative",
+      ];
+    },
     cyclelength() {
       return this.r1ph1 + this.r1ph2 + this.r1ph3 + this.r1ph4;
     },
@@ -401,10 +437,10 @@ export default {
       return this.r2ph1 + this.r2ph2 + this.r2ph3 + this.r2ph4;
     },
     r1clDifference() {
-      return this.ring1CL - this.desiredCL;
+      return this.ring1CL - this.desiredSeconds;
     },
     r2clDifference() {
-      return this.ring2CL - this.desiredCL;
+      return this.ring2CL - this.desiredSeconds;
     },
     r1b1Sum() {
       return this.r1ph1 + this.r1ph2;
@@ -418,21 +454,17 @@ export default {
     r2b2Sum() {
       return this.r2ph3 + this.r2ph4;
     },
+    /** Whichever ring is furthest from the desired cycle, signed. */
     r1r2Difference() {
-      this.minValue = Math.min(this.r1clDifference, this.r2clDifference);
-      this.maxValue = Math.max(this.r1clDifference, this.r2clDifference);
-      if (Math.abs(this.minValue) <= Math.abs(this.maxValue)) {
-        return this.maxValue;
-        console.log(this.minValue);
-      } else {
-        return this.minValue;
-      }
+      const low = Math.min(this.r1clDifference, this.r2clDifference);
+      const high = Math.max(this.r1clDifference, this.r2clDifference);
+      return Math.abs(low) <= Math.abs(high) ? high : low;
     },
     fullCycleLength() {
       return Math.max(this.ring1CL, this.ring2CL);
     },
     fullCycleDifference() {
-      return this.fullCycleLength - this.desiredCL;
+      return this.fullCycleLength - this.desiredSeconds;
     },
     currentSnapshot() {
       return this.snapshotString();
@@ -469,28 +501,30 @@ export default {
     r2p4(phase) {
       this.setPhaseValue("r2ph4", phase, "Ring 2 - Phase 8");
     },
+    /** Equal splits across the four phases of each ring. */
     distributeEvenly() {
-      const value = this.desiredCL / 4;
-      this.setPhaseValue("r1ph1", value, "Ring 1 - Phase 1");
-      this.setPhaseValue("r1ph2", value, "Ring 1 - Phase 2");
-      this.setPhaseValue("r1ph3", value, "Ring 1 - Phase 3");
-      this.setPhaseValue("r1ph4", value, "Ring 1 - Phase 4");
-      this.setPhaseValue("r2ph1", value, "Ring 2 - Phase 5");
-      this.setPhaseValue("r2ph2", value, "Ring 2 - Phase 6");
-      this.setPhaseValue("r2ph3", value, "Ring 2 - Phase 7");
-      this.setPhaseValue("r2ph4", value, "Ring 2 - Phase 8");
+      this.applyRingPattern(apportion(this.desiredSeconds, 4));
     },
+    /**
+     * 20/80 within each barrier: the left turn takes a fifth of its barrier and
+     * the through movement the rest. Whole seconds, summing to the cycle.
+     */
     distribute2080on26() {
-      const cl20 = this.desiredCL * 0.1;
-      const cl80 = this.desiredCL * 0.4;
-      this.setPhaseValue("r1ph1", cl20, "Ring 1 - Phase 1");
-      this.setPhaseValue("r1ph3", cl20, "Ring 1 - Phase 3");
-      this.setPhaseValue("r2ph1", cl20, "Ring 2 - Phase 5");
-      this.setPhaseValue("r2ph3", cl20, "Ring 2 - Phase 7");
-      this.setPhaseValue("r1ph2", cl80, "Ring 1 - Phase 2");
-      this.setPhaseValue("r1ph4", cl80, "Ring 1 - Phase 4");
-      this.setPhaseValue("r2ph2", cl80, "Ring 2 - Phase 6");
-      this.setPhaseValue("r2ph4", cl80, "Ring 2 - Phase 8");
+      const [barrier1, barrier2] = apportion(this.desiredSeconds, 2);
+      const small1 = Math.round(barrier1 * 0.2);
+      const small2 = Math.round(barrier2 * 0.2);
+      this.applyRingPattern([small1, barrier1 - small1, small2, barrier2 - small2]);
+    },
+    /** Applies one four-phase pattern to both rings. */
+    applyRingPattern([p1, p2, p3, p4]) {
+      this.setPhaseValue("r1ph1", p1, "Ring 1 - Phase 1");
+      this.setPhaseValue("r1ph2", p2, "Ring 1 - Phase 2");
+      this.setPhaseValue("r1ph3", p3, "Ring 1 - Phase 3");
+      this.setPhaseValue("r1ph4", p4, "Ring 1 - Phase 4");
+      this.setPhaseValue("r2ph1", p1, "Ring 2 - Phase 5");
+      this.setPhaseValue("r2ph2", p2, "Ring 2 - Phase 6");
+      this.setPhaseValue("r2ph3", p3, "Ring 2 - Phase 7");
+      this.setPhaseValue("r2ph4", p4, "Ring 2 - Phase 8");
     },
     syncDesiredToFullCycle() {
       this.desiredCL = this.fullCycleLength;
@@ -587,56 +621,12 @@ export default {
 };
 </script>
 
-<style>
-.h1-center-text {
-  text-align: center;
-}
-.text-green {
-  color: green;
-}
-
-.text-red {
-  color: red;
-}
-.text-column {
-  margin-top: 92px; /* Adjust the value as needed */
-}
-
-table {
-  border-collapse: collapse;
-  border: 1px solid black;
-}
-.add-border {
-  padding: 20px;
-  border: 2px solid black;
-}
-.add-slim {
-  width: 20px;
-  border: 2px solid black;
-}
-.add-display-text {
-  width: 100px;
-}
-.black {
-  background-color: #000000;
-}
-.yellow {
-  background-color: #ffdb64;
-}
-.orange {
-  background-color: #f58326;
-}
-.blue {
-  background-color: #85b1de;
-}
-.table-blue-background {
-  background-color: #d2e2f3;
-}
-.table-grey-background {
-  background-color: #d0d0d0;
-}
-.split-calculator .summary-tile {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+<style scoped>
+/*
+ * The ring tables are wider than a phone. Without this the page itself scrolls
+ * sideways instead of the table.
+ */
+.ring-scroll {
+  overflow-x: auto;
 }
 </style>

@@ -17,11 +17,11 @@
         </v-expansion-panel>
 
         <v-expansion-panel
-          title="Detailed Explination: Phase Splits"
+          title="Detailed Explanation: Phase Splits"
           value="detailed-explain"
         >
           <v-expansion-panel-text>
-            Coordinated traffic signals use a agreed upon cycle length to help
+            Coordinated traffic signals use an agreed upon cycle length to help
             align the green phases on coordinated phases. Splits are the green,
             yellow and red time of a phase and are only used in coordination and
             this calculator helps confirm that adding up one ring of the splits

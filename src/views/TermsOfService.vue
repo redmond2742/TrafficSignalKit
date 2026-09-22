@@ -44,6 +44,3 @@ export default {
 };
 </script>
 
-<style>
-/* Add your styles for Terms of Service page here */
-</style>

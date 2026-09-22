@@ -97,6 +97,7 @@
 </template>
 
 <script>
+import { escapeHtml } from "@/utils/highlight.js";
 import { DateTime } from "luxon";
 import InputBox from "../components/foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
@@ -210,15 +211,7 @@ export default {
       if (!values.length) {
         return "—";
       }
-      return values.map((value) => this.escapeHtml(value)).join("<br />");
-    },
-    escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+      return values.map((value) => escapeHtml(value)).join("<br />");
     },
     toIsoZ(timestamp) {
       const converted = this.convertTimestamp(timestamp);

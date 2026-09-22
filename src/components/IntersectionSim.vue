@@ -95,7 +95,6 @@ export default {
       vehiclesEB: [],
       vehiclesSB: [],
       vehicleId: 0,
-      lightInterval: null,
       vehicleInterval: null,
       vehicleVertInterval: null,
       rotate90: "rotate(90deg)",
@@ -243,7 +242,7 @@ export default {
     },
     //EB vehicles
     moveVehicles() {
-      setInterval(() => {
+      this.vehicleInterval = setInterval(() => {
         this.vehiclesEB.forEach((vehicle) => {
           if (
             this.ebLightState === "green" &&
@@ -264,7 +263,7 @@ export default {
     },
     //SB Vehicles
     moveVehiclesVert() {
-      setInterval(() => {
+      this.vehicleVertInterval = setInterval(() => {
         this.vehiclesSB.forEach((vehicle) => {
           if (
             this.sbLightState === "green" &&
@@ -291,40 +290,21 @@ export default {
     this.moveVehicles();
     this.moveVehiclesVert();
   },
-  beforeUpdate() {
-    clearInterval(this.lightInterval);
+  /**
+   * These used to be cleared in beforeUpdate, which fires on every re-render
+   * rather than on teardown, and cleared handles that were never assigned --
+   * moveVehicles and moveVehiclesVert both discarded their setInterval return
+   * value. So three timers (two at 100ms, one at 1s) kept running after the
+   * component went away, each holding the instance alive.
+   */
+  beforeUnmount() {
+    clearInterval(this.timer);
     clearInterval(this.vehicleInterval);
     clearInterval(this.vehicleVertInterval);
+    this.timer = null;
+    this.vehicleInterval = null;
+    this.vehicleVertInterval = null;
   },
 };
 </script>
 
-<style>
-#app {
-  text-align: center;
-  padding: 20px;
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-.intersection {
-  position: relative;
-  width: 500px;
-  height: 200px;
-  margin: 0 auto;
-}
-
-#app {
-  background-color: rgb(255, 255, 255);
-}
-
-#input-usage .v-input__prepend-outer,
-#input-usage .v-input__append-outer,
-#input-usage .v-input__slot,
-#input-usage .v-messages {
-  border: 1px dashed rgba(0, 0, 0, 0.4);
-}
-.large-gap {
-  margin-top: 500px; /* Adjust the value as needed */
-}
-</style>

@@ -66,6 +66,3 @@ export default {
 };
 </script>
 
-<style>
-/* Optionally add custom styles here */
-</style>

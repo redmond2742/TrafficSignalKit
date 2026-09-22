@@ -3,11 +3,13 @@ import chartsAndPlots from "./chartsAndPlots";
 import { DateTime } from "luxon";
 //import * as toGeoJSON from "./mapbox/togeojson";
 import * as toGeoJSON from '@mapbox/togeojson';
-import * as GPX2GeoJSON from "../assets/js/gpx2geojson-master/gpx2geojson.js" //  https://github.com/M-Reimer/gpx2geojson
 import { DOMParser } from '@xmldom/xmldom';
 
 export default {
-    mixins: [chartsAndPlots, toGeoJSON],
+    // toGeoJSON is an ES module namespace (see the import above), not a
+    // component options object; it was silently polluting the options of every
+    // component using this mixin. It is still called directly further down.
+    mixins: [chartsAndPlots],
     data() {
         return {
             travelTime: {
@@ -424,7 +426,7 @@ export default {
           },
           ProcessGPX(inputGPXData, staticObjData, mapPoints=false) {
             //let gpxParser = require("gpxparser");
-            let [i, j, k, m, n, p, q] = [0, 0, 0, 0, 0, 0];
+            let [i, j, k, m, n, p, q] = [0, 0, 0, 0, 0, 0, 0];
       
             let gpx = new gpxParser();
             //let cumDist = 0;

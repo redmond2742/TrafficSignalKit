@@ -353,6 +353,17 @@ export default {
     tableSortField: 'resetPage',
     tableSortDirection: 'resetPage',
   },
+  /**
+   * The worker is created lazily in process() and was never terminated, so it
+   * outlived the view and kept its thread alive after navigating away. Same
+   * teardown as PedConflictCorrelator and BlockLogic.
+   */
+  beforeUnmount() {
+    if (this.worker) {
+      this.worker.terminate();
+      this.worker = null;
+    }
+  },
 };
 </script>
 

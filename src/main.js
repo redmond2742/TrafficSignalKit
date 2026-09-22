@@ -15,33 +15,14 @@ import router from './router'
 
 // Composables
 import { createApp } from 'vue'
-import { createVuetify } from 'vuetify'
 
 
 import 'vuetify/styles'; // Ensure you import the styles
-import { aliases, mdi } from 'vuetify/iconsets/mdi';
 
-
-export default createVuetify({
-  theme: {
-    defaultTheme: 'light', // Default theme
-    themes: {
-      light: {
-        dark: false,
-      },
-      dark: {
-        dark: true,
-      },
-    },
-  },
-  icons: {
-    defaultSet: 'mdi',
-    aliases,
-    sets: {
-      mdi,
-    },
-  },
-  })
+// Site-wide styles. Imported last so it lands after vuetify/styles in the
+// cascade - the same position these rules held when they were scattered across
+// component <style> blocks.
+import '@/styles/global.css';
 
 
 const app = createApp(App)
@@ -55,9 +36,6 @@ app.use(head);
 
 
 app.mount('#app')
-
-
-
 
 
   

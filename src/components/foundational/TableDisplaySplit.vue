@@ -118,6 +118,7 @@
 </template>
 
 <script>
+import { highlightMatches } from "@/utils/highlight.js";
 export default {
   components: {},
   props: {
@@ -236,24 +237,7 @@ export default {
       }
     },
     highlightMatches(text, filterValue) {
-      if (typeof text === "string") {
-        const normalizedFilter = String(filterValue || "").toLowerCase();
-        if (!normalizedFilter) {
-          return text;
-        }
-        const matchExists = text.toLowerCase().includes(normalizedFilter);
-        if (!matchExists) return text;
-        const re = new RegExp(this.escapeRegExp(filterValue), "ig");
-        return text.replace(
-          re,
-          (matchedText) => `<strong>${matchedText}</strong>`
-        );
-      } else {
-        console.log("Filter Text is number, not text");
-      }
-    },
-    escapeRegExp(value) {
-      return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return highlightMatches(text, filterValue);
     },
     truncateToOneDecimal(number) {
       // Truncate the number to one decimal place

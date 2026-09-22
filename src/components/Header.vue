@@ -1,5 +1,5 @@
 <template>
-  <v-app-bar :elevation="12" color="#009688">
+  <v-app-bar :elevation="12" color="primary">
     <v-app-bar-nav-icon
       v-if="mobileView"
       @click="drawer = !drawer"
@@ -11,110 +11,52 @@
         </router-link></v-app-bar-title
       >
     </div>
-    <hr />
 
-    <div class="text-center">
-      <v-menu v-if="mobileViewHide">
-        <template v-slot:activator="{ props }">
-          <v-btn v-bind="props"> Traffic Signal Data</v-btn>
-        </template>
+    <!-- One block per desktop menu; the groups come from the tool registry. -->
+    <template v-if="mobileViewHide">
+      <div v-for="group in navGroups" :key="group.id" class="text-center">
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn v-bind="props">{{ group.label }}</v-btn>
+          </template>
 
-        <v-list>
-          <v-list-item
-            v-for="(item, index) in TSdataTools"
-            :key="index"
-            :to="item.path"
-            link
-            active-class="nav-item-active"
-            class="nav-list-item"
-          >
-            <v-list-item-title>{{ item.title }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </div>
-    <div class="text-center">
-      <v-menu v-if="mobileViewHide">
-        <template v-slot:activator="{ props }">
-          <v-btn v-bind="props"> Time-Space & GPX</v-btn>
-        </template>
+          <v-list>
+            <v-list-item
+              v-for="item in group.items"
+              :key="item.path"
+              :to="item.path"
+              link
+              active-class="nav-item-active"
+              class="nav-list-item"
+            >
+              <v-list-item-title>{{ item.label }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+      </div>
+    </template>
 
-        <v-list>
-          <v-list-item
-            v-for="(item, index) in TSgpxTools"
-            :key="index"
-            :to="item.path"
-            link
-            active-class="nav-item-active"
-            class="nav-list-item"
-          >
-            <v-list-item-title>{{ item.title }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </div>
-    <div class="text-center">
-      <v-menu v-if="mobileViewHide">
-        <template v-slot:activator="{ props }">
-          <v-btn v-bind="props"> Misc.</v-btn>
-        </template>
-
-        <v-list>
-          <v-list-item
-            v-for="(item, index) in MiscTools"
-            :key="index"
-            :to="item.path"
-            link
-            active-class="nav-item-active"
-            class="nav-list-item"
-          >
-            <v-list-item-title>{{ item.title }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </div>
-    <div class="text-center">
-      <v-menu v-if="mobileViewHide">
-        <template v-slot:activator="{ props }">
-          <v-btn v-bind="props"> About</v-btn>
-        </template>
-
-        <v-list>
-          <v-list-item
-            v-for="(item, index) in AboutTools"
-            :key="index"
-            :to="item.path"
-            link
-            active-class="nav-item-active"
-            class="nav-list-item"
-          >
-            <v-list-item-title>{{ item.title }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </div>
-
-    <!--
-    <router-link v-for="route in routes" :key="route.path" :to="route.path">
-    {{route.name}}
-  </router-link>
-    -->
-
-    <v-spacer v-if="mobileViewHide"></v-spacer>
     <v-spacer></v-spacer>
 
-    <v-switch
-      v-model="darkMode"
-      :label="darkMode ? '🌙 Dark Mode' : '☀️ Light Mode'"
-      @change="toggleDarkMode"
-    ></v-switch>
+    <!--
+      The search field sits in the row's existing space (two v-spacers used to
+      hold ~340px of nothing at 1280px). It must not make the bar taller; see
+      HeaderSearch.vue.
+    -->
+    <HeaderSearch />
 
     <template v-slot:append>
-      <v-btn large plain
-        ><v-icon style="color: rgb(235, 8, 8)">mdi-heart</v-icon></v-btn
-      >
-
-      <v-dialog v-model="dialog" activator="parent" width="auto">
+      <v-dialog v-model="dialog" width="auto">
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            size="large"
+            variant="plain"
+            aria-label="Send feedback"
+          >
+            <v-icon class="heart-icon">mdi-heart</v-icon>
+          </v-btn>
+        </template>
         <v-card>
           <v-card-text>
             <iframe
@@ -139,149 +81,56 @@
   <v-navigation-drawer v-model="drawer" app temporary>
     <v-list>
       <v-list-item
-        v-for="(item, index) in tools"
-        :key="index"
+        v-for="item in drawerItems"
+        :key="item.path"
         :to="item.path"
         link
         active-class="nav-item-active"
         class="nav-list-item"
         @click="drawer = false"
       >
-        <v-list-item-title>{{ item.title }}</v-list-item-title>
+        <v-list-item-title>{{ item.label }}</v-list-item-title>
       </v-list-item>
     </v-list>
   </v-navigation-drawer>
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
+import HeaderSearch from "./HeaderSearch.vue";
+import {
+  TOOLS,
+  NAV_GROUPS,
+  toolsInGroup,
+  navLabel,
+} from "@/utils/toolRegistry.js";
 
 export default {
+  components: { HeaderSearch },
   data() {
     return {
-      darkMode: true, // Initial mode state
-      tools: [
-        { title: "Dashboard", path: "/dashboard" },
-        { title: "Split History", path: "/split-history" },
-        { title: "Red Light Runners", path: "/detectorRLR" },
-        {
-          title: "Yellow & Red Light Running Tool",
-          path: "/yellow-red-running",
-        },
-        { title: "Timeseries Plot All Enumerations", path: "/preemption-plotter" },
-        { title: "Enumeration Matrix", path: "/enumeration-matrix" },
-        { title: "Detection Channel Plotter", path: "/detection-plotter" },
-        { title: "Detector Bubble Chart", path: "/detector-bubble-chart" },
-        { title: "Phase Bubble Plot", path: "/phase-bubble-plot" },
-        { title: "Phase Bubble Scatter", path: "/phase-bubble-scatter" },
-        { title: "Delay & Count Estimator", path: "/delay-estimator" },
-        { title: "Stuck Detector Finder", path: "/stuck-detectors" },
-        { title: "Signal Offset Calculator", path: "/signal-offsets" },
-        { title: "Pattern Calendar", path: "/pattern-calendar" },
-        { title: "Pedestrian Investigator", path: "/pedestrian-investigator" },
-        { title: "Pedestrian Conflict Correlator", path: "/ped-conflict-correlator" },
-        { title: "Phase Plotter", path: "/phase-plotter" },
-        { title: "Phase Start Table", path: "/phase-start-table" },
-        { title: "Start Up Loss Average", path: "/startup-loss-average" },
-        { title: "Time to Reduce", path: "/time-to-reduce" },
-        { title: "Skipped Phase Finder", path: "/skipped-phase-finder" },
-        { title: "Split Failure Checker", path: "/split-failure-checker" },
-        { title: "High Res. Explainer", path: "/explainer" },
-        { title: "Time Space Visualizer", path: "/gpx" },
-        { title: "GPX & Phase Plotter", path: "/gpx-phase-plotter" },
-        { title: "GPX Mapper", path: "/gpx-mapper" },
-        { title: "Split Calculator", path: "/split-calculator" },
-        {
-          title: "Intersection Simulator",
-          path: "/traffic-simulator",
-        },
-        { title: "Coordination Learning Tool", path: "/coordination-learning-tool" },
-        { title: "Message Sign Designer", path: "/message-sign-designer" },
-        { title: "Video Frame Extractor", path: "/video-frame-extractor" },
-        { title: "YOLO Image Annotator", path: "/yolo-image-annotator" },
-        { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
-        { title: "Cabinet PM Scheduler", path: "/cabinet-pm-scheduler" },
-        { title: "Reference", path: "/reference" },
-        { title: "Practice Exam", path: "/practice-exam" },
-        { title: "About", path: "/about" },
-        { title: "Blog", path: "/blog" },
-      ],
-
-      TSdataTools: [
-        { title: "Dashboard", path: "/dashboard" },
-        { title: "Split History", path: "/split-history" },
-        { title: "Red Light Runners", path: "/detectorRLR" },
-        {
-          title: "Yellow & Red Light Running Tool",
-          path: "/yellow-red-running",
-        },
-        { title: "Timeseries Plot All Enumerations", path: "/preemption-plotter" },
-        { title: "Enumeration Matrix", path: "/enumeration-matrix" },
-        { title: "Detection Channel Plotter", path: "/detection-plotter" },
-        { title: "Detector Bubble Chart", path: "/detector-bubble-chart" },
-        { title: "Phase Bubble Plot", path: "/phase-bubble-plot" },
-        { title: "Phase Bubble Scatter", path: "/phase-bubble-scatter" },
-        { title: "Delay & Count Estimator", path: "/delay-estimator" },
-        { title: "Stuck Detector Finder", path: "/stuck-detectors" },
-        { title: "Signal Offset Calculator", path: "/signal-offsets" },
-        { title: "Pattern Calendar", path: "/pattern-calendar" },
-        { title: "Pedestrian Investigator", path: "/pedestrian-investigator" },
-        { title: "Pedestrian Conflict Correlator", path: "/ped-conflict-correlator" },
-        { title: "Phase Plotter", path: "/phase-plotter" },
-        { title: "Phase Start Table", path: "/phase-start-table" },
-        { title: "Start Up Loss Average", path: "/startup-loss-average" },
-        { title: "High Resolution Explainer", path: "/explainer" },
-        { title: "Time to Reduce", path: "/time-to-reduce" },
-        { title: "Skipped Phase Finder", path: "/skipped-phase-finder" },
-        { title: "Split Failure Checker", path: "/split-failure-checker" },
-        { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
-        { title: "Cabinet PM Scheduler", path: "/cabinet-pm-scheduler" },
-      ],
-      TSgpxTools: [
-        { title: "Time Space Visualizer", path: "/gpx" },
-        { title: "GPX & Phase Plotter", path: "/gpx-phase-plotter" },
-        { title: "GPX Mapper", path: "/gpx-mapper" },
-        { title: "GPX Elevation", path: "/gpx-elevation" },
-      ],
-      MiscTools: [
-        { title: "Split Calculator", path: "/split-calculator" },
-        {
-          title: "Intersection Simulator",
-          path: "/traffic-simulator",
-        },
-        { title: "Coordination Learning Tool", path: "/coordination-learning-tool" },
-        { title: "Message Sign Designer", path: "/message-sign-designer" },
-        { title: "Video Frame Extractor", path: "/video-frame-extractor" },
-        { title: "YOLO Image Annotator", path: "/yolo-image-annotator" },
-        { title: "Basic Timing Seeker", path: "/basic-timing-seeker" },
-        { title: "Cabinet PM Scheduler", path: "/cabinet-pm-scheduler" },
-        { title: "Reference", path: "/reference" },
-        { title: "Practice Exam", path: "/practice-exam" },
-      ],
-      AboutTools: [
-        { title: "About Traffic Signal Kit", path: "/about" },
-        { title: "Blog", path: "/blog" },
-      ],
-
       dialog: false,
       drawer: false, // Controls the drawer visibility
     };
   },
-  methods: {
-    toggleDarkMode() {
-      this.$vuetify.theme.global.name = this.darkMode ? "dark" : "light";
-    },
-  },
-  mounted() {
-    console.log(this.$vuetify.breakpoint);
-    // Detect system preference for initial mode
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-    this.darkMode = prefersDark;
-    this.$vuetify.theme.global.name = prefersDark ? "dark" : "light";
-  },
   computed: {
+    /** The desktop menus, each already sorted, straight from the registry. */
+    navGroups() {
+      return NAV_GROUPS.map((group) => ({
+        ...group,
+        items: toolsInGroup(TOOLS, group.id).map((tool) => ({
+          path: tool.path,
+          label: navLabel(tool),
+        })),
+      }));
+    },
+    /**
+     * The mobile drawer is one flat list. It used to be a hand-copy of the four
+     * desktop menus, which is how GPX Elevation ended up reachable on desktop
+     * and unreachable on a phone.
+     */
+    drawerItems() {
+      return this.navGroups.flatMap((group) => group.items);
+    },
     mobileView() {
       return this.$vuetify.display.smAndDown;
     },
@@ -293,6 +142,9 @@ export default {
 </script>
 
 <style scoped>
+.heart-icon {
+  color: rgb(235, 8, 8);
+}
 a {
   text-decoration: none;
   color: inherit;

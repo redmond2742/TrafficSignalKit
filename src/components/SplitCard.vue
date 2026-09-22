@@ -1,70 +1,65 @@
 <template>
-  <v-container class="grey lighten-5">
-    <v-btn variant="tonal" color="success" @click="addCard">
-      New Split Calculator 2
+  <v-container>
+    <v-btn variant="tonal" color="success" class="mb-4" @click="addCard">
+      Add another intersection
     </v-btn>
 
     <v-row class="mb-6" justify="center" no-gutters>
-      <v-col sm="2"> </v-col>
-
-      <div v-for="(card, index) in cards" :key="index">
-        <v-card elevation="23">
-          <v-sheet class="d-flex justify-end">
-            <v-sheet class="ma-2 pa-2">
-              <v-card-actions>
-                <v-btn variant="tonal" color="error" @click="removeCard(index)">
-                  Remove Split Window
-                </v-btn>
-              </v-card-actions>
-            </v-sheet>
-          </v-sheet>
-          <v-card-title>
+      <v-col v-for="card in cards" :key="card.id" cols="12">
+        <v-card elevation="3" class="mb-6">
+          <v-card-title class="d-flex align-center ga-4 flex-wrap">
+            <!--
+              This used to be unbound, so whatever you typed as the intersection
+              name was not attached to the card at all and vanished on re-render.
+            -->
             <v-combobox
+              v-model="card.label"
+              class="flex-grow-1"
               clearable
+              hide-details
+              density="compact"
               :items="nameDescription"
-              label="Intersection Name  Description"
+              label="Intersection name / pattern"
             ></v-combobox>
+            <v-btn
+              v-if="cards.length > 1"
+              variant="text"
+              color="error"
+              @click="removeCard(card.id)"
+            >
+              Remove
+            </v-btn>
           </v-card-title>
-          <hr />
-          <br />
+
+          <v-divider></v-divider>
 
           <RingBarrier></RingBarrier>
         </v-card>
-      </div>
-
-      <v-col sm="2"> </v-col>
+      </v-col>
     </v-row>
   </v-container>
 </template>
 
 <script>
 export default {
-  name: "app",
+  name: "SplitCard",
   data() {
     return {
-      nameDescription: [""],
-      cards: [
-        {
-          label: "",
-          cycleTime: 120,
-        },
-      ],
+      nameDescription: [],
+      nextId: 2,
+      // ids rather than array indexes, so removing a card in the middle does
+      // not make Vue reuse the wrong calculator's state
+      cards: [{ id: 1, label: "" }],
     };
   },
   methods: {
     addCard() {
-      console.log("adding new card");
-      this.cards.push({
-        label: "test 1",
-        cycleLength: 120,
-      });
+      this.cards.push({ id: this.nextId, label: "" });
+      this.nextId += 1;
     },
-    removeCard(idx) {
-      console.log("removing card w/ index: " + idx);
-      this.cards.splice(idx, 1);
+    removeCard(id) {
+      this.cards = this.cards.filter((card) => card.id !== id);
     },
   },
 };
 </script>
-
-<style></style>

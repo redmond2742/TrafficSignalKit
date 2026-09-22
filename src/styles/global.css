@@ -19,14 +19,19 @@
 /* from src/components/CSVInput.vue */
 body {
   margin: 2rem;
-  font: 1rem/1.4 system-ui, sans-serif;
+  /* Was `font: 1rem/1.4 system-ui, sans-serif`. The shorthand also set the
+     family, which overrode Vuetify's Roboto on <html>. Keep the line-height,
+     drop the family so Roboto actually renders. */
+  line-height: 1.4;
 }
 
 /* from src/components/IntersectionSim.vue (Vue CLI scaffold boilerplate) */
 #app {
   text-align: center;
   padding: 20px;
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  /* `font-family: Avenir, Helvetica, Arial` removed here: it was Vue CLI
+     scaffold boilerplate that overrode Vuetify's whole Roboto type scale for
+     the entire site, while 54 Roboto faces were downloaded and never used. */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: rgb(255, 255, 255);

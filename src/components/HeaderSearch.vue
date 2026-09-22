@@ -55,9 +55,6 @@
           @keydown="onKeydown"
           @click:clear="closeMenu"
         >
-          <template #append-inner>
-            <kbd v-if="!query && !compact" class="header-search__kbd">/</kbd>
-          </template>
         </v-text-field>
       </div>
 
@@ -252,17 +249,17 @@ export default {
       if (field && typeof field.focus === "function") field.focus();
     },
     /**
-     * Almost every tool on this site is a large CSV paste box, so a bare "/"
-     * shortcut firing while someone types data would be a real problem. Bail
-     * out whenever focus is already in an editable element.
+     * Cmd/Ctrl+K only. A bare "/" shortcut used to be here too, but almost
+     * every tool on this site is a large CSV paste box and a single
+     * unmodified key is a poor thing to reserve.
+     *
+     * The editable-element guard stays regardless: a modified key can still
+     * arrive while someone is typing.
      */
     onGlobalKeydown(event) {
       const el = document.activeElement;
       if (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
-
-      const isSlash = event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey;
-      const isCmdK = event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey);
-      if (!isSlash && !isCmdK) return;
+      if (event.key.toLowerCase() !== "k" || !(event.ctrlKey || event.metaKey)) return;
 
       event.preventDefault();
       this.focusField();
@@ -334,14 +331,6 @@ export default {
   padding: 0 8px;
   /* Matches the app bar, which now takes its colour from the same token. */
   background-color: rgb(var(--v-theme-primary));
-}
-.header-search__kbd {
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 4px;
-  padding: 0 5px;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  opacity: 0.8;
 }
 .header-search__all {
   border-top: 1px solid rgba(0, 0, 0, 0.12);

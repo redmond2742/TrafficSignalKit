@@ -44,9 +44,41 @@
         side on top of the column gutter, which cost a 375px phone 96px of card
         width. lg="3" uses the width a wide monitor actually has.
       -->
-      <v-row v-if="filteredPosts.length" align="stretch">
+      <!--
+        Featured tools sit above a divider, three up and a little larger. The
+        split is suppressed while a search is active: "Featured" is meaningless
+        in a filtered list, so ?q= falls back to one flat grid.
+      -->
+      <template v-if="showFeatured">
+        <h2 class="section-heading">Featured tools</h2>
+        <v-row align="stretch">
+          <v-col
+            v-for="tool in featured"
+            :key="tool.path"
+            cols="12"
+            sm="6"
+            lg="4"
+          >
+            <DisplayCard
+              featured
+              :image="tool.image"
+              :image-alt="tool.title"
+              :title="tool.title"
+              :description="tool.description"
+              :link="tool.path"
+              :topics="tool.topics"
+            />
+          </v-col>
+        </v-row>
+
+        <div class="section-divider">
+          <span>{{ gridTools.length }} more tools</span>
+        </div>
+      </template>
+
+      <v-row v-if="gridTools.length" align="stretch">
         <v-col
-          v-for="tool in filteredPosts"
+          v-for="tool in gridTools"
           :key="tool.path"
           cols="12"
           sm="6"
@@ -63,7 +95,7 @@
           />
         </v-col>
       </v-row>
-      <div v-else class="no-results">
+      <div v-else-if="!showFeatured" class="no-results">
         <p>No tools match "{{ searchQuery }}".</p>
         <v-btn variant="outlined" @click="clearSearch">Show all tools</v-btn>
       </div>
@@ -73,7 +105,13 @@
 
 <script>
 import DisplayCard from "@/components/foundational/DisplayCard.vue";
-import { TOOLS, homeTools, matchTools } from "@/utils/toolRegistry.js";
+import {
+  TOOLS,
+  homeTools,
+  matchTools,
+  featuredTools,
+  otherTools,
+} from "@/utils/toolRegistry.js";
 export default {
   components: {
     DisplayCard,
@@ -93,6 +131,17 @@ export default {
     },
     filteredPosts() {
       return matchTools(this.posts, this.searchQuery);
+    },
+    /** Only split into featured/rest when the full set is on show. */
+    showFeatured() {
+      return !this.searchQuery && this.featured.length > 0;
+    },
+    featured() {
+      return featuredTools(TOOLS);
+    },
+    /** Everything below the divider, or the whole filtered set when searching. */
+    gridTools() {
+      return this.showFeatured ? otherTools(TOOLS) : this.filteredPosts;
     },
     resultSummary() {
       const total = this.posts.length;
@@ -136,6 +185,31 @@ export default {
 .search-state {
   text-align: center;
   margin-top: 4px;
+}
+
+.section-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  padding-inline: 12px;
+}
+
+/* a labelled rule, so the break between featured and the rest is explicit */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 12px 12px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.section-divider::before,
+.section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(var(--v-theme-on-surface), 0.16);
 }
 
 .no-results {

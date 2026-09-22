@@ -4,6 +4,9 @@ import fs from 'node:fs';
 import {
   TOOLS,
   NAV_GROUPS,
+  FEATURED_PATHS,
+  featuredTools,
+  otherTools,
   navLabel,
   searchTerms,
   matchTools,
@@ -116,5 +119,40 @@ test('every registry path is a real route', () => {
   assert.ok(routes.size > 20, 'router parse looks wrong; found only ' + routes.size + ' paths');
   for (const tool of TOOLS) {
     assert.ok(routes.has(tool.path), `${tool.path} is in the registry but has no route`);
+  }
+});
+
+test('every featured path is a real, unique home card', () => {
+  assert.equal(new Set(FEATURED_PATHS).size, FEATURED_PATHS.length, 'duplicate featured path');
+  const cards = new Set(homeTools(TOOLS).map((t) => t.path));
+  for (const path of FEATURED_PATHS) {
+    assert.ok(cards.has(path), `${path} is featured but is not a home card`);
+  }
+});
+
+test('featured tools come back in FEATURED_PATHS order, not registry order', () => {
+  assert.deepEqual(featuredTools(TOOLS).map((t) => t.path), FEATURED_PATHS);
+});
+
+test('featured and the rest partition the home cards exactly', () => {
+  const featured = featuredTools(TOOLS);
+  const rest = otherTools(TOOLS);
+  const all = homeTools(TOOLS);
+  assert.equal(featured.length + rest.length, all.length, 'a card was dropped or duplicated');
+  const seen = new Set([...featured, ...rest].map((t) => t.path));
+  assert.equal(seen.size, all.length, 'a card appears in both halves');
+});
+
+test('a featured path that is not a home card is skipped, not rendered blank', () => {
+  // guards the case where someone features a tool that has no card
+  const trimmed = TOOLS.filter((t) => t.path !== FEATURED_PATHS[0]);
+  const result = featuredTools(trimmed);
+  assert.equal(result.length, FEATURED_PATHS.length - 1);
+  assert.ok(result.every(Boolean), 'returned an undefined entry');
+});
+
+test('every featured card has art, since they are the largest on the page', () => {
+  for (const tool of featuredTools(TOOLS)) {
+    assert.ok(tool.image, `${tool.path} is featured but has no image`);
   }
 });

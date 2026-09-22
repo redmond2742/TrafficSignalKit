@@ -1,5 +1,5 @@
 <template>
-  <v-card class="tool-card" :to="link" link>
+  <v-card class="tool-card" :class="{ 'tool-card--featured': featured }" :to="link" link>
     <!--
       cover, not contain. The card art spans 16 different aspect ratios, from
       0.75 portrait to 2.41 panorama, so "contain" letterboxed them by wildly
@@ -83,6 +83,11 @@ export default {
       type: Array,
       default: () => [],
     },
+    /** Featured cards sit above the divider and run a little larger. */
+    featured: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -100,7 +105,8 @@ export default {
      * tablets a letterboxed banner on a 382px-wide card.
      */
     imageHeight() {
-      return this.$vuetify.display.xs ? 150 : 190;
+      if (this.$vuetify.display.xs) return 150;
+      return this.featured ? 220 : 190;
     },
     visibleTopics() {
       return (this.topics || []).slice(0, MAX_TOPICS);
@@ -113,6 +119,14 @@ export default {
 </script>
 
 <style scoped>
+/* A featured card shows its full blurb; the grid below keeps the 3-line clamp. */
+.tool-card--featured .tool-card__description {
+  -webkit-line-clamp: 4;
+}
+.tool-card--featured .tool-card__title {
+  font-size: 1.2rem;
+}
+
 /* Full height so cards in a row match, with the CTA pushed to the bottom. */
 .tool-card {
   display: flex;

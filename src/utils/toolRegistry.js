@@ -25,6 +25,22 @@
  *   home        false for tools that are navigable and searchable but have no card
  */
 
+/**
+ * The tools shown above the divider on the home page, in the order they
+ * appear. This is the only place the featured set is decided -- edit this
+ * list and the home page follows.
+ *
+ * These six are a starting point, not a considered ranking.
+ */
+export const FEATURED_PATHS = [
+  "/yellow-red-running",
+  "/ped-conflict-correlator",
+  "/split-failure-checker",
+  "/delay-estimator",
+  "/yolo-image-annotator",
+  "/coordination-learning-tool",
+];
+
 /** The desktop menus, in bar order. */
 export const NAV_GROUPS = [
   { id: "data", label: "Traffic Signal Data" },
@@ -505,4 +521,19 @@ export function toolsInGroup(tools, group) {
 /** The home page cards, in the order they are curated in TOOLS. */
 export function homeTools(tools) {
   return (tools || []).filter((tool) => tool.home !== false);
+}
+
+/**
+ * The featured tools, in FEATURED_PATHS order rather than registry order.
+ * A path that is not a home card is skipped rather than shown without a card.
+ */
+export function featuredTools(tools) {
+  const byPath = new Map(homeTools(tools).map((tool) => [tool.path, tool]));
+  return FEATURED_PATHS.map((path) => byPath.get(path)).filter(Boolean);
+}
+
+/** The remaining home cards, keeping their curated order. */
+export function otherTools(tools) {
+  const featured = new Set(featuredTools(tools).map((tool) => tool.path));
+  return homeTools(tools).filter((tool) => !featured.has(tool.path));
 }

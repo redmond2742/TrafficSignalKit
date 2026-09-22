@@ -18,7 +18,10 @@
 /* ---------------------------------------------------------------- document */
 /* from src/components/CSVInput.vue */
 body {
-  margin: 2rem;
+  /* Was `margin: 2rem`, which is what used to clear the fixed app bar and give
+     every page its side gutter. v-main now handles the first job and
+     .page-shell the second, so this has to be zero or the two would stack. */
+  margin: 0;
   /* Was `font: 1rem/1.4 system-ui, sans-serif`. The shorthand also set the
      family, which overrode Vuetify's Roboto on <html>. Keep the line-height,
      drop the family so Roboto actually renders. */
@@ -28,13 +31,28 @@ body {
 /* from src/components/IntersectionSim.vue (Vue CLI scaffold boilerplate) */
 #app {
   text-align: center;
-  padding: 20px;
+  /* Was `padding: 20px`; see the body note above - .page-shell owns the gutter. */
+  padding: 0;
   /* `font-family: Avenir, Helvetica, Arial` removed here: it was Vue CLI
      scaffold boilerplate that overrode Vuetify's whole Roboto type scale for
      the entire site, while 54 Roboto faces were downloaded and never used. */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: rgb(255, 255, 255);
+}
+
+/*
+ * The one place page width and side gutters are decided. Replaces the old
+ * body margin + #app padding, which gave phones a 52px gutter each side and
+ * left only 271px of usable width on a 375px screen.
+ */
+.page-shell {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 16px;
+  /* v-main puts content exactly at the app bar's edge; this is the breathing
+     room the old body margin used to provide. */
+  padding-block: 16px 32px;
 }
 
 /* from src/views/Home.vue - applies to every v-container on the site */

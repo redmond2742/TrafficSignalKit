@@ -1,5 +1,5 @@
 <template>
-  <main class="home-page">
+  <div class="home-page">
     <p class="sr-only">
       Traffic Signal Kit homepage with searchable traffic engineering tools and simulators.
     </p>
@@ -94,7 +94,7 @@
         <v-btn variant="outlined" @click="clearSearch">Clear search</v-btn>
       </div>
     </v-container>
-  </main>
+  </div>
 </template>
 
 <script>

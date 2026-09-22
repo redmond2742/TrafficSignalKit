@@ -3,26 +3,27 @@
     <p class="sr-only">
       Traffic Signal Kit homepage with searchable traffic engineering tools and simulators.
     </p>
-    <v-card class="intro-card" variant="outlined">
-      <h1 class="h1-center-text page-title">Traffic Signal Kit</h1>
-      <v-card-text class="intro-text">
-        Various experimental free & open source tools for traffic engineers.
-        These are rapid-fire, proof-of-concept creations designed to innovate,
-        inspire, and provide insights into traffic signal operations. Expect
-        raw, early-stage concepts—this is about speed, experimentation, and
-        finding what truly makes an impact. Your feedback is my roadmap! ❤️
-        Click that heart button to vote on features and shape the future of
-        these tools.
-      </v-card-text>
-      <v-card-actions class="intro-actions">
-        <v-btn color="primary" variant="flat" to="/dashboard">
-          Go to Dashboard
+    <!--
+      A compact header rather than a card of prose. The six featured tools
+      below are the hero; this just says what the site is and gets out of the
+      way. The old intro card was 259px on a desktop and 577px on a phone.
+    -->
+    <header class="hero">
+      <h1 class="hero__title">Traffic Signal Kit</h1>
+      <p class="hero__tagline">
+        Free &amp; open source tools for traffic engineers &mdash; rapid-fire,
+        proof-of-concept, and built to find what actually makes an impact.
+      </p>
+      <div class="hero__actions">
+        <v-btn color="primary" variant="flat" size="small" to="/dashboard">
+          Dashboard
         </v-btn>
-        <v-btn color="secondary" variant="flat" to="/tsp-dashboard">
-          Go to TSP Dashboard
+        <v-btn color="primary" variant="outlined" size="small" to="/tsp-dashboard">
+          TSP Dashboard
         </v-btn>
-      </v-card-actions>
-    </v-card>
+      </div>
+    </header>
+
     <!--
       Search now lives in the app bar. What remains here is only the state
       readout for an active ?q=, which is how the header's "see all results"
@@ -177,9 +178,30 @@ export default {
   padding-bottom: 1.5rem;
 }
 
-.page-title {
-  margin-top: 1rem;
-  margin-bottom: 0.25rem;
+.hero {
+  text-align: center;
+  padding: 4px 12px 0;
+}
+.hero__title {
+  font-size: 1.9rem;
+  line-height: 1.2;
+  margin: 0 0 6px;
+}
+.hero__tagline {
+  /* the global `p { text-align: left }` would otherwise win here */
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 12px;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+}
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .search-state {

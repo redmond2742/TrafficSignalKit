@@ -17,6 +17,34 @@ The purpose of the Traffic Signal Kit is to provide simple tools for traffic eng
 
 Visit the website where this website is deployed: https://trafficsignalkit.com/
 
+## Adding a tool
+
+Navigation and search come from one place: `src/utils/toolRegistry.js`. Add an
+entry there and the tool appears in the desktop menu for its `group`, in the
+mobile drawer, in the header search, and (with an `image`) on the home page.
+
+```js
+{
+  path: "/my-tool",            // must match the router
+  title: "My Tool",            // home card + search result
+  navTitle: "My Tool",         // optional shorter label for the menus
+  description: "One line, searchable.",
+  image: "https://...",        // omit, with home: false, for no home card
+  topics: ["Controller Data"],  // searchable, and the home page's vocabulary
+  group: "data",               // data | gpx | misc | about
+}
+```
+
+Then register the route in `src/router/index.js` and, for page metadata, add a
+`src/seo/routes.js` entry keyed by the **route name**. `tests/toolRegistry.test.mjs`
+fails if the registry names a path that has no route, which is what stops these
+lists drifting apart again.
+
+Site-wide CSS lives in `src/styles/global.css`. A `<style>` block in a component
+should be `scoped`; an unscoped one leaks to every page, which is how the site
+previously ended up taking its page titles from a ring-barrier diagram and its
+font from the intersection simulator.
+
 ## Disclaimer
 
 Please note that the tools developed as part of the Traffic Signal Kit are intended for learning purposes and proof of concepts. They may not be fully polished or production-ready. Use them at your own discretion and be aware of any limitations or potential issues.

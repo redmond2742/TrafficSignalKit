@@ -365,7 +365,7 @@ export default {
           .toLowerCase()
           .includes(filterValue.toLowerCase());
         if (!matchExists) return text;
-        const re = new RegExp(filterValue, "ig");
+        const re = new RegExp(this.escapeRegExp(filterValue), "ig");
         return text.replace(
           re,
           (matchedText) => `<strong>${matchedText}</strong>`
@@ -376,12 +376,19 @@ export default {
           .toLowerCase()
           .includes(filterValue.toLowerCase());
         if (!matchExists) return text;
-        const re = new RegExp(filterValue, "ig");
+        const re = new RegExp(this.escapeRegExp(filterValue), "ig");
         return stringText.replace(
           re,
           (matchedText) => `<strong>${matchedText}</strong>`
         );
       }
+    },
+    /**
+     * The filter box is free text, so it cannot go into a RegExp as-is: a lone
+     * "(" or "*" throws SyntaxError and takes the whole table render with it.
+     */
+    escapeRegExp(value) {
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     },
     exportToExcel() {
       const rows = this.filteredRows.length ? this.filteredRows : this.rowData;

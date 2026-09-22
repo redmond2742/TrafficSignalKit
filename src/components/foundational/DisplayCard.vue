@@ -65,11 +65,12 @@ export default {
 }
 
 .v-card:hover {
-  background-color: #f5f5f5;
+  /* tint of the current surface rather than a fixed near-white */
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .v-card:focus-visible {
-  outline: 2px solid #1976d2;
+  outline: 2px solid rgb(var(--v-theme-primary));
   outline-offset: 2px;
 }
 
@@ -89,14 +90,14 @@ export default {
 .v-chip-group {
   display: flex;
   flex-wrap: wrap;
-  color: #009688;
+  color: rgb(var(--v-theme-primary));
 }
 .centered-actions {
   display: flex;
   justify-content: center; /* Center horizontally */
 }
 .explore-text {
-  color: #1976d2;
+  color: rgb(var(--v-theme-primary));
   font-weight: 500;
 }
 .title {

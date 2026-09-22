@@ -1,5 +1,5 @@
 <template>
-  <v-app-bar :elevation="12" color="#009688">
+  <v-app-bar :elevation="12" color="primary">
     <v-app-bar-nav-icon
       v-if="mobileView"
       @click="drawer = !drawer"
@@ -11,7 +11,6 @@
         </router-link></v-app-bar-title
       >
     </div>
-    <hr />
 
     <!-- One block per desktop menu; the groups come from the tool registry. -->
     <template v-if="mobileViewHide">
@@ -47,11 +46,17 @@
     <HeaderSearch />
 
     <template v-slot:append>
-      <v-btn large plain
-        ><v-icon style="color: rgb(235, 8, 8)">mdi-heart</v-icon></v-btn
-      >
-
-      <v-dialog v-model="dialog" activator="parent" width="auto">
+      <v-dialog v-model="dialog" width="auto">
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            size="large"
+            variant="plain"
+            aria-label="Send feedback"
+          >
+            <v-icon class="heart-icon">mdi-heart</v-icon>
+          </v-btn>
+        </template>
         <v-card>
           <v-card-text>
             <iframe
@@ -91,7 +96,6 @@
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
 import HeaderSearch from "./HeaderSearch.vue";
 import {
   TOOLS,
@@ -138,6 +142,9 @@ export default {
 </script>
 
 <style scoped>
+.heart-icon {
+  color: rgb(235, 8, 8);
+}
 a {
   text-decoration: none;
   color: inherit;

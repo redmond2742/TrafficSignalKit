@@ -16,7 +16,16 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    ViteFaviconsPlugin('./src/assets/favicon-16x16.png'),
+    // The plugin injects its own <meta name="theme-color"> near the top of
+    // <head>, and the first one wins, so setting the colour here rather than
+    // in index.html is what actually reaches the browser chrome.
+    ViteFaviconsPlugin({
+      logo: './src/assets/favicon-16x16.png',
+      favicons: {
+        background: '#ffffff',
+        theme_color: '#009688',
+      },
+    }),
     Vue({
       template: { transformAssetUrls },
       

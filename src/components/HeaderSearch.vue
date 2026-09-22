@@ -305,9 +305,8 @@ export default {
   align-items: center;
   gap: 4px;
   padding: 0 8px;
-  /* Matches the app bar. Phase 4 swaps this for the primary theme token when
-     the bar stops hardcoding its colour. */
-  background-color: #009688;
+  /* Matches the app bar, which now takes its colour from the same token. */
+  background-color: rgb(var(--v-theme-primary));
 }
 .header-search__kbd {
   border: 1px solid rgba(255, 255, 255, 0.5);

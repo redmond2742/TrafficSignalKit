@@ -141,7 +141,7 @@ export default {
 
 .tool-count {
   text-align: center;
-  color: #4e5f6c;
+  color: rgba(var(--v-theme-on-surface), 0.7);
   margin: 0.25rem 0 1rem;
   font-size: 0.95rem;
 }

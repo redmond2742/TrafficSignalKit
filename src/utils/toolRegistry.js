@@ -166,7 +166,7 @@ export const TOOLS = [
     title: "Detector Event Heat Map",
     description:
       "Heat map detector activity by time of day and phase/channel mappings",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
+    image: "/images/detector-event-heat-map.png",
     topics: ["Controller Data", "Detection", "Heat Map"],
     group: "data",
   },
@@ -184,7 +184,7 @@ export const TOOLS = [
     title: "Gap-Out & Gap Reduction Helper",
     description:
       "Estimate min green, passage, and optional gap-reduction settings from high-resolution detector headways.",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
+    image: "/images/gap-out-gap-reduction-helper.png",
     topics: ["Controller Data", "Detection", "Timing"],
     group: "data",
   },

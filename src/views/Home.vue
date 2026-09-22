@@ -35,23 +35,32 @@
       <p class="tool-count">{{ resultSummary }}</p>
     </div>
 
-    <v-container>
-      <v-row v-if="filteredPosts.length" no-gutters>
+    <!-- px-0: .page-shell already owns the side gutter, and paying it twice
+         cost a 375px phone another 32px of card width. -->
+    <v-container class="px-0">
+      <!--
+        align="stretch" is what lets the cards fill the row height and line up.
+        The v-sheet wrapper that used to sit in here added 16px of padding a
+        side on top of the column gutter, which cost a 375px phone 96px of card
+        width. lg="3" uses the width a wide monitor actually has.
+      -->
+      <v-row v-if="filteredPosts.length" align="stretch">
         <v-col
           v-for="tool in filteredPosts"
           :key="tool.path"
           cols="12"
           sm="6"
           md="4"
-          ><v-sheet class="ma-2 pa-2">
-            <DisplayCard
-              :image="tool.image"
-              :image-alt="tool.title"
-              :title="tool.title"
-              :description="tool.description"
-              :link="tool.path"
-              :topics="tool.topics"
-          /></v-sheet>
+          lg="3"
+        >
+          <DisplayCard
+            :image="tool.image"
+            :image-alt="tool.title"
+            :title="tool.title"
+            :description="tool.description"
+            :link="tool.path"
+            :topics="tool.topics"
+          />
         </v-col>
       </v-row>
       <div v-else class="no-results">

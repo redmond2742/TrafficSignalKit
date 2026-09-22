@@ -3,7 +3,6 @@ import Components from 'unplugin-vue-components/vite'
 import Vue from '@vitejs/plugin-vue'
 import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 import ViteFonts from 'unplugin-fonts/vite'
-import vitePluginFaviconsInject from 'vite-plugin-favicons-inject'
 import { ViteFaviconsPlugin } from 'vite-plugin-favicon';
 
 
@@ -42,6 +41,11 @@ export default defineConfig({
       },
     }),
   ],
+  // 111 console statements across src/. Dropping them at build time beats
+  // editing every call site, and keeps them available in dev.
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
   define: { 'process.env': {} },
   resolve: {
     alias: {

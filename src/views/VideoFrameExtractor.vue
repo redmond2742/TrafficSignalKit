@@ -314,6 +314,11 @@
 </template>
 
 <script>
+/** Tolerance for "the video is already at this time", in seconds. */
+const SEEK_EPSILON_S = 0.001;
+/** How long to wait for a seek before drawing whatever frame is showing. */
+const SEEK_TIMEOUT_MS = 3000;
+
 import gifshot from "gifshot";
 
 export default {
@@ -532,13 +537,23 @@ export default {
         return;
       }
 
-      const onSeeked = () => {
+      const draw = () => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         this.frameDataUrl = canvas.toDataURL("image/png");
       };
 
-      video.addEventListener("seeked", onSeeked, { once: true });
+      // Seeking to the time the video already holds fires no "seeked" event,
+      // so waiting for one would mean nothing happens at all.
+      if (this.isAtTime(video, this.targetTime)) {
+        draw();
+        return;
+      }
+      video.addEventListener("seeked", draw, { once: true });
       video.currentTime = this.targetTime;
+    },
+    /** Whether the video is already parked on this timestamp. */
+    isAtTime(video, time) {
+      return Math.abs(video.currentTime - time) < SEEK_EPSILON_S;
     },
     extractFrameAtTime(targetTime) {
       return new Promise((resolve) => {
@@ -554,13 +569,34 @@ export default {
           return;
         }
 
-        const onSeeked = () => {
+        let settled = false;
+        let timeoutId = null;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          if (timeoutId) clearTimeout(timeoutId);
+          video.removeEventListener("seeked", finish);
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           resolve(canvas.toDataURL("image/png"));
         };
 
-        video.addEventListener("seeked", onSeeked, { once: true });
-        video.currentTime = Math.min(Math.max(targetTime, 0), video.duration || targetTime);
+        const clamped = Math.min(Math.max(targetTime, 0), video.duration || targetTime);
+
+        /*
+         * Two rows with the same timestamp used to hang the whole batch
+         * permanently: setting currentTime to the value it already holds fires
+         * no "seeked" event, and this promise is awaited in a loop with no
+         * timeout, so nothing ever resolved and no error surfaced.
+         */
+        if (this.isAtTime(video, clamped)) {
+          finish();
+          return;
+        }
+
+        video.addEventListener("seeked", finish, { once: true });
+        // Backstop for a seek the browser silently drops.
+        timeoutId = setTimeout(finish, SEEK_TIMEOUT_MS);
+        video.currentTime = clamped;
       });
     },
     extractFrameIfReady() {

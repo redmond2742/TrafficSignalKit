@@ -137,6 +137,14 @@ export default {
   outline-offset: 2px;
 }
 
+/*
+ * Anchor the crop to the top. The card box is ~2.3:1 on a phone against 1.5:1
+ * art, so a centred crop cut the heading off every screenshot.
+ */
+.tool-card__image :deep(.v-img__img) {
+  object-position: center top;
+}
+
 .tool-card__fallback {
   display: flex;
   align-items: center;

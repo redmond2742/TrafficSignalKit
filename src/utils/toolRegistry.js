@@ -49,7 +49,7 @@ export const TOOLS = [
     title: "Coordination Learning Tool",
     description:
       "Interactive sliders and visuals for cycle length, splits, offsets, scheduler plans, and coordinated phases.",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Offset+Calculation.png",
+    image: "/images/coordination-learning-tool.png",
     topics: ["Coordination", "Education", "Offsets"],
     group: "misc",
   },
@@ -58,7 +58,7 @@ export const TOOLS = [
     title: "Delay & Count Estimator",
     description:
       "Estimate detector call delays to phase service",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Vehicle+and+Pedestrian+Delay.png",
+    image: "/images/delay-estimator.png",
     topics: ["Controller Data", "Delay", "Enumerations"],
     group: "data",
   },
@@ -76,7 +76,7 @@ export const TOOLS = [
     title: "Pedestrian Conflict Correlator",
     description:
       "Correlate detector on/off events with pedestrian walk and clearance intervals to see turning conflict exposure.",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Vehicle+and+Pedestrian+Delay.png",
+    image: "/images/ped-conflict-correlator.png",
     topics: ["Controller Data", "Pedestrians", "Safety", "Detection"],
     group: "data",
   },
@@ -85,7 +85,7 @@ export const TOOLS = [
     title: "Pedestrian Investigator",
     description:
       "Summarize pedestrian walk, clearance, and crossing distance estimates.",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Vehicle+and+Pedestrian+Delay.png",
+    image: "/images/pedestrian-investigator.png",
     topics: ["Controller Data", "Pedestrians", "Diagnostics"],
     group: "data",
   },
@@ -103,7 +103,7 @@ export const TOOLS = [
     title: "Skipped Phase Finder",
     description:
       "Find detector calls where the phase is not served within two minutes",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
+    image: "/images/skipped-phase-finder.png",
     topics: ["Controller Data", "Detection", "Diagnostics"],
     group: "data",
   },
@@ -112,7 +112,7 @@ export const TOOLS = [
     title: "Split Failure Checker",
     description:
       "Flag green terminations with stop bar detectors still on",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
+    image: "/images/split-failure-checker.png",
     topics: ["Controller Data", "Detection", "Diagnostics"],
     group: "data",
   },
@@ -121,7 +121,7 @@ export const TOOLS = [
     title: "Timeseries Plot All Enumerations",
     description:
       "Plot preemption (101-119) enumeration events over time",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+All+Enumerations+Plot.png",
+    image: "/images/preemption-plotter.png",
     topics: ["Controller Data", "Enumerations", "Preemption"],
     group: "data",
   },
@@ -148,7 +148,7 @@ export const TOOLS = [
     title: "Detector Bubble Chart",
     description:
       "Bubble chart of detector on-duration and off-to-on gaps by cycle",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
+    image: "/images/detector-bubble-chart.png",
     topics: ["Controller Data", "Detection", "Cycles"],
     group: "data",
   },
@@ -157,7 +157,7 @@ export const TOOLS = [
     title: "Phase Bubble Scatter",
     description:
       "Bubble scatter of phase split, time since last ON, and detector OFF behavior",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
+    image: "/images/phase-bubble-scatter.png",
     topics: ["Controller Data", "Detection", "Phase"],
     group: "data",
   },
@@ -222,7 +222,7 @@ export const TOOLS = [
     title: "Pattern Calendar",
     description:
       "Visualize coordination pattern changes by day and time in a calendar view.",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Offset+Calculation.png",
+    image: "/images/pattern-calendar.png",
     topics: ["Controller Data", "Coordination", "Calendar"],
     group: "data",
   },
@@ -249,7 +249,7 @@ export const TOOLS = [
     title: "Basic Timing Seeker",
     description:
       "Estimate GTSS timing parameters from high-resolution controller data.",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Yellow+and+Red+Light+Running.png",
+    image: "/images/basic-timing-seeker.png",
     topics: ["Controller Data", "Timing", "GTSS"],
     group: "data",
   },
@@ -400,9 +400,9 @@ export const TOOLS = [
     title: "Video Frame Extractor",
     description:
       "Extract video frames at a chosen FPS or from timestamp CSVs using a sync reference frame.",
+    image: "/images/video-frame-extractor.png",
     topics: ["Video", "Detection", "Datasets"],
     group: "misc",
-    home: false,
   },
   {
     path: "/tools/block-logic",

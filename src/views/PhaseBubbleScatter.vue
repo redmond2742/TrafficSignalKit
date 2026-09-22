@@ -19,11 +19,26 @@
 
     <v-row class="mt-2">
       <v-col cols="12" md="6">
-        <v-textarea v-model="csvText" label="HR CSV input (timestamp,event_code,event_param)" rows="8" />
-        <input type="file" accept=".csv,text/csv" @change="onFile" />
+        <!--
+          This was a textarea with a bare browser file input sitting under it,
+          both on show at once, and no mode switch. InputBox is what the other
+          high-resolution tools use.
+        -->
+        <h3 class="text-subtitle-1 mb-1">High-resolution CSV</h3>
+        <InputBox
+          v-model="csvText"
+          default-text="Paste high-resolution CSV rows: timestamp, event code, parameter"
+          accept=".csv,text/csv,.txt"
+        />
       </v-col>
       <v-col cols="12" md="6">
-        <v-textarea v-model="detectorText" label="Phase-detector assignment (e.g., DET 1 1)" rows="8" />
+        <h3 class="text-subtitle-1 mb-1">Phase-detector assignment</h3>
+        <v-textarea
+          v-model="detectorText"
+          placeholder="One per line, e.g. DET 1 1"
+          variant="outlined"
+          rows="8"
+        />
       </v-col>
     </v-row>
 
@@ -107,12 +122,13 @@
 import { Bubble } from 'vue-chartjs';
 import { Chart as ChartJS, PointElement, LinearScale, Tooltip, Legend } from 'chart.js';
 import { bubbleRadius } from '../utils/phaseBubbleScatter';
+import InputBox from '../components/foundational/InputBox.vue';
 
 ChartJS.register(PointElement, LinearScale, Tooltip, Legend);
 
 export default {
   name: 'PhaseBubbleScatter',
-  components: { Bubble },
+  components: { Bubble, InputBox },
   data() {
     return {
       csvText: '', detectorText: 'DET 1 1',
@@ -283,11 +299,6 @@ export default {
     },
     fieldLabel(field) {
       return this.numericFieldOptions.find((option) => option.value === field)?.title || field;
-    },
-    onFile(event) {
-      const [file] = event.target.files || [];
-      if (!file) return;
-      file.text().then((txt) => { this.csvText = txt; });
     },
     resetPage() {
       this.page = 1;

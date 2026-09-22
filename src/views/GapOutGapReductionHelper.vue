@@ -7,28 +7,15 @@
         <div class="layout-grid">
           <div>
             <h3>High-Resolution CSV Input</h3>
-            <v-switch
-              v-model="useFileUpload"
-              color="primary"
-              inset
-              :label="useFileUpload ? 'Input Mode: File Upload' : 'Input Mode: Text Paste'"
-              class="mb-3"
-            />
-
+            <!--
+              This used to carry its own "Input Mode" switch wrapping an
+              InputBox that already had one, so two toggles decided the same
+              thing. InputBox owns it now, as it does everywhere else.
+            -->
             <InputBox
-              v-if="!useFileUpload"
               v-model="hrCsvText"
               :default-text="csvPlaceholder"
-            />
-            <v-file-input
-              v-else
-              v-model="uploadedFile"
-              label="Upload HR CSV"
               accept=".csv,text/csv,.txt"
-              prepend-icon="mdi-file-upload"
-              variant="outlined"
-              density="comfortable"
-              @update:model-value="onFileSelected"
             />
 
             <h3 class="mt-4">Detector Mapping</h3>
@@ -132,8 +119,6 @@ export default {
   components: { Line, InputBox },
   data() {
     return {
-      useFileUpload: false,
-      uploadedFile: null,
       hrCsvText: "",
       csvPlaceholder:
         "Paste high-resolution CSV rows: timestamp, event code, parameter\n2024-03-14T08:00:00.100, 1, 6\n2024-03-14T08:00:02.200, 82, 1",
@@ -238,11 +223,6 @@ export default {
     },
   },
   methods: {
-    async onFileSelected(file) {
-      const picked = Array.isArray(file) ? file[0] : file;
-      this.uploadedFile = picked || null;
-      this.hrCsvText = picked ? await picked.text() : "";
-    },
     processData() {
       const events = this.parseEvents(this.hrCsvText);
       const { phaseToDetectors } = this.parseMapping(this.mappingText);

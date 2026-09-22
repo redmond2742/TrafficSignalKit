@@ -26,20 +26,53 @@
  */
 
 /**
- * The tools shown above the divider on the home page, in the order they
- * appear. This is the only place the featured set is decided -- edit this
- * list and the home page follows.
+ * Home page running order, highest priority first. One list decides both the
+ * order the cards appear in and which are featured, so the two cannot drift
+ * apart: the first FEATURED_COUNT entries go above the divider.
  *
- * These six are a starting point, not a considered ranking.
+ * A home card missing from this list still renders, appended at the end, but
+ * tests/toolRegistry.test.mjs fails so it gets placed deliberately.
  */
-export const FEATURED_PATHS = [
-  "/yellow-red-running",
+export const HOME_ORDER = [
   "/ped-conflict-correlator",
-  "/split-failure-checker",
-  "/delay-estimator",
+  "/detector-bubble-chart",
+  "/yellow-red-running",
+  "/preemption-plotter",
+  "/pattern-calendar",
   "/yolo-image-annotator",
+  "/detector-event-heat-map",
+  "/pedestrian-investigator",
+  "/gpx",
+  "/enumeration-matrix",
+  "/detection-plotter",
+  "/phase-bubble-scatter",
+  "/delay-estimator",
+  "/startup-loss-average",
+  "/gap-out-gap-reduction-helper",
+  "/cabinet-pm-scheduler",
+  "/split-history",
+  "/signal-offsets",
+  "/gpx-mapper",
+  "/basic-timing-seeker",
+  "/explainer",
+  "/gpx-phase-plotter",
+  "/phase-plotter",
+  "/stuck-detectors",
+  "/skipped-phase-finder",
+  "/split-failure-checker",
+  "/message-sign-designer",
   "/coordination-learning-tool",
+  "/split-calculator",
+  "/practice-exam",
+  "/traffic-simulator",
+  "/gpx-elevation",
+  "/detectorRLR",
+  "/geojson-mapper",
+  "/video-frame-extractor",
 ];
+
+/** How many of HOME_ORDER sit above the divider. */
+export const FEATURED_COUNT = 6;
 
 /** The desktop menus, in bar order. */
 export const NAV_GROUPS = [
@@ -518,22 +551,24 @@ export function toolsInGroup(tools, group) {
     .sort((a, b) => navLabel(a).localeCompare(navLabel(b)));
 }
 
-/** The home page cards, in the order they are curated in TOOLS. */
+/** The home page cards, in HOME_ORDER. Anything unlisted lands at the end. */
 export function homeTools(tools) {
-  return (tools || []).filter((tool) => tool.home !== false);
+  const cards = (tools || []).filter((tool) => tool.home !== false);
+  const rank = new Map(HOME_ORDER.map((path, index) => [path, index]));
+  const place = (tool) => (rank.has(tool.path) ? rank.get(tool.path) : HOME_ORDER.length);
+  return cards
+    .map((tool, index) => ({ tool, index }))
+    // index breaks ties so unlisted tools keep their registry order
+    .sort((a, b) => place(a.tool) - place(b.tool) || a.index - b.index)
+    .map((entry) => entry.tool);
 }
 
-/**
- * The featured tools, in FEATURED_PATHS order rather than registry order.
- * A path that is not a home card is skipped rather than shown without a card.
- */
+/** The cards above the divider. */
 export function featuredTools(tools) {
-  const byPath = new Map(homeTools(tools).map((tool) => [tool.path, tool]));
-  return FEATURED_PATHS.map((path) => byPath.get(path)).filter(Boolean);
+  return homeTools(tools).slice(0, FEATURED_COUNT);
 }
 
-/** The remaining home cards, keeping their curated order. */
+/** Everything below the divider. */
 export function otherTools(tools) {
-  const featured = new Set(featuredTools(tools).map((tool) => tool.path));
-  return homeTools(tools).filter((tool) => !featured.has(tool.path));
+  return homeTools(tools).slice(FEATURED_COUNT);
 }

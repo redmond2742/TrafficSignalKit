@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import {
   TOOLS,
   NAV_GROUPS,
-  FEATURED_PATHS,
+  HOME_ORDER,
+  FEATURED_COUNT,
   featuredTools,
   otherTools,
   navLabel,
@@ -122,33 +123,43 @@ test('every registry path is a real route', () => {
   }
 });
 
-test('every featured path is a real, unique home card', () => {
-  assert.equal(new Set(FEATURED_PATHS).size, FEATURED_PATHS.length, 'duplicate featured path');
-  const cards = new Set(homeTools(TOOLS).map((t) => t.path));
-  for (const path of FEATURED_PATHS) {
-    assert.ok(cards.has(path), `${path} is featured but is not a home card`);
+test('HOME_ORDER lists every home card exactly once', () => {
+  assert.equal(new Set(HOME_ORDER).size, HOME_ORDER.length, 'duplicate path in HOME_ORDER');
+  const cards = homeTools(TOOLS).map((t) => t.path);
+  for (const path of HOME_ORDER) {
+    assert.ok(cards.includes(path), `${path} is ordered but is not a home card`);
+  }
+  // the guard that matters: a new card must be placed deliberately, not
+  // silently appended to the bottom of the page
+  for (const path of cards) {
+    assert.ok(HOME_ORDER.includes(path), `${path} is a home card but missing from HOME_ORDER`);
   }
 });
 
-test('featured tools come back in FEATURED_PATHS order, not registry order', () => {
-  assert.deepEqual(featuredTools(TOOLS).map((t) => t.path), FEATURED_PATHS);
+test('home cards come back in HOME_ORDER, not registry order', () => {
+  assert.deepEqual(homeTools(TOOLS).map((t) => t.path), HOME_ORDER);
+});
+
+test('an unlisted home card is appended rather than dropped', () => {
+  const extra = { path: '/made-up', title: 'Made Up', description: 'x', topics: ['x'], group: 'misc' };
+  const result = homeTools([...TOOLS, extra]).map((t) => t.path);
+  assert.equal(result.length, HOME_ORDER.length + 1);
+  assert.equal(result[result.length - 1], '/made-up');
+});
+
+test('featured is the head of the order, and the rest is the tail', () => {
+  const featured = featuredTools(TOOLS);
+  const rest = otherTools(TOOLS);
+  assert.equal(featured.length, FEATURED_COUNT);
+  assert.deepEqual(featured.map((t) => t.path), HOME_ORDER.slice(0, FEATURED_COUNT));
+  assert.deepEqual(rest.map((t) => t.path), HOME_ORDER.slice(FEATURED_COUNT));
 });
 
 test('featured and the rest partition the home cards exactly', () => {
-  const featured = featuredTools(TOOLS);
-  const rest = otherTools(TOOLS);
   const all = homeTools(TOOLS);
-  assert.equal(featured.length + rest.length, all.length, 'a card was dropped or duplicated');
-  const seen = new Set([...featured, ...rest].map((t) => t.path));
-  assert.equal(seen.size, all.length, 'a card appears in both halves');
-});
-
-test('a featured path that is not a home card is skipped, not rendered blank', () => {
-  // guards the case where someone features a tool that has no card
-  const trimmed = TOOLS.filter((t) => t.path !== FEATURED_PATHS[0]);
-  const result = featuredTools(trimmed);
-  assert.equal(result.length, FEATURED_PATHS.length - 1);
-  assert.ok(result.every(Boolean), 'returned an undefined entry');
+  const combined = [...featuredTools(TOOLS), ...otherTools(TOOLS)];
+  assert.equal(combined.length, all.length, 'a card was dropped or duplicated');
+  assert.equal(new Set(combined.map((t) => t.path)).size, all.length, 'a card appears twice');
 });
 
 test('every featured card has art, since they are the largest on the page', () => {

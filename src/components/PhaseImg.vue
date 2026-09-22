@@ -36,8 +36,3 @@ export default {
 };
 </script>
 
-<style>
-.rotated-image {
-  transition: transform 0.5s ease;
-}
-</style>

@@ -21,6 +21,11 @@ import { createVuetify } from 'vuetify'
 import 'vuetify/styles'; // Ensure you import the styles
 import { aliases, mdi } from 'vuetify/iconsets/mdi';
 
+// Site-wide styles. Imported last so it lands after vuetify/styles in the
+// cascade - the same position these rules held when they were scattered across
+// component <style> blocks.
+import '@/styles/global.css';
+
 
 export default createVuetify({
   theme: {

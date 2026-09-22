@@ -29,17 +29,3 @@ export default {
   }),
 };
 </script>
-<style>
-.skip-link {
-  position: absolute;
-  left: -999px;
-  top: 8px;
-  background: #009688;
-  color: white;
-  padding: 8px 12px;
-  z-index: 9999;
-}
-.skip-link:focus {
-  left: 8px;
-}
-</style>

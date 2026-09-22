@@ -299,32 +299,3 @@ export default {
 };
 </script>
 
-<style>
-#app {
-  text-align: center;
-  padding: 20px;
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-.intersection {
-  position: relative;
-  width: 500px;
-  height: 200px;
-  margin: 0 auto;
-}
-
-#app {
-  background-color: rgb(255, 255, 255);
-}
-
-#input-usage .v-input__prepend-outer,
-#input-usage .v-input__append-outer,
-#input-usage .v-input__slot,
-#input-usage .v-messages {
-  border: 1px dashed rgba(0, 0, 0, 0.4);
-}
-.large-gap {
-  margin-top: 500px; /* Adjust the value as needed */
-}
-</style>

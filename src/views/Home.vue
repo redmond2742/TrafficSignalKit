@@ -520,55 +520,5 @@ export default {
   font-size: 0.95rem;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
 </style>
 
-<style>
-.intro-card {
-  max-width: 960px;
-  margin: 16px auto 24px;
-  border-radius: 16px;
-  background: rgba(0, 150, 136, 0.08);
-}
-.intro-text {
-  font-size: 1.05rem;
-  line-height: 1.6;
-  text-align: left;
-}
-.intro-actions {
-  justify-content: center;
-  padding-bottom: 20px;
-}
-.left-justify-text {
-  margin: 0;
-  padding: 0;
-  text-align: left; /* Aligning text to left */
-}
-p {
-  text-align: left;
-}
-.buffer {
-  width: 80%;
-  height: 20px;
-  float: center;
-  padding: 0.25em;
-}
-li {
-  text-align: left;
-}
-
-.v-container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-</style>

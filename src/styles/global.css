@@ -163,8 +163,14 @@ th {
 th {
   background-color: #dddddd;
 }
-input[type="text"],
-select {
+/*
+ * Styling for the plain <input> elements in the CSV tables. The :not() guard
+ * matters: without it this also hits the <input> inside every Vuetify field,
+ * where a 25px top margin and 12px padding fight Vuetify's own sizing. That is
+ * what made the header search field 83px tall in a 64px bar.
+ */
+input[type="text"]:not(.v-field__input),
+select:not(.v-field__input) {
   width: 100%;
   padding: 12px 20px;
   margin: 8px 0;

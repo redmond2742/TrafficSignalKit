@@ -30,6 +30,7 @@
         <v-text-field
           ref="field"
           v-model="query"
+          class="header-search__field"
           :autofocus="expanded"
           hide-details
           single-line
@@ -289,6 +290,32 @@ export default {
 .header-search {
   max-width: 320px;
   width: 100%;
+}
+
+/*
+ * Slimmer than Vuetify's "compact" 40px. A search field in a 64px bar reads
+ * better as a slot than as a full-size form control, and 34px still clears the
+ * 24px icon comfortably.
+ */
+.header-search__field :deep(.v-field) {
+  --v-input-control-height: 34px;
+  min-height: 34px;
+  border-radius: 17px;
+}
+.header-search__field :deep(.v-field__input) {
+  min-height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 0.875rem;
+}
+.header-search__field :deep(.v-field__prepend-inner),
+.header-search__field :deep(.v-field__append-inner) {
+  padding-top: 0;
+  align-items: center;
+}
+.header-search__field :deep(.v-field__prepend-inner .v-icon) {
+  font-size: 20px;
+  opacity: 0.85;
 }
 .header-search-compact {
   display: flex;

@@ -13,6 +13,17 @@ export const websiteJsonLd = {
   "@type": "WebSite",
   name: site.name,
   url: site.baseUrl,
+  // index.html used to declare a second, competing WebSite entity just to
+  // carry this. The ?q= target it advertises is now actually implemented, by
+  // Home reading $route.query.q.
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${site.baseUrl}/?q={search_term_string}`,
+    },
+    "query-input": "required name=search_term_string",
+  },
 };
 
 export const softwareApplicationJsonLd = {

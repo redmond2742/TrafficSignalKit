@@ -37,14 +37,14 @@
       </div>
     </template>
 
-    <v-spacer v-if="mobileViewHide"></v-spacer>
     <v-spacer></v-spacer>
 
-    <v-switch
-      v-model="darkMode"
-      :label="darkMode ? '🌙 Dark Mode' : '☀️ Light Mode'"
-      @change="toggleDarkMode"
-    ></v-switch>
+    <!--
+      The search field sits in the row's existing space (two v-spacers used to
+      hold ~340px of nothing at 1280px). It must not make the bar taller; see
+      HeaderSearch.vue.
+    -->
+    <HeaderSearch />
 
     <template v-slot:append>
       <v-btn large plain
@@ -92,6 +92,7 @@
 
 <script>
 import { ref, onMounted } from "vue";
+import HeaderSearch from "./HeaderSearch.vue";
 import {
   TOOLS,
   NAV_GROUPS,
@@ -100,26 +101,12 @@ import {
 } from "@/utils/toolRegistry.js";
 
 export default {
+  components: { HeaderSearch },
   data() {
     return {
-      darkMode: true, // Initial mode state
       dialog: false,
       drawer: false, // Controls the drawer visibility
     };
-  },
-  methods: {
-    toggleDarkMode() {
-      this.$vuetify.theme.global.name = this.darkMode ? "dark" : "light";
-    },
-  },
-  mounted() {
-    console.log(this.$vuetify.breakpoint);
-    // Detect system preference for initial mode
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-    this.darkMode = prefersDark;
-    this.$vuetify.theme.global.name = prefersDark ? "dark" : "light";
   },
   computed: {
     /** The desktop menus, each already sorted, straight from the registry. */

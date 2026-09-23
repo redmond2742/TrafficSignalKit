@@ -35,6 +35,17 @@ app.use(createPinia());
 app.use(head);
 
 
+/**
+ * Drop the JSON-LD that scripts/build-seo-html.mjs baked into the static HTML.
+ *
+ * @vueuse/head dedupes <meta> and <link rel=canonical> against tags it did not
+ * create, but not <script type="application/ld+json">, so without this every
+ * page carries two copies of every block once HeadManager mounts.
+ */
+document
+  .querySelectorAll('script[data-seo-prerender]')
+  .forEach((el) => el.remove());
+
 app.mount('#app')
 
 

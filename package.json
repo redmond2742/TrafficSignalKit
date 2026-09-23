@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "node --no-warnings ./node_modules/.bin/vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/build-seo-html.mjs",
     "preview": "vite preview",
     "test": "node --test tests/*.test.mjs",
     "prebuild": "node scripts/generate-sitemap.mjs"

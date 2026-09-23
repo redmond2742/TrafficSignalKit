@@ -31,6 +31,7 @@
           :items="dataTableItems"
           :headers="headers"
           height="400"
+          item-height="48"
           item-value="name"
           return-object
           show-select

@@ -390,3 +390,18 @@ export const routeMeta = {
     robots: "noindex, follow",
   },
 };
+
+/**
+ * The same entries keyed by path instead of route name.
+ *
+ * routeMeta is keyed by route name; toolRegistry.js is keyed by path. Rather
+ * than rekey either one -- their titles are deliberately different, short UI
+ * labels versus keyword-loaded search titles -- this derives the second
+ * keyspace so build scripts and tests, which only know paths, can look meta up
+ * without the router.
+ */
+export const metaByPath = Object.fromEntries(
+  Object.entries(routeMeta)
+    .filter(([, meta]) => meta.path)
+    .map(([name, meta]) => [meta.path, { ...meta, name }])
+);

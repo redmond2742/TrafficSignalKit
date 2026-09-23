@@ -1,6 +1,7 @@
 {
   "name": "signalkit",
   "version": "0.0.1",
+  "type": "module",
   "scripts": {
     "dev": "node --no-warnings ./node_modules/.bin/vite",
     "build": "vite build && node scripts/build-seo-html.mjs",

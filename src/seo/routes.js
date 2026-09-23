@@ -314,6 +314,7 @@ export const routeMeta = {
   "not-found": {
     title: "Page Not Found | Traffic Signal Kit",
     description: "The requested page could not be found.",
-    path: "/",
+    // No path: a canonical here would point every 404 at the homepage.
+    robots: "noindex, follow",
   },
 };

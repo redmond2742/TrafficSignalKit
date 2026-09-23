@@ -18,7 +18,14 @@ const title = computed(() => meta.value.title || site.defaultTitle);
 const description = computed(
   () => meta.value.description || site.defaultDescription
 );
-const canonical = computed(() => absoluteUrl(meta.value.path || route.path));
+// A noindex page (the 404 catch-all) gets no canonical at all -- pointing it
+// anywhere either consolidates junk URLs onto a real page or, as it used to,
+// onto the homepage.
+const robots = computed(() => meta.value.robots || null);
+const indexable = computed(() => !robots.value || !robots.value.includes("noindex"));
+const canonical = computed(() =>
+  indexable.value ? absoluteUrl(meta.value.path || route.path) : null
+);
 const ogImage = computed(() =>
   absoluteUrl(meta.value.ogImage || site.defaultOgImage)
 );
@@ -40,9 +47,10 @@ useHead(() => ({
   title: title.value,
   meta: [
     { name: "description", content: description.value },
+    ...(robots.value ? [{ name: "robots", content: robots.value }] : []),
     { property: "og:title", content: title.value },
     { property: "og:description", content: description.value },
-    { property: "og:url", content: canonical.value },
+    ...(canonical.value ? [{ property: "og:url", content: canonical.value }] : []),
     { property: "og:type", content: "website" },
     { property: "og:image", content: ogImage.value },
     { name: "twitter:card", content: "summary_large_image" },
@@ -50,7 +58,7 @@ useHead(() => ({
     { name: "twitter:description", content: description.value },
     { name: "twitter:image", content: ogImage.value },
   ],
-  link: [{ rel: "canonical", href: canonical.value }],
+  link: canonical.value ? [{ rel: "canonical", href: canonical.value }] : [],
   script: [
     {
       type: "application/ld+json",

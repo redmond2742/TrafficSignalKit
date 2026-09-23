@@ -1,8 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /admin
-Disallow: /api
-Disallow: /draft
-Disallow: /node_modules
 
-Sitemap: https://trafficsignalkit.com/sitemap.xml
+Sitemap: https://www.trafficsignalkit.com/sitemap.xml

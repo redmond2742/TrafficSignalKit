@@ -1,4 +1,4 @@
-import { site, absoluteUrl } from "./site";
+import { site, absoluteUrl } from "./site.js";
 
 export const organizationJsonLd = {
   "@context": "https://schema.org",

@@ -18,6 +18,8 @@ export const routeMeta = {
     path: "/blog",
   },
   HighResDataExplainerPost: {
+    datePublished: "2026-02-07",
+    dateModified: "2026-02-07",
     title:
       "High-Resolution Data Explainer | Indiana Enumerations",
     description:
@@ -25,6 +27,8 @@ export const routeMeta = {
     path: "/blog/high-resolution-data-explainer",
   },
   GPXMapperKnowledgeHubPost: {
+    datePublished: "2026-02-07",
+    dateModified: "2026-02-07",
     title: "GPX Mapper Guide | Map Tracks with Street View Checks",
     description:
       "Learn GPX input guidance, map workflow steps, and coordinate validation using the GPX Mapper tool.",
@@ -312,18 +316,24 @@ export const routeMeta = {
     path: "/reference",
   },
   OffsetsAreThePoint: {
+    datePublished: "2026-01-26",
+    dateModified: "2026-01-27",
     title: "Offsets Are the Point | Coordination & the Green Wave",
     description:
       "Why cycle length, splits, and time-of-day schedules exist only to serve the green wave, and how to reason about signal offsets.",
     path: "/blog/offsets-are-the-point",
   },
   HighResSplitHistoryPost: {
+    datePublished: "2026-02-07",
+    dateModified: "2026-02-07",
     title: "Split History Guide | Turn Cycle Data into Splits",
     description:
       "A walkthrough of the inputs, workflow, and filtering that make high-resolution split history reports fast to interpret.",
     path: "/blog/high-resolution-split-history",
   },
   TimeseriesAllEnumerationsPost: {
+    datePublished: "2026-02-07",
+    dateModified: "2026-02-07",
     title: "Enumeration Timeline Guide | Every Event on One Plot",
     description:
       "Turn high-resolution controller logs into a visual map of preemption, TSP, and phase activity on a single event timeline.",

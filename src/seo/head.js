@@ -16,6 +16,9 @@ import {
   organizationJsonLd,
   websiteJsonLd,
   softwareApplicationJsonLd,
+  softwareApplicationFor,
+  blogPostingFor,
+  breadcrumbsFor,
 } from "./jsonld.js";
 
 /**
@@ -37,6 +40,64 @@ const OG_BY_PATH = Object.fromEntries(
  */
 export function resolveMeta(path, name) {
   return metaByPath[path] || (name ? routeMeta[name] : null) || {};
+}
+
+const TOOL_BY_PATH = Object.fromEntries(TOOLS.map((tool) => [tool.path, tool]));
+
+/**
+ * In the registry for navigation and search, but not applications: describing
+ * an about page or a notes page as SoftwareApplication is simply untrue.
+ */
+const NOT_AN_APP = new Set(["/about", "/blog", "/reference"]);
+
+/**
+ * The structured data for one route.
+ *
+ * Organization and WebSite are sitewide. Everything else depends on what the
+ * page actually is: every route used to claim to be the same single
+ * SoftwareApplication, which told Google the site was one app.
+ */
+function jsonLdFor(path, meta, indexable) {
+  const blocks = [organizationJsonLd, websiteJsonLd];
+
+  // A page that is not indexed gets nothing beyond the sitewide entities:
+  // breadcrumbs pointing at a URL we are asking Google to drop are noise.
+  if (!indexable) return blocks;
+
+  if (path === "/") {
+    blocks.push(softwareApplicationJsonLd);
+  } else if (path.startsWith("/blog/")) {
+    blocks.push(
+      blogPostingFor({ ...meta, path, image: meta.ogImage || OG_BY_PATH[path] }),
+      breadcrumbsFor([
+        { name: "Home", path: "/" },
+        { name: "Blog", path: "/blog" },
+        { name: meta.title || path, path },
+      ]),
+    );
+  } else {
+    const tool = NOT_AN_APP.has(path) ? null : TOOL_BY_PATH[path];
+    if (tool) {
+      blocks.push(
+        softwareApplicationFor({
+          name: tool.title,
+          description: tool.description,
+          path,
+          image: tool.image,
+        }),
+      );
+    }
+    blocks.push(
+      breadcrumbsFor([
+        { name: "Home", path: "/" },
+        { name: (tool && tool.title) || meta.title || path, path },
+      ]),
+    );
+  }
+
+  const faq = faqJsonLd(meta);
+  if (faq) blocks.push(faq);
+  return blocks;
 }
 
 function faqJsonLd(meta) {
@@ -68,12 +129,7 @@ export function headFor(path, name) {
     robots,
     canonical: indexable ? absoluteUrl(meta.path || path) : null,
     ogImage: absoluteUrl(meta.ogImage || OG_BY_PATH[path] || site.defaultOgImage),
-    jsonLd: [
-      organizationJsonLd,
-      websiteJsonLd,
-      softwareApplicationJsonLd,
-      faqJsonLd(meta),
-    ].filter(Boolean),
+    jsonLd: jsonLdFor(meta.path || path, meta, indexable),
   };
 }
 

@@ -90,7 +90,7 @@ export const TOOLS = [
     navTitle: "Yellow & Red Light Running Tool",
     description:
       "Detect detector-off events during yellow or red intervals",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Red+Light+Running.png",
+    image: "/images/yellow-red-running.webp",
     topics: ["Red Light Running", "Controller Data"],
     group: "data",
   },
@@ -99,7 +99,7 @@ export const TOOLS = [
     title: "Coordination Learning Tool",
     description:
       "Interactive sliders and visuals for cycle length, splits, offsets, scheduler plans, and coordinated phases.",
-    image: "/images/coordination-learning-tool.png",
+    image: "/images/coordination-learning-tool.webp",
     topics: ["Coordination", "Education", "Offsets"],
     group: "misc",
   },
@@ -108,7 +108,7 @@ export const TOOLS = [
     title: "Delay & Count Estimator",
     description:
       "Estimate detector call delays to phase service",
-    image: "/images/delay-estimator.png",
+    image: "/images/delay-estimator.webp",
     topics: ["Controller Data", "Delay", "Enumerations"],
     group: "data",
   },
@@ -117,7 +117,7 @@ export const TOOLS = [
     title: "YOLO Image Annotator",
     description:
       "Box traffic signal heads in roadway images and export a YOLO training dataset.",
-    image: "/images/yolo-image-annotator.png",
+    image: "/images/yolo-image-annotator.webp",
     topics: ["Machine Learning", "Detection", "Datasets", "Video"],
     group: "misc",
   },
@@ -126,7 +126,7 @@ export const TOOLS = [
     title: "Pedestrian Conflict Correlator",
     description:
       "Correlate detector on/off events with pedestrian walk and clearance intervals to see turning conflict exposure.",
-    image: "/images/ped-conflict-correlator.png",
+    image: "/images/ped-conflict-correlator.webp",
     topics: ["Controller Data", "Pedestrians", "Safety", "Detection"],
     group: "data",
   },
@@ -135,7 +135,7 @@ export const TOOLS = [
     title: "Pedestrian Investigator",
     description:
       "Summarize pedestrian walk, clearance, and crossing distance estimates.",
-    image: "/images/pedestrian-investigator.png",
+    image: "/images/pedestrian-investigator.webp",
     topics: ["Controller Data", "Pedestrians", "Diagnostics"],
     group: "data",
   },
@@ -144,7 +144,7 @@ export const TOOLS = [
     title: "Stuck Detector Finder",
     description:
       "Find detectors that appear to stay on in high-resolution data",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
+    image: "/images/stuck-detectors.webp",
     topics: ["Controller Data", "Detection", "Diagnostics"],
     group: "data",
   },
@@ -153,7 +153,7 @@ export const TOOLS = [
     title: "Skipped Phase Finder",
     description:
       "Find detector calls where the phase is not served within two minutes",
-    image: "/images/skipped-phase-finder.png",
+    image: "/images/skipped-phase-finder.webp",
     topics: ["Controller Data", "Detection", "Diagnostics"],
     group: "data",
   },
@@ -162,7 +162,7 @@ export const TOOLS = [
     title: "Split Failure Checker",
     description:
       "Flag green terminations with stop bar detectors still on",
-    image: "/images/split-failure-checker.png",
+    image: "/images/split-failure-checker.webp",
     topics: ["Controller Data", "Detection", "Diagnostics"],
     group: "data",
   },
@@ -171,7 +171,7 @@ export const TOOLS = [
     title: "Preemption Evaluator",
     description:
       "Find preemption events, their duration and the channel that served them",
-    image: "/images/preemption-evaluator.png",
+    image: "/images/preemption-evaluator.webp",
     topics: ["Controller Data", "Enumerations", "Preemption", "Diagnostics"],
     group: "data",
   },
@@ -180,7 +180,7 @@ export const TOOLS = [
     title: "Timeseries Plot All Enumerations",
     description:
       "Plot preemption (101-119) enumeration events over time",
-    image: "/images/preemption-plotter.png",
+    image: "/images/preemption-plotter.webp",
     topics: ["Controller Data", "Enumerations", "Preemption"],
     group: "data",
   },
@@ -189,7 +189,7 @@ export const TOOLS = [
     title: "Enumeration Matrix",
     description:
       "Plot enumeration events by phase/channel with timestamp tooltips",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+All+Enumerations+Plot.png",
+    image: "/images/enumeration-matrix.webp",
     topics: ["Controller Data", "Enumerations", "Diagnostics"],
     group: "data",
   },
@@ -198,7 +198,7 @@ export const TOOLS = [
     title: "Detection Channel Plotter",
     description:
       "Plot detection enumeration events by channel over time",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Detection+Events+Graph.png",
+    image: "/images/detection-plotter.webp",
     topics: ["Controller Data", "Enumerations", "Detection"],
     group: "data",
   },
@@ -207,7 +207,7 @@ export const TOOLS = [
     title: "Detector Bubble Chart",
     description:
       "Bubble chart of detector on-duration and off-to-on gaps by cycle",
-    image: "/images/detector-bubble-chart.png",
+    image: "/images/detector-bubble-chart.webp",
     topics: ["Controller Data", "Detection", "Cycles"],
     group: "data",
   },
@@ -216,7 +216,7 @@ export const TOOLS = [
     title: "Phase Bubble Scatter",
     description:
       "Bubble scatter of phase split, time since last ON, and detector OFF behavior",
-    image: "/images/phase-bubble-scatter.png",
+    image: "/images/phase-bubble-scatter.webp",
     topics: ["Controller Data", "Detection", "Phase"],
     group: "data",
   },
@@ -225,7 +225,7 @@ export const TOOLS = [
     title: "Detector Event Heat Map",
     description:
       "Heat map detector activity by time of day and phase/channel mappings",
-    image: "/images/detector-event-heat-map.png",
+    image: "/images/detector-event-heat-map.webp",
     topics: ["Controller Data", "Detection", "Heat Map"],
     group: "data",
   },
@@ -234,7 +234,7 @@ export const TOOLS = [
     title: "Start Up Loss Average",
     description:
       "Estimate start-up loss from green intervals and detector-off events",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Inductance_detectors.jpg",
+    image: "/images/stuck-detectors.webp",
     topics: ["Controller Data", "Detection", "Performance"],
     group: "data",
   },
@@ -243,7 +243,7 @@ export const TOOLS = [
     title: "Gap-Out & Gap Reduction Helper",
     description:
       "Estimate min green, passage, and optional gap-reduction settings from high-resolution detector headways.",
-    image: "/images/gap-out-gap-reduction-helper.png",
+    image: "/images/gap-out-gap-reduction-helper.webp",
     topics: ["Controller Data", "Detection", "Timing"],
     group: "data",
   },
@@ -253,7 +253,7 @@ export const TOOLS = [
     navTitle: "Cabinet PM Scheduler",
     description:
       "Plan preventative maintenance visits by technician and frequency.",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+Offset+Calculation.png",
+    image: "/images/cabinet-pm-scheduler.webp",
     topics: ["Maintenance", "Scheduling", "Cabinets"],
     group: "misc",
   },
@@ -263,7 +263,7 @@ export const TOOLS = [
     navTitle: "Split History",
     description:
       "Calculate Phase Durations from High Resolution Data",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+split+history+phase+termination+table.png",
+    image: "/images/split-history.webp",
     topics: ["Controller Data", "Enumerations", "Split"],
     group: "data",
   },
@@ -272,7 +272,7 @@ export const TOOLS = [
     title: "Signal Offset Calculator",
     description:
       "Calculate coordinated phase offsets cycle by cycle",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalkit.com+-+Offset+Calculation.png",
+    image: "/images/signal-offsets.webp",
     topics: ["Controller Data", "Coordination", "Offsets"],
     group: "data",
   },
@@ -281,7 +281,7 @@ export const TOOLS = [
     title: "Pattern Calendar",
     description:
       "Visualize coordination pattern changes by day and time in a calendar view.",
-    image: "/images/pattern-calendar.png",
+    image: "/images/pattern-calendar.webp",
     topics: ["Controller Data", "Coordination", "Calendar"],
     group: "data",
   },
@@ -290,7 +290,7 @@ export const TOOLS = [
     title: "GPX Mapper",
     description:
       "Plot GPX tracks on a map",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+GPX+Map+and+Table.png",
+    image: "/images/gpx-mapper.webp",
     topics: ["GPX", "Map"],
     group: "gpx",
   },
@@ -299,7 +299,7 @@ export const TOOLS = [
     title: "GeoJSON Mapper",
     description:
       "Upload and style GeoJSON files with map image export",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com+-+GPX+Map+and+Table.png",
+    image: "/images/gpx-mapper.webp",
     topics: ["GeoJSON", "Map", "Visualization"],
     group: "gpx",
   },
@@ -308,7 +308,7 @@ export const TOOLS = [
     title: "Basic Timing Seeker",
     description:
       "Estimate GTSS timing parameters from high-resolution controller data.",
-    image: "/images/basic-timing-seeker.png",
+    image: "/images/basic-timing-seeker.webp",
     topics: ["Controller Data", "Timing", "GTSS"],
     group: "data",
   },
@@ -318,7 +318,7 @@ export const TOOLS = [
     navTitle: "High Resolution Explainer",
     description:
       "Explore traffic signal controller enumerations and high resolution data logs",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-high-resolution-controller-data-explainer-ATSPM.png",
+    image: "/images/explainer.webp",
     topics: ["Controller Data", "Enumerations"],
     group: "data",
   },
@@ -328,7 +328,7 @@ export const TOOLS = [
     navTitle: "GPX & Phase Plotter",
     description:
       "Plot GPX as time space combined with Phase State over Time (with Transit Signal Priority (TSP) events)",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-GPX+and+High+Resolution+Signal+Data+for+Transit+Signal+Priority+(TSP).png",
+    image: "/images/gpx-phase-plotter.webp",
     topics: ["Controller Data", "Enumerations", "GPX", "Time-Space", "Coordination"],
     group: "gpx",
   },
@@ -337,7 +337,7 @@ export const TOOLS = [
     title: "Phase Plotter",
     description:
       "Plot Phase State over Time",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/Trafficsignalkit.com+-+Signal+Phase+Plotter+-+Red-Green-Yellow.png",
+    image: "/images/phase-plotter.webp",
     topics: ["Controller Data", "Enumerations"],
     group: "data",
   },
@@ -347,7 +347,7 @@ export const TOOLS = [
     navTitle: "Intersection Simulator",
     description:
       "Simulate Basic Intersection Functionality",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com+-+intersection+simulator.png",
+    image: "/images/traffic-simulator.webp",
     topics: ["Simulation", "Basic Timing"],
     group: "misc",
   },
@@ -356,7 +356,7 @@ export const TOOLS = [
     title: "Message Sign Designer",
     description:
       "Preview changeable message sign text with realistic sizing.",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/Trafficsignalkit.com+-+Changeable+Message+Sign+Editor.png",
+    image: "/images/message-sign-designer.webp",
     topics: ["Message Signs", "Visualization", "Field Devices"],
     group: "misc",
   },
@@ -365,7 +365,7 @@ export const TOOLS = [
     title: "Split Calculator",
     description:
       "Verify splits and cycle lengths during adjustments",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-split-calculator.png",
+    image: "/images/split-calculator.webp",
     topics: ["Coordination", "Split", "Calculator"],
     group: "misc",
   },
@@ -375,7 +375,7 @@ export const TOOLS = [
     navTitle: "Time Space Visualizer",
     description:
       "Plot a GPX file in a timespace diagram plot",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/trafficsignalkit.com-timespace-diagram-gpx-plot.png",
+    image: "/images/gpx.webp",
     topics: ["GPX", "Time-Space"],
     group: "gpx",
   },
@@ -384,7 +384,7 @@ export const TOOLS = [
     title: "Practice Exam",
     description:
       "Practice exam questions and grading",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-PracticeExamTE.jpg",
+    image: "/images/practice-exam.webp",
     topics: ["Exam", "Practice", "TE"],
     group: "misc",
   },
@@ -394,7 +394,7 @@ export const TOOLS = [
     navTitle: "GPX Elevation",
     description:
       "Plot elevation data from GPX files",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-GPX+Elevation+Plot+and+Location.png",
+    image: "/images/gpx-elevation.webp",
     topics: ["GPX", "Elevation", "Chart"],
     group: "gpx",
   },
@@ -404,7 +404,7 @@ export const TOOLS = [
     navTitle: "Red Light Runners",
     description:
       "Table of Yellow and Red light running events",
-    image: "https://trafficsignalkit.s3.us-east-2.amazonaws.com/Photos/TrafficSignalKit.com-Yellow+and+Red+Light+Running+Detection.png",
+    image: "/images/detectorrlr.webp",
     topics: ["Red Light Running", "Controller Data"],
     group: "data",
   },
@@ -459,7 +459,7 @@ export const TOOLS = [
     title: "Video Frame Extractor",
     description:
       "Extract video frames at a chosen FPS or from timestamp CSVs using a sync reference frame.",
-    image: "/images/video-frame-extractor.png",
+    image: "/images/video-frame-extractor.webp",
     topics: ["Video", "Detection", "Datasets"],
     group: "misc",
   },

@@ -53,6 +53,15 @@ body {
   /* v-main puts content exactly at the app bar's edge; this is the breathing
      room the old body margin used to provide. */
   padding-block: 16px 32px;
+  /*
+     Reserves the viewport before Vue mounts. #app is empty in the served HTML,
+     so the footer first painted just under the app bar and then jumped down
+     when the router view filled in -- one layout shift, measured at 0.579,
+     which is most of the way to a failing CLS on its own. Holding the height
+     from the first paint means the footer lands where it starts.
+     64px app bar + roughly 180px of footer.
+  */
+  min-height: calc(100vh - 244px);
 }
 
 /* from src/views/Home.vue - applies to every v-container on the site */

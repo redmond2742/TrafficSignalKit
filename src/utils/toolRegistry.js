@@ -40,6 +40,7 @@ export const HOME_ORDER = [
   "/preemption-plotter",
   "/pattern-calendar",
   "/yolo-image-annotator",
+  "/preemption-evaluator",
   "/detector-event-heat-map",
   "/pedestrian-investigator",
   "/gpx",
@@ -163,6 +164,15 @@ export const TOOLS = [
       "Flag green terminations with stop bar detectors still on",
     image: "/images/split-failure-checker.png",
     topics: ["Controller Data", "Detection", "Diagnostics"],
+    group: "data",
+  },
+  {
+    path: "/preemption-evaluator",
+    title: "Preemption Evaluator",
+    description:
+      "Find preemption events, their duration and the channel that served them",
+    image: "/images/preemption-evaluator.png",
+    topics: ["Controller Data", "Enumerations", "Preemption", "Diagnostics"],
     group: "data",
   },
   {

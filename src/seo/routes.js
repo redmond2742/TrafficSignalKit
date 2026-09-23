@@ -157,6 +157,12 @@ export const routeMeta = {
       "Plot preemption enumerations (101-119) over time for diagnostics.",
     path: "/preemption-plotter",
   },
+  preemptionEvaluator: {
+    title: "Preemption Evaluator | Event Duration & Channel Analysis",
+    description:
+      "Find preemption events in high-resolution controller data, with durations, channels and a Gantt chart of every sequence.",
+    path: "/preemption-evaluator",
+  },
   enumerationMatrix: {
     title: "Enumeration Matrix | Phase/Channel Event Diagnostics",
     description:

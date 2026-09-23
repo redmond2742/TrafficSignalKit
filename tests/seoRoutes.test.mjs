@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { routeMeta, metaByPath } from '../src/seo/routes.js';
 import { headFor } from '../src/seo/head.js';
 import { TOOLS } from '../src/utils/toolRegistry.js';
-import { parseRouterRoutes, indexableRoutes } from './routerSource.mjs';
+import { parseRouterRoutes, indexableRoutes } from '../scripts/routerSource.mjs';
 
 const isNoindex = (meta) => (meta.robots || '').includes('noindex');
 

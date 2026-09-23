@@ -1,8 +1,9 @@
 /**
  * Reads src/router/index.js as text and returns its route objects.
  *
- * Deliberately not a *.test.mjs file, so `node --test tests/*.test.mjs` does
- * not try to run it.
+ * Lives in scripts/ rather than tests/ because the sitemap generator and the
+ * per-route HTML build both need it; a build script importing from tests/
+ * would have the dependency backwards.
  *
  * Parsing source with a regex is crude, but it is a real running check with no
  * new dependencies, and it is what turns "the SEO metadata quietly disagrees

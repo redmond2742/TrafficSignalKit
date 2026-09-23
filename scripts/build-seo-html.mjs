@@ -10,6 +10,9 @@
  * The body stays client-rendered. This is about the head, which is what
  * decides how a page is titled, described and shared.
  *
+ * Each route is written twice, as <path>/index.html and as <path>.html, so it
+ * resolves whichever convention the host follows. See the note in main().
+ *
  * dist/index.html is deliberately left without a canonical. It serves both /
  * and the catch-all for unknown URLs, so a canonical there would make every
  * junk URL claim to be the homepage -- which is the exact defect this whole
@@ -40,6 +43,15 @@ function setMeta(html, attr, key, content) {
   );
   const tag = `<meta ${attr}="${key}" content="${escapeAttr(content)}">`;
   return pattern.test(html) ? html.replace(pattern, tag) : html.replace('</head>', `  ${tag}\n</head>`);
+}
+
+/**
+ * Where a route's HTML is written. Both forms, because Render resolves
+ * <path>/index.html only for a trailing-slash URL; see the note in main().
+ */
+export function outputPathsFor(routePath) {
+  const relative = routePath.replace(/^\//, '');
+  return [path.join(relative, 'index.html'), `${relative}.html`];
 }
 
 export function renderRoute(template, route) {
@@ -101,9 +113,22 @@ function main() {
       problems.push(`${route.path} did not get its canonical`);
     }
 
-    const dir = path.join(DIST, route.path.replace(/^\//, ''));
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'index.html'), html);
+    // Two forms, because which one a static host resolves is its own choice.
+    //
+    // Render serves dist/<path>/index.html only for a URL that already ends in
+    // a slash -- probed on the live site: /_seoprobe returned the SPA shell
+    // while /_seoprobe/ returned the file, with no redirect between them. So
+    // the directory form alone never reaches /split-history.
+    //
+    // dist/<path>.html is the other convention ("clean URLs"). Writing both
+    // costs a few hundred KB of small files and means the canonical URLs work
+    // under either behaviour, without a host-side rewrite rule.
+    for (const relative of outputPathsFor(route.path)) {
+      const target = path.join(DIST, relative);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, html);
+    }
+
     written.push(route.path);
   }
 
@@ -114,7 +139,9 @@ function main() {
     process.exit(1);
   }
 
-  console.log(`wrote ${written.length} per-route html files into dist/`);
+  console.log(
+    `wrote ${written.length} routes into dist/, as both <path>/index.html and <path>.html`,
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

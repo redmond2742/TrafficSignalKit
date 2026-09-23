@@ -31,6 +31,7 @@
           :items="dataTableItems"
           :headers="headers"
           height="400"
+          item-height="48"
           item-value="name"
           return-object
           show-select
@@ -125,119 +126,109 @@ export default {
       );
       this.mapJSONData = this.gpxMapData;
       if (this.inputData.length > 0) {
-        console.log("this shouldn't run unless inputbox");
-        this.dataTableItems = this.convertGPXToArray();
-        this.summaryMetrics = this.calculateSummaryMetrics();
+        // Rows and summary come from a single walk of the points; they used to
+        // be two passes, each running its own haversine over every point.
+        const { rows, summary } = this.buildRowsAndSummary();
+        this.dataTableItems = rows;
+        this.summaryMetrics = summary;
       }
     },
-    calculateSummaryMetrics() {
-      if (!this.gpxPointList || this.gpxPointList.length < 2) {
-        return null;
+    /**
+     * Builds the table rows and the summary in one walk of the points.
+     *
+     * These were two methods, each doing its own haversine over every point,
+     * and the row builder additionally round-tripped each timestamp through
+     * toISOString() and back into a new Date just to format it.
+     */
+    buildRowsAndSummary() {
+      const points = this.gpxPointList;
+      if (!points || points.length === 0) {
+        return { rows: [], summary: null };
       }
 
+      const rows = new Array(points.length);
       let totalDistanceFt = 0;
-      for (let i = 0; i < this.gpxPointList.length - 1; i++) {
-        const currentPoint = this.gpxPointList[i];
-        const nextPoint = this.gpxPointList[i + 1];
-        totalDistanceFt += this.earthDistance(
-          [currentPoint.lat, currentPoint.lon],
-          [nextPoint.lat, nextPoint.lon],
-          false
-        );
+      let previous = null;
+      let previousBearing = null;
+
+      for (let i = 0; i < points.length; i++) {
+        const point = points[i];
+        const { lat, lon } = point;
+        const elevation = point.ele ?? point.elevation ?? null;
+        // point.time is already a Date; the old code stringified it and reparsed
+        // it before formatting.
+        const iso = point.time ? point.time.toISOString() : null;
+
+        let speed = null;
+        let bearing = point.course || null;
+        let streetView = "";
+
+        if (previous) {
+          if (lat === previous.lat && lon === previous.lon) {
+            speed = 0;
+            if (previousBearing !== null && previousBearing !== undefined) {
+              bearing = previousBearing;
+            }
+          } else {
+            const distanceFt = this.earthDistance(
+              [previous.lat, previous.lon],
+              [lat, lon],
+              false
+            );
+            totalDistanceFt += distanceFt;
+
+            const seconds = (point.time.getTime() - previous.time.getTime()) / 1000;
+            if (seconds !== 0) {
+              speed = (distanceFt / seconds) * 0.681818;
+            }
+            if (!bearing) {
+              bearing = this.calculateBearing(previous.lat, previous.lon, lat, lon);
+            }
+          }
+          streetView =
+            `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}` +
+            `&heading=${bearing || 0}&pitch=0&fov=80`;
+        }
+
+        rows[i] = {
+          Timestamp: point.time ? point.time.toLocaleString() : "",
+          OGtimestamp: iso,
+          Coordinates: `${lat}, ${lon}`,
+          speed: speed !== null ? speed.toFixed(2) : null,
+          bearing: bearing !== null ? parseFloat(bearing).toFixed(2) : null,
+          elevation: elevation ? (elevation * 3.28084).toFixed(2) : null,
+          streetView,
+        };
+
+        previous = point;
+        previousBearing = bearing;
       }
 
-      const startTime = this.gpxPointList[0].time?.getTime?.();
-      const endTime =
-        this.gpxPointList[this.gpxPointList.length - 1].time?.getTime?.();
-      const totalSeconds =
-        startTime && endTime ? (endTime - startTime) / 1000 : 0;
+      return { rows, summary: this.summarize(points, totalDistanceFt) };
+    },
+
+    /** Formats the totals accumulated while building the rows. */
+    summarize(points, totalDistanceFt) {
+      if (points.length < 2) return null;
+
+      const startTime = points[0].time?.getTime?.();
+      const endTime = points[points.length - 1].time?.getTime?.();
+      const totalSeconds = startTime && endTime ? (endTime - startTime) / 1000 : 0;
 
       let distanceDisplay = `${totalDistanceFt.toFixed(2)} ft`;
       if (totalDistanceFt >= 5280) {
         distanceDisplay = `${(totalDistanceFt / 5280).toFixed(2)} miles`;
       }
 
-      const avgSpeed =
-        totalSeconds > 0
-          ? `${((totalDistanceFt / totalSeconds) * 0.681818).toFixed(1)} MPH`
-          : "N/A";
-
       return {
-        duration:
-          totalSeconds > 0 ? this.formatDuration(totalSeconds) : "N/A",
+        duration: totalSeconds > 0 ? this.formatDuration(totalSeconds) : "N/A",
         distance: distanceDisplay,
-        avgSpeed,
-        pointCount: this.gpxPointList.length,
+        avgSpeed:
+          totalSeconds > 0
+            ? `${((totalDistanceFt / totalSeconds) * 0.681818).toFixed(1)} MPH`
+            : "N/A",
+        pointCount: points.length,
       };
-    },
-    convertGPXToArray() {
-      const dataArray = [];
-
-      if (!this.gpxPointList || this.gpxPointList.length === 0) {
-        return dataArray;
-      }
-
-      for (let i = 0; i < this.gpxPointList.length; i++) {
-        const pt = this.gpxPointList[i];
-
-        const lat = pt.lat;
-        const lon = pt.lon;
-        const coordinates = `${lat}, ${lon}`;
-
-        const ele = pt.ele || pt.elevation || null;
-        const time = pt.time ? pt.time.toISOString() : null;
-
-        let speed = null;
-        let bearing = pt.course || null;
-
-        let streetViewLink = "";
-
-        if (i > 0) {
-          const prevPt = this.gpxPointList[i - 1];
-          const sameCoords = lat === prevPt.lat && lon === prevPt.lon;
-
-          if (sameCoords) {
-            speed = 0;
-            const prevBearing = dataArray[i - 1]?.bearing;
-            if (prevBearing !== undefined && prevBearing !== null) {
-              bearing = prevBearing;
-            }
-          } else {
-            const distanceFt = this.earthDistance(
-              [prevPt.lat, prevPt.lon],
-              [lat, lon],
-              false
-            );
-            const timeDiffSec =
-              (pt.time.getTime() - prevPt.time.getTime()) / 1000;
-
-            if (timeDiffSec !== 0) {
-              speed = (distanceFt / timeDiffSec) * 0.681818;
-            }
-
-            if (!bearing) {
-              bearing = this.calculateBearing(prevPt.lat, prevPt.lon, lat, lon);
-            }
-          }
-          streetViewLink =
-            `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=lat,lng&heading=bearing&pitch=0&fov=80`
-              .replace("lat", lat)
-              .replace("lng", lon)
-              .replace("bearing", bearing || 0);
-        }
-
-        dataArray.push({
-          Timestamp: time ? new Date(time).toLocaleString() : "",
-          OGtimestamp: time,
-          Coordinates: coordinates,
-          speed: speed !== null ? speed.toFixed(2) : null,
-          bearing: bearing !== null ? parseFloat(bearing).toFixed(2) : null,
-          elevation: ele ? (ele * 3.28084).toFixed(2) : null,
-          streetView: streetViewLink,
-        });
-      }
-
-      return dataArray;
     },
 
     calculateBearing(lat1, lon1, lat2, lon2) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renderRoute } from '../scripts/build-seo-html.mjs';
+import { renderRoute, outputPathsFor } from '../scripts/build-seo-html.mjs';
 import { headFor } from '../src/seo/head.js';
 import { indexableRoutes } from '../scripts/routerSource.mjs';
 
@@ -74,4 +74,46 @@ test('every indexable route renders with a canonical matching its own path', () 
     );
     assert.ok(!html.includes('<title>Traffic Signal Kit | Traffic Engineering Tools'), `${r.path}: kept the homepage title`);
   }
+});
+
+/**
+ * Render serves dist/<path>/index.html only when the URL already ends in a
+ * slash -- probed live: /_seoprobe returned the SPA shell, /_seoprobe/ returned
+ * the file, and there was no redirect between them. Emitting <path>.html as
+ * well means the canonical URLs resolve under either host convention.
+ */
+test('each route is written in both URL forms', () => {
+  assert.deepEqual(outputPathsFor('/split-history'), [
+    'split-history/index.html',
+    'split-history.html',
+  ]);
+});
+
+test('nested routes keep their directory structure in both forms', () => {
+  assert.deepEqual(outputPathsFor('/blog/offsets-are-the-point'), [
+    'blog/offsets-are-the-point/index.html',
+    'blog/offsets-are-the-point.html',
+  ]);
+  assert.deepEqual(outputPathsFor('/tools/block-logic'), [
+    'tools/block-logic/index.html',
+    'tools/block-logic.html',
+  ]);
+});
+
+test('no emitted path escapes dist', () => {
+  for (const route of indexableRoutes()) {
+    if (route.path === '/') continue;
+    for (const out of outputPathsFor(route.path)) {
+      assert.ok(!out.startsWith('/'), `${route.path}: ${out} is absolute`);
+      assert.ok(!out.includes('..'), `${route.path}: ${out} escapes dist`);
+    }
+  }
+});
+
+test('a route that is also a directory prefix gets both without colliding', () => {
+  // /blog is a route and /blog/* are routes, so dist needs blog.html beside a
+  // blog/ directory. They coexist; a collision would be a build failure.
+  const [dir, flat] = outputPathsFor('/blog');
+  assert.equal(dir, 'blog/index.html');
+  assert.equal(flat, 'blog.html');
 });

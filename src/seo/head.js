@@ -11,11 +11,25 @@
 
 import { site, absoluteUrl } from "./site.js";
 import { routeMeta, metaByPath } from "./routes.js";
+import { TOOLS } from "../utils/toolRegistry.js";
 import {
   organizationJsonLd,
   websiteJsonLd,
   softwareApplicationJsonLd,
 } from "./jsonld.js";
+
+/**
+ * Tools that have card art also have a social card, generated from it by
+ * scripts/generate-og-images.mjs. Deriving the path from the registry beats
+ * repeating it in 36 routeMeta entries, and tests/ogImages.test.mjs asserts
+ * every path this produces exists on disk.
+ */
+const OG_BY_PATH = Object.fromEntries(
+  TOOLS.filter((tool) => tool.image).map((tool) => [
+    tool.path,
+    `/og/${tool.path.replace(/^\//, "").replace(/\//g, "-").toLowerCase()}.jpg`,
+  ])
+);
 
 /**
  * Path first, falling back to route name. The catch-all route has a pattern
@@ -53,7 +67,7 @@ export function headFor(path, name) {
     description,
     robots,
     canonical: indexable ? absoluteUrl(meta.path || path) : null,
-    ogImage: absoluteUrl(meta.ogImage || site.defaultOgImage),
+    ogImage: absoluteUrl(meta.ogImage || OG_BY_PATH[path] || site.defaultOgImage),
     jsonLd: [
       organizationJsonLd,
       websiteJsonLd,

@@ -1,0 +1,151 @@
+/**
+ * The head for a page, as data.
+ *
+ * One function serves both consumers: HeadManager.vue applies it at runtime,
+ * and scripts/build-seo-html.mjs bakes it into the static HTML at build time.
+ * They cannot drift because they call the same function.
+ *
+ * Constraints, so this runs under bare `node` as well as Vite: no "@/" alias,
+ * no import.meta.env, no .vue imports, explicit .js extensions.
+ */
+
+import { site, absoluteUrl } from "./site.js";
+import { routeMeta, metaByPath } from "./routes.js";
+import { TOOLS } from "../utils/toolRegistry.js";
+import {
+  organizationJsonLd,
+  websiteJsonLd,
+  softwareApplicationJsonLd,
+  softwareApplicationFor,
+  blogPostingFor,
+  breadcrumbsFor,
+} from "./jsonld.js";
+
+/**
+ * Tools that have card art also have a social card, generated from it by
+ * scripts/generate-og-images.mjs. Deriving the path from the registry beats
+ * repeating it in 36 routeMeta entries, and tests/ogImages.test.mjs asserts
+ * every path this produces exists on disk.
+ */
+const OG_BY_PATH = Object.fromEntries(
+  TOOLS.filter((tool) => tool.image).map((tool) => [
+    tool.path,
+    `/og/${tool.path.replace(/^\//, "").replace(/\//g, "-").toLowerCase()}.jpg`,
+  ])
+);
+
+/**
+ * Path first, falling back to route name. The catch-all route has a pattern
+ * for a path and a real URL at runtime, so only its name resolves.
+ */
+export function resolveMeta(path, name) {
+  return metaByPath[path] || (name ? routeMeta[name] : null) || {};
+}
+
+const TOOL_BY_PATH = Object.fromEntries(TOOLS.map((tool) => [tool.path, tool]));
+
+/**
+ * In the registry for navigation and search, but not applications: describing
+ * an about page or a notes page as SoftwareApplication is simply untrue.
+ */
+const NOT_AN_APP = new Set(["/about", "/blog", "/reference"]);
+
+/**
+ * The structured data for one route.
+ *
+ * Organization and WebSite are sitewide. Everything else depends on what the
+ * page actually is: every route used to claim to be the same single
+ * SoftwareApplication, which told Google the site was one app.
+ */
+function jsonLdFor(path, meta, indexable) {
+  const blocks = [organizationJsonLd, websiteJsonLd];
+
+  // A page that is not indexed gets nothing beyond the sitewide entities:
+  // breadcrumbs pointing at a URL we are asking Google to drop are noise.
+  if (!indexable) return blocks;
+
+  if (path === "/") {
+    blocks.push(softwareApplicationJsonLd);
+  } else if (path.startsWith("/blog/")) {
+    blocks.push(
+      blogPostingFor({ ...meta, path, image: meta.ogImage || OG_BY_PATH[path] }),
+      breadcrumbsFor([
+        { name: "Home", path: "/" },
+        { name: "Blog", path: "/blog" },
+        { name: meta.title || path, path },
+      ]),
+    );
+  } else {
+    const tool = NOT_AN_APP.has(path) ? null : TOOL_BY_PATH[path];
+    if (tool) {
+      blocks.push(
+        softwareApplicationFor({
+          name: tool.title,
+          description: tool.description,
+          path,
+          image: tool.image,
+        }),
+      );
+    }
+    blocks.push(
+      breadcrumbsFor([
+        { name: "Home", path: "/" },
+        { name: (tool && tool.title) || meta.title || path, path },
+      ]),
+    );
+  }
+
+  const faq = faqJsonLd(meta);
+  if (faq) blocks.push(faq);
+  return blocks;
+}
+
+function faqJsonLd(meta) {
+  if (!meta.faq) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: meta.faq.map(({ question, answer }) => ({
+      "@type": "Question",
+      name: question,
+      acceptedAnswer: { "@type": "Answer", text: answer },
+    })),
+  };
+}
+
+/** Everything the page's <head> needs, for one route. */
+export function headFor(path, name) {
+  const meta = resolveMeta(path, name);
+  const robots = meta.robots || null;
+  // A noindex page gets no canonical: pointing it anywhere consolidates junk
+  // URLs onto a real page, which is how every 404 used to claim to be home.
+  const indexable = !robots || !robots.includes("noindex");
+  const title = meta.title || site.defaultTitle;
+  const description = meta.description || site.defaultDescription;
+
+  return {
+    title,
+    description,
+    robots,
+    canonical: indexable ? absoluteUrl(meta.path || path) : null,
+    ogImage: absoluteUrl(meta.ogImage || OG_BY_PATH[path] || site.defaultOgImage),
+    jsonLd: jsonLdFor(meta.path || path, meta, indexable),
+  };
+}
+
+/** The meta tag list, shared so runtime and build emit the same set. */
+export function metaTagsFor(head) {
+  return [
+    { name: "description", content: head.description },
+    ...(head.robots ? [{ name: "robots", content: head.robots }] : []),
+    { property: "og:title", content: head.title },
+    { property: "og:description", content: head.description },
+    ...(head.canonical ? [{ property: "og:url", content: head.canonical }] : []),
+    { property: "og:type", content: "website" },
+    { property: "og:image", content: head.ogImage },
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: head.title },
+    { name: "twitter:description", content: head.description },
+    { name: "twitter:image", content: head.ogImage },
+  ];
+}

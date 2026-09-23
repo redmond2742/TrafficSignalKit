@@ -18,14 +18,18 @@ export const routeMeta = {
     path: "/blog",
   },
   HighResDataExplainerPost: {
+    datePublished: "2026-02-07",
+    dateModified: "2026-02-07",
     title:
-      "High-Resolution Data Explainer Guide | Indiana Enumeration Walkthrough",
+      "High-Resolution Data Explainer | Indiana Enumerations",
     description:
       "Learn how to load high-resolution controller CSVs, decode Indiana enumerations, and follow event timestamps using the explainer tool.",
     path: "/blog/high-resolution-data-explainer",
   },
   GPXMapperKnowledgeHubPost: {
-    title: "GPX Mapper Guide | Map GPX Tracks with Street View Validation",
+    datePublished: "2026-02-07",
+    dateModified: "2026-02-07",
+    title: "GPX Mapper Guide | Map Tracks with Street View Checks",
     description:
       "Learn GPX input guidance, map workflow steps, and coordinate validation using the GPX Mapper tool.",
     path: "/blog/gpx-mapper-guide",
@@ -37,7 +41,7 @@ export const routeMeta = {
     path: "/terms-of-service",
   },
   SplitCalculator: {
-    title: "Traffic Signal Split Calculator 2 | Coordination & Timing Checks",
+    title: "Traffic Signal Split Calculator | Coordination Checks",
     description:
       "Verify split allocations and cycle lengths during coordination and timing plan adjustments.",
     path: "/split-calculator",
@@ -98,7 +102,7 @@ export const routeMeta = {
     path: "/gap-out-gap-reduction-helper",
   },
   cabinetPMScheduler: {
-    title: "Traffic Signal Cabinet PM Scheduler | Preventative Maintenance",
+    title: "Signal Cabinet PM Scheduler | Preventative Maintenance",
     description:
       "Schedule preventative maintenance visits for signal cabinets with technician assignments and adjustable frequencies.",
     path: "/cabinet-pm-scheduler",
@@ -157,6 +161,12 @@ export const routeMeta = {
       "Plot preemption enumerations (101-119) over time for diagnostics.",
     path: "/preemption-plotter",
   },
+  preemptionEvaluator: {
+    title: "Preemption Evaluator | Event Duration & Channel Analysis",
+    description:
+      "Find preemption events in high-resolution controller data, with durations, channels and a Gantt chart of every sequence.",
+    path: "/preemption-evaluator",
+  },
   enumerationMatrix: {
     title: "Enumeration Matrix | Phase/Channel Event Diagnostics",
     description:
@@ -194,7 +204,7 @@ export const routeMeta = {
     path: "/skipped-phase-finder",
   },
   coordinationLearningTool: {
-    title: "Traffic Signal Coordination Learning Tool | Cycle, Splits & Offsets",
+    title: "Signal Coordination Learning Tool | Cycle & Offsets",
     description:
       "Use interactive sliders and visuals to learn cycle length, split times, offsets, scheduler plans, and coordinated green phases across multiple signals.",
     path: "/coordination-learning-tool",
@@ -218,7 +228,7 @@ export const routeMeta = {
     path: "/pedestrian-investigator",
   },
   pedConflictCorrelator: {
-    title: "Pedestrian Conflict Correlator | Detector & Ped Phase Overlap",
+    title: "Pedestrian Conflict Correlator | Ped Phase Overlap",
     description:
       "Correlate detector channel on/off events with pedestrian walk and clearance intervals to visualize turning vehicle and pedestrian conflict exposure.",
     path: "/ped-conflict-correlator",
@@ -259,7 +269,7 @@ export const routeMeta = {
     path: "/practice-exam",
   },
   imageAnnotator: {
-    title: "YOLO Image Annotator | Traffic Signal Training Dataset Builder",
+    title: "YOLO Image Annotator | Signal Training Dataset Builder",
     description:
       "Draw bounding boxes around traffic signal heads in roadway images and export a YOLO training dataset with train/val splits, entirely in your browser.",
     path: "/yolo-image-annotator",
@@ -305,9 +315,103 @@ export const routeMeta = {
       "Quick reference notes and resources for traffic signal timing work.",
     path: "/reference",
   },
+  OffsetsAreThePoint: {
+    datePublished: "2026-01-26",
+    dateModified: "2026-01-27",
+    title: "Offsets Are the Point | Coordination & the Green Wave",
+    description:
+      "Why cycle length, splits, and time-of-day schedules exist only to serve the green wave, and how to reason about signal offsets.",
+    path: "/blog/offsets-are-the-point",
+  },
+  HighResSplitHistoryPost: {
+    datePublished: "2026-02-07",
+    dateModified: "2026-02-07",
+    title: "Split History Guide | Turn Cycle Data into Splits",
+    description:
+      "A walkthrough of the inputs, workflow, and filtering that make high-resolution split history reports fast to interpret.",
+    path: "/blog/high-resolution-split-history",
+  },
+  TimeseriesAllEnumerationsPost: {
+    datePublished: "2026-02-07",
+    dateModified: "2026-02-07",
+    title: "Enumeration Timeline Guide | Every Event on One Plot",
+    description:
+      "Turn high-resolution controller logs into a visual map of preemption, TSP, and phase activity on a single event timeline.",
+    path: "/blog/timeseries-plot-all-enumerations",
+  },
+  geoJsonMapper: {
+    title: "GeoJSON Mapper | Style & Export GeoJSON Maps",
+    description:
+      "Upload GeoJSON files, style the features on an interactive map, and export the result as an image for reports and exhibits.",
+    path: "/geojson-mapper",
+  },
+  phaseBubblePlot: {
+    title: "Phase Bubble Plot | Split Failure & Red Light Metrics",
+    description:
+      "Combine detector-to-phase mappings with split history to summarize split failure and red-light running metrics by phase.",
+    path: "/phase-bubble-plot",
+  },
+  patternCalendar: {
+    title: "Pattern Calendar | Coordination Patterns by Day",
+    description:
+      "Visualize coordination pattern changes by day and time of day in a calendar view, so schedule gaps and overrides stand out.",
+    path: "/pattern-calendar",
+  },
+  basicTimingSeeker: {
+    title: "Basic Timing Seeker | Estimate GTSS Timing Values",
+    description:
+      "Estimate basic signal timing parameters such as minimum green, passage, and clearance directly from high-resolution data.",
+    path: "/basic-timing-seeker",
+  },
+  startUpLossAverage: {
+    title: "Start Up Loss Average | Queue Start-Up Loss Time",
+    description:
+      "Estimate start-up loss time from green intervals and detector-off events across many cycles, averaged by phase.",
+    path: "/startup-loss-average",
+  },
+  timeToReduce: {
+    title: "Time to Reduce | Min Green, Extension & Gap-Out",
+    description:
+      "Combine controller events with detector assignments to see how long each phase sits in minimum green, extension, and gap-out.",
+    path: "/time-to-reduce",
+  },
+  splitFailureChecker: {
+    title: "Split Failure Checker | Green Ends with Demand Waiting",
+    description:
+      "Flag green terminations where stop bar detectors are still occupied, a direct indicator of split failure on that phase.",
+    path: "/split-failure-checker",
+  },
+  detectorEventHeatMap: {
+    title: "Detector Event Heat Map | Occupancy by Time of Day",
+    description:
+      "Heat map detector occupancy duration by time of day and phase or channel mapping to spot stuck, noisy, or idle detection.",
+    path: "/detector-event-heat-map",
+  },
+  blockLogic: {
+    title: "Block Logic Builder | Test Rules on Controller Data",
+    description:
+      "Build block-diagram logic rules, load templates, and step through them against high-resolution controller data event by event.",
+    path: "/tools/block-logic",
+  },
   "not-found": {
     title: "Page Not Found | Traffic Signal Kit",
     description: "The requested page could not be found.",
-    path: "/",
+    // No path: a canonical here would point every 404 at the homepage.
+    robots: "noindex, follow",
   },
 };
+
+/**
+ * The same entries keyed by path instead of route name.
+ *
+ * routeMeta is keyed by route name; toolRegistry.js is keyed by path. Rather
+ * than rekey either one -- their titles are deliberately different, short UI
+ * labels versus keyword-loaded search titles -- this derives the second
+ * keyspace so build scripts and tests, which only know paths, can look meta up
+ * without the router.
+ */
+export const metaByPath = Object.fromEntries(
+  Object.entries(routeMeta)
+    .filter(([, meta]) => meta.path)
+    .map(([name, meta]) => [meta.path, { ...meta, name }])
+);

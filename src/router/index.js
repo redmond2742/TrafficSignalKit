@@ -15,6 +15,7 @@ import GPXElevation from '../views/GPXElevation'
 import HighResDetectors from '../views/HighResDetectors'
 import PracticeExam from '../views/PracticeExam'
 import HighResPreemptionPlotter from '../views/HighResPreemptionPlotter'
+import PreemptionEvaluator from '../views/PreemptionEvaluator'
 import HighResEnumerationMatrix from '../views/HighResEnumerationMatrix'
 import Reference from '../views/Reference'
 import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
@@ -160,6 +161,11 @@ const routes = [
         path: '/preemption-plotter',
         name: 'preemptionPlotter',
         component: HighResPreemptionPlotter,
+    },
+    {
+        path: '/preemption-evaluator',
+        name: 'preemptionEvaluator',
+        component: PreemptionEvaluator,
     },
     {
         path: '/enumeration-matrix',

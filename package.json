@@ -9,10 +9,8 @@
     "prebuild": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
-    "@mapbox/togeojson": "^0.16.2",
     "@mdi/js": "^7.4.47",
     "@vueuse/head": "^2.0.0",
-    "@xmldom/xmldom": "^0.8.10",
     "chart.js": "^4.4.3",
     "chartjs-plugin-zoom": "^2.0.1",
     "gifshot": "^0.4.5",

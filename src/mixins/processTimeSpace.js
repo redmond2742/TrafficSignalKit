@@ -1,14 +1,9 @@
 import gpxParser from "gpxparser";
 import chartsAndPlots from "./chartsAndPlots";
 import { DateTime } from "luxon";
-//import * as toGeoJSON from "./mapbox/togeojson";
-import * as toGeoJSON from '@mapbox/togeojson';
-import { DOMParser } from '@xmldom/xmldom';
+import { gpxToGeoJson } from "../utils/gpxGeoJson.js";
 
 export default {
-    // toGeoJSON is an ES module namespace (see the import above), not a
-    // component options object; it was silently polluting the options of every
-    // component using this mixin. It is still called directly further down.
     mixins: [chartsAndPlots],
     data() {
         return {
@@ -274,29 +269,23 @@ export default {
             }
             return color;
           },
-          loadMapPoints(gpxInput){
-            // what does the outut need to look like to map this?
-            //const mapGPXData = toGeoJSON.gpx(gpxFile);
-            console.log(gpxInput)
-
-            //const g2j = new GPX2GeoJSON();
-            //const json = g2j.GPX2GeoJSON.fromText(gpxInput)
-            //const jsonstr = JSON.stringify(json, null, "  ");
-
-
-            //const doc = (new DOMParser()).parseFromString(text, "application/xml");
-            const dom = (new DOMParser()).parseFromString(gpxInput, 'text/xml');
-            //const dom = new xmldom.DOMParser().parseFromString(xmlStr, "text/xml");
-            const mapGeoJSON = toGeoJSON.gpx(dom)
-
-            console.log("Parsed gpx:", mapGeoJSON);
-
-            return mapGeoJSON;
-
-            //return gpxParsed.toGeoJSON();
-
-
-
+          /**
+           * GeoJSON for the map, from the parse we have already done.
+           *
+           * This used to take the raw GPX text and parse it a second time --
+           * and not with the browser's native parser either: the DOMParser
+           * imported here came from @xmldom/xmldom, which shadowed the global
+           * one and parsed several megabytes of XML in pure JavaScript. On a
+           * 4.2MB track that second parse cost as much as everything else in
+           * the pipeline put together.
+           *
+           * gpxparser already holds the tracks, routes and waypoints, so the
+           * work is reused rather than repeated. Its own toGeoJSON() would
+           * have served, but it is written with an undeclared `for (idx in)`
+           * global and throws inside an ES module.
+           */
+          loadMapPoints(gpx) {
+            return gpxToGeoJson(gpx);
           },
           loadGPXPoints(gpxFile) {
             let totalCumlDistance = 0;
@@ -452,7 +441,7 @@ export default {
               this.gpxPointList = gpx.tracks[0].points;
 
               if(mapPoints){
-                this.gpxMapData = this.loadMapPoints(inputGPXData);
+                this.gpxMapData = this.loadMapPoints(gpx);
                 //return mapJSONData;
              
               } else{

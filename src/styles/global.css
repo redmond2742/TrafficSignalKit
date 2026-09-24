@@ -409,3 +409,190 @@ dt {
 .rotated-image {
   transition: transform 0.5s ease;
 }
+
+/* ------------------------------------------------------------------- blog */
+/*
+ * from the <style scoped> block of all six /blog/* views.
+ *
+ * Each post carried its own near-copy of this, and the copies had drifted:
+ * one declared a white background, four did not; one used no serif face and
+ * no #111 at all; one lost the drop cap; only one styled inline <code>. The
+ * six now share these rules and carry no styles of their own, so a new post
+ * matches the others by writing the markup and nothing else.
+ *
+ * Five of them also carried a `prefers-color-scheme: dark` block that painted
+ * the article #f5f5f5 on #0f0f0f. It was the only dark-mode CSS in the repo:
+ * Vuetify is pinned to the light theme (see src/plugins/vuetify.js), so on a
+ * machine set to dark those posts rendered a black slab inside a white app
+ * bar, white footer and white cards. Black on white, always, is the whole
+ * point of this section.
+ */
+.blog-article {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+  font-family: "Georgia", "Times New Roman", serif;
+  color: #111;
+  background: #fff;
+  /* v-container centres text through #app; articles are read left-aligned. */
+  text-align: left;
+}
+
+.article-header {
+  border-top: 4px solid #111;
+  border-bottom: 2px solid #111;
+  padding: 16px 0 20px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.article-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  margin-bottom: 12px;
+}
+
+.article-title {
+  margin-bottom: 8px;
+  font-size: clamp(2.1rem, 3.8vw, 3.2rem);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.article-subtitle {
+  margin-bottom: 12px;
+  font-style: italic;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.article-meta {
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.article-callout {
+  font-weight: 600;
+  font-size: 1.1rem;
+  font-style: italic;
+  border-left: 4px solid #111;
+  padding-left: 16px;
+  margin: 20px 0;
+}
+
+.article-body {
+  column-count: 2;
+  column-gap: 32px;
+  column-rule: 1px solid rgba(0, 0, 0, 0.2);
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.article-body h2 {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin-top: 24px;
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.article-body p,
+.article-body ol,
+.article-body ul,
+.article-body pre,
+.article-body table {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin-bottom: 16px;
+}
+
+.article-body ol,
+.article-body ul {
+  padding-left: 20px;
+}
+
+.article-body code {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.92em;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.article-body pre {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+/* A <code> inside a <pre> would otherwise take the inline chip treatment. */
+.article-body pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+.article-lead::first-letter {
+  float: left;
+  font-size: 3rem;
+  line-height: 0.9;
+  padding-right: 10px;
+  font-weight: 700;
+}
+
+.article-figure {
+  margin: 16px 0 20px;
+  text-align: center;
+}
+
+.article-figure img {
+  max-width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.article-figure figcaption {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.coordinate-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.coordinate-table th,
+.coordinate-table td {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.coordinate-table th {
+  background: rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+}
+
+.article-actions {
+  margin-top: 16px;
+}
+
+.back-link {
+  margin-top: 24px;
+}
+
+@media (max-width: 900px) {
+  .article-body {
+    column-count: 1;
+  }
+}

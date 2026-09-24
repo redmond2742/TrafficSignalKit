@@ -1,6 +1,6 @@
 <template>
   <v-container class="blog-page">
-    <h1 class="h1-center-text">Traffic Signal Kit Blog</h1>
+    <h1 class="blog-masthead">Traffic Signal Kit Blog</h1>
     <v-card class="blog-card" variant="outlined">
       <v-card-text>
         <p>
@@ -182,15 +182,63 @@ export default {
 </script>
 
 <style scoped>
+/*
+ * The index shares the posts' palette: black on white, serif masthead. The
+ * article rules themselves live in src/styles/global.css, since all six posts
+ * use them; only what is specific to this list of cards is here.
+ */
 .blog-page {
   max-width: 960px;
   margin: 0 auto;
+  padding-bottom: 32px;
+  color: #111;
+  background: #fff;
+  text-align: left;
 }
+
+.blog-masthead {
+  border-top: 4px solid #111;
+  border-bottom: 2px solid #111;
+  padding: 16px 0 20px;
+  margin-bottom: 4px;
+  text-align: center;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: clamp(2.1rem, 3.8vw, 3.2rem);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .blog-card {
   margin-top: 24px;
   border-radius: 16px;
+  background: #fff;
+  color: #111;
 }
+
 .blog-card--link {
   cursor: pointer;
+}
+
+/*
+ * Vuetify gives both of these `white-space: nowrap` with an ellipsis, which
+ * truncated four of the six post titles and every subtitle on this page.
+ * Headlines are the reason to visit an index, so they wrap.
+ */
+.blog-card :deep(.v-card-title),
+.blog-card :deep(.v-card-subtitle) {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.blog-card :deep(.v-card-title) {
+  font-family: "Georgia", "Times New Roman", serif;
+  line-height: 1.35;
+  padding-top: 16px;
+}
+
+.blog-card :deep(.v-card-subtitle) {
+  font-style: italic;
+  padding-bottom: 4px;
 }
 </style>

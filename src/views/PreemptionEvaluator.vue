@@ -22,8 +22,8 @@
             </p>
             <p class="mt-2">
               Load a <b>GTSS export</b> and each channel is named by what it
-              actually serves &mdash; "Preempt 3" becomes "Ygnacio Valley Road
-              from the ESE (WB)" &mdash; so a pattern points at a direction
+              actually serves &mdash; "Preempt 3" becomes "Main Street from
+              the ESE (WB)" &mdash; so a pattern points at a direction
               rather than a channel number.
             </p>
           </v-expansion-panel-text>
@@ -107,8 +107,8 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
             </pre>
             <p>
               Channel 3 at signal 1 serves phases 1 and 6; both belong to
-              approach 1-2, which is Ygnacio Valley Road lying 120&deg; from
-              the intersection. So the channel is the <b>ESE approach</b>, and
+              approach 1-2, which is Main Street lying 120&deg; from the
+              intersection. So the channel is the <b>ESE approach</b>, and
               the traffic on it is <b>westbound</b>.
             </p>
             <p class="mt-2">
@@ -231,7 +231,7 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
     <!--
       A channel number alone says nothing. A GTSS export carries
       preempt.txt -> phases.txt -> approaches.txt, which is what turns
-      "Preempt 3" into "Ygnacio Valley Road from the ESE".
+      "Preempt 3" into "Main Street from the ESE".
     -->
     <div class="gtss-row">
       <v-btn

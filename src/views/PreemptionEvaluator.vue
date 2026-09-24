@@ -42,7 +42,11 @@
                 Calls that were registered but <b>never served</b>, which are
                 easy to miss when scrolling raw data
               </li>
-              <li>A downloadable CSV of every event</li>
+              <li>
+                Every event as a <b>CSV or an Excel workbook</b>, with the
+                date in its own column so the day is something a spreadsheet
+                can group by
+              </li>
               <li>
                 A <b>kit screen</b>: every event plotted by date and time of
                 day, coloured per signal and channel
@@ -50,6 +54,10 @@
               <li>
                 A <b>weekly pattern</b> heatmap per channel, hour against day
                 of week
+              </li>
+              <li>
+                A <b>signal picker</b> on every chart, so two intersections
+                can be compared or one examined on its own
               </li>
             </ul>
           </v-expansion-panel-text>
@@ -75,10 +83,17 @@
               one.
             </p>
             <p class="mt-2">
+              Every chart carries a <b>signal picker</b>. Left on "all
+              signals" the charts show the whole set, with each row named by
+              signal and channel so two intersections cannot be read as one;
+              pick a signal and the chart narrows to it. The tables and the
+              exports stay on the full set either way, so narrowing the
+              picture never quietly narrows the numbers.
+            </p>
+            <p class="mt-2">
               <b>Weekly pattern</b> asks the other half of the question: not
               "the same time every day" but "only on working days". Each
-              channel gets an hour-by-weekday grid, and the signal picker
-              switches between intersections. A commute rides Monday to Friday
+              channel gets an hour-by-weekday grid. A commute rides Monday to Friday
               and leaves the weekend rows empty. Apparatus answering real calls
               fills the whole week, because emergencies keep no office hours.
               The percentage beside each grid is the share of that channel's
@@ -383,6 +398,21 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
 
       <h2 class="section-title">Events by channel</h2>
       <div class="chart-controls">
+        <!--
+          One picker for every mode. A chart of two intersections at once
+          answers a different question from a chart of one, and until now
+          only the weekly grids let you ask the second.
+        -->
+        <v-select
+          v-if="signals.length > 1"
+          v-model="chartSignal"
+          :items="chartSignalOptions"
+          label="Signal"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="chart-signal"
+        ></v-select>
         <v-btn-toggle
           v-model="chartMode"
           mandatory
@@ -423,7 +453,7 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
           Every event on its channel, at the time it happened. Scroll to zoom
           the time axis &mdash; events are short next to a whole day of data.
         </template>
-        <template v-if="chartMode === 'weekly'">
+        <template v-else-if="chartMode === 'weekly'">
           Events by hour and day of week, one grid per channel. A vehicle
           riding a commute concentrates into a few cells in the Monday-to-Friday
           rows. Apparatus answering real calls spreads across the whole week,
@@ -447,20 +477,12 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
       <!-- A CSS grid rather than a canvas: no charting library has a matrix
            type built in, and this stays legible and selectable at any size. -->
       <div v-if="chartMode === 'weekly'" class="heatmaps">
-        <v-select
-          v-if="heatmapSignalOptions.length > 1"
-          v-model="heatmapSignal"
-          :items="heatmapSignalOptions"
-          label="Signal"
-          density="compact"
-          variant="outlined"
-          hide-details
-          class="heatmap-signal"
-        ></v-select>
-
         <div v-for="grid in heatmaps" :key="`${grid.signal}-${grid.channel}`" class="heatmap">
           <div class="heatmap-head">
             <h3 class="heatmap-title">
+              <span v-if="chartShowsSignal" class="heatmap-signal-name">
+                {{ grid.signal || "—" }} ·
+              </span>
               Preempt {{ grid.channel }}
               <span v-if="servesLabel(grid.signal, grid.channel)" class="heatmap-serves">
                 — {{ servesLabel(grid.signal, grid.channel) }}
@@ -548,21 +570,39 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
         </v-table>
       </div>
 
-      <h2 class="section-title">
-        Event detail
-        <span v-if="shownEvents.length < filteredEvents.length" class="muted">
-          (first {{ shownEvents.length }} of {{ filteredEvents.length }})
-        </span>
-      </h2>
+      <div class="detail-head">
+        <h2 class="section-title">
+          Event detail
+          <span v-if="shownEvents.length < filteredEvents.length" class="muted">
+            (first {{ shownEvents.length }} of {{ filteredEvents.length }})
+          </span>
+        </h2>
+        <!--
+          Every filtered event, not just the rows drawn above: the table stops
+          at 500 to stay responsive, and an export that quietly stopped there
+          too would be the kind of thing found out much later.
+        -->
+        <v-btn
+          size="small"
+          variant="tonal"
+          prepend-icon="mdi-file-table-outline"
+          @click="exportExcel"
+        >
+          Export to Excel
+        </v-btn>
+      </div>
       <div class="table-wrapper">
         <v-table density="compact">
           <thead>
             <tr>
               <th v-if="multiSignal">Signal</th>
               <th>Channel</th>
+              <th>Date</th>
               <th>Start</th>
               <th>Duration</th>
               <th>Status</th>
+              <th v-if="hasDirections">Direction</th>
+              <th v-if="hasDirections">Phases</th>
               <th>Call&nbsp;&rarr;&nbsp;entry</th>
               <th>Track clear</th>
               <th>Dwell</th>
@@ -577,9 +617,16 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
             >
               <td v-if="multiSignal">{{ event.signal || "—" }}</td>
               <td>{{ event.channel }}</td>
+              <td class="nowrap">{{ dateOnly(event.startMs) }}</td>
               <td class="nowrap">{{ clockTime(event.startMs) }}</td>
               <td>{{ secs(event.durationMs) }}</td>
               <td>{{ statusLabels[event.status] }}</td>
+              <td v-if="hasDirections" class="direction">
+                {{ channelInfo(event.signal, event.channel).direction || "—" }}
+              </td>
+              <td v-if="hasDirections" class="nowrap">
+                {{ channelInfo(event.signal, event.channel).phases || "—" }}
+              </td>
               <td>{{ secs(event.segments.callToEntry) }}</td>
               <td>{{ secs(event.segments.trackClearance) }}</td>
               <td>{{ secs(event.segments.dwell) }}</td>
@@ -608,6 +655,7 @@ import {
 import { DateTime } from "luxon";
 import InputBox from "../components/foundational/InputBox.vue";
 import { readZipText } from "../utils/zipReader.js";
+import { xlsxBlob } from "../utils/xlsx.js";
 import { buildPreemptDirectory, describeChannel } from "../utils/gtss.js";
 import {
   PREEMPT_CODES,
@@ -653,6 +701,13 @@ const SERIES_COLORS = [
   "#00695C", "#C62828", "#1565C0", "#EF6C00", "#6A1B9A", "#2E7D32",
   "#AD1457", "#00838F", "#5D4037", "#37474F", "#9E9D24", "#4527A0",
 ];
+/**
+ * The signal picker's "everything" option. A real signal id could collide with
+ * any ordinary string, so the sentinel uses the NUL that seriesKey already
+ * relies on being absent from a label.
+ */
+const ALL_SIGNALS = "\u0000all";
+
 /** Rendering every row of a very large result set is not worth the stall. */
 const MAX_TABLE_ROWS = 500;
 /** The durations view gives every event its own row, so it needs a ceiling. */
@@ -676,7 +731,7 @@ export default {
       visibleChannels: [],
       signals: [],
       chartMode: "timeline",
-      heatmapSignal: null,
+      chartSignal: ALL_SIGNALS,
       gtss: null,
       gtssName: "",
       gtssWarnings: [],
@@ -748,28 +803,47 @@ export default {
       if (!this.gtss) return [];
       return this.signals.filter((name) => !this.gtssById[name]);
     },
-    /** Every grid for the data, before the signal picker narrows it. */
-    allHeatmaps() {
-      return buildHourWeekdayGrids(this.filteredEvents);
+    /**
+     * The signal the charts are drawing. Validated rather than trusted: a
+     * re-evaluation can drop the signal that was selected, and a picker
+     * pointing at nothing would draw an empty chart with no way back.
+     */
+    activeChartSignal() {
+      return this.signals.includes(this.chartSignal) ? this.chartSignal : ALL_SIGNALS;
     },
-    /** The signal the heatmaps are showing, defaulting to the first available. */
-    activeHeatmapSignal() {
-      const available = [...new Set(this.allHeatmaps.map((grid) => grid.signal))];
-      if (this.heatmapSignal !== null && available.includes(this.heatmapSignal)) {
-        return this.heatmapSignal;
-      }
-      return available[0] ?? null;
+    chartSignalOptions() {
+      return [
+        { title: "All signals", value: ALL_SIGNALS },
+        ...this.signals.map((signal) => ({
+          title: this.signalTitle(signal),
+          value: signal,
+        })),
+      ];
     },
-    heatmapSignalOptions() {
-      return [...new Set(this.allHeatmaps.map((grid) => grid.signal))].map((signal) => ({
-        title: signal || "Unnamed signal",
-        value: signal,
-      }));
+    /**
+     * What the charts draw: the channel chips first, then the signal picker.
+     *
+     * Deliberately not what the tables show. The picker narrows the picture,
+     * not the finding -- the summary, the event table and the exports stay on
+     * the whole filtered set, so isolating one intersection on the chart
+     * cannot quietly shrink the numbers being reported.
+     */
+    chartEvents() {
+      const signal = this.activeChartSignal;
+      if (signal === ALL_SIGNALS) return this.filteredEvents;
+      return this.filteredEvents.filter((event) => event.signal === signal);
     },
-    /** One heatmap per channel, for the selected signal. */
+    /**
+     * Whether a chart row has to name its signal to stay unambiguous. Two
+     * intersections both have a Preempt 1, and without this their events
+     * share a row and read as one channel.
+     */
+    chartShowsSignal() {
+      return this.multiSignal && this.activeChartSignal === ALL_SIGNALS;
+    },
+    /** One grid per signal and channel, for whatever the picker has selected. */
     heatmaps() {
-      const signal = this.activeHeatmapSignal;
-      return this.allHeatmaps.filter((grid) => grid.signal === signal);
+      return buildHourWeekdayGrids(this.chartEvents);
     },
     /**
      * Date against time of day, one point per event.
@@ -780,7 +854,7 @@ export default {
      * calls have no such structure.
      */
     scatterChartData() {
-      const points = buildScatterPoints(this.filteredEvents);
+      const points = buildScatterPoints(this.chartEvents);
       const bySeries = new Map();
       for (const point of points) {
         const key = seriesKey(point.signal, point.channel);
@@ -855,12 +929,27 @@ export default {
     },
     /** One row per channel, so the chart grows with the data rather than squashing. */
     chartChannels() {
-      const channels = new Set(this.filteredEvents.map((event) => event.channel));
+      const channels = new Set(this.chartEvents.map((event) => event.channel));
       return [...channels].sort((a, b) => a - b);
+    },
+    /** The timeline's rows, one per channel, or per signal and channel. */
+    chartRows() {
+      if (!this.chartShowsSignal) {
+        return this.chartChannels.map((channel) => `Preempt ${channel}`);
+      }
+      const seen = new Set();
+      const rows = [];
+      for (const event of this.chartEvents) {
+        const label = this.rowLabel(event);
+        if (seen.has(label)) continue;
+        seen.add(label);
+        rows.push(label);
+      }
+      return rows.sort();
     },
     /** Longest first, capped, so the durations view stays readable. */
     durationEvents() {
-      return this.filteredEvents
+      return this.chartEvents
         .slice()
         .sort((a, b) => b.durationMs - a.durationMs)
         .slice(0, MAX_CHART_ROWS);
@@ -880,10 +969,10 @@ export default {
     },
     /** Absolute time on the x axis: when each event happened, and any overlap. */
     timelineChartData() {
-      const labels = this.chartChannels.map((channel) => `Preempt ${channel}`);
+      const labels = this.chartRows;
       const buckets = new Map();
-      for (const event of this.filteredEvents) {
-        const label = `Preempt ${event.channel}`;
+      for (const event of this.chartEvents) {
+        const label = this.rowLabel(event);
         for (const segment of this.segmentsFor(event)) {
           if (!buckets.has(segment.key)) buckets.set(segment.key, []);
           buckets.get(segment.key).push({
@@ -908,7 +997,11 @@ export default {
       // distinct -- a repeat would silently stack two events on one row.
       const seen = new Map();
       const labels = events.map((event) => {
-        const base = `Preempt ${event.channel} · ${this.clockTime(event.startMs)}`;
+        // The date, not just the clock: this view sorts by length, so the
+        // rows above and below are usually from other days. Without it, two
+        // 07:14 events a week apart are indistinguishable, and the question
+        // this chart gets asked is whether a duration repeats day to day.
+        const base = `${this.rowLabel(event)} · ${this.stampLabel(event.startMs)}`;
         const count = (seen.get(base) || 0) + 1;
         seen.set(base, count);
         return count === 1 ? base : `${base} (${count})`;
@@ -942,7 +1035,7 @@ export default {
       }
       let min = Infinity;
       let max = -Infinity;
-      for (const event of this.filteredEvents) {
+      for (const event of this.chartEvents) {
         if (event.startMs < min) min = event.startMs;
         if (event.endMs > max) max = event.endMs;
       }
@@ -1012,6 +1105,8 @@ export default {
     chartOptions() {
       if (this.chartMode === "scatter") return this.scatterOptions;
       const clock = this.clockTime;
+      const full = this.fullTime;
+      const rowLabel = this.rowLabel;
       const secs = this.secs;
       const extent = this.chartExtent;
       const durations = this.chartMode === "durations";
@@ -1042,7 +1137,14 @@ export default {
           },
           y: {
             type: "category",
-            title: { display: true, text: durations ? "Event" : "Preempt channel" },
+            title: {
+              display: true,
+              text: durations
+                ? "Event"
+                : this.chartShowsSignal
+                  ? "Signal and preempt channel"
+                  : "Preempt channel",
+            },
             ticks: { autoSkip: false },
           },
         },
@@ -1051,8 +1153,9 @@ export default {
           tooltip: {
             callbacks: {
               title: (items) => {
-                const raw = items[0].raw;
-                return `Preempt ${raw.event.channel} — ${clock(raw.event.startMs)}`;
+                const event = items[0].raw.event;
+                // The full stamp here, so the axis label can stay short.
+                return `${rowLabel(event)} — ${full(event.startMs)}`;
               },
               label: (item) => `${item.raw.segment}: ${secs(spanOf(item.raw))}`,
               afterBody: (items) => {
@@ -1131,6 +1234,43 @@ export default {
           categoryPercentage: 0.9,
         }));
     },
+    /** A signal as the pickers name it: its number, plus cross streets if known. */
+    signalTitle(signal) {
+      if (!signal) return "Unnamed signal";
+      const known = this.gtssById[signal];
+      return known && known.crossStreets
+        ? `${signal} — ${known.crossStreets}`
+        : `Signal ${signal}`;
+    },
+    /**
+     * A chart row's name. The signal is included only when the chart is
+     * showing more than one, because on a single-signal chart it is noise on
+     * every row.
+     */
+    rowLabel(event) {
+      const channel = `Preempt ${event.channel}`;
+      return this.chartShowsSignal ? `${event.signal || "—"} · ${channel}` : channel;
+    },
+    /** Date and clock, for an axis label that has to stay narrow. */
+    stampLabel(ms) {
+      if (!Number.isFinite(ms)) return "";
+      return DateTime.fromMillis(ms).toFormat("LL/dd HH:mm:ss");
+    },
+    dateOnly(ms) {
+      if (!Number.isFinite(ms)) return "";
+      return DateTime.fromMillis(ms).toFormat("yyyy-LL-dd");
+    },
+    /**
+     * What a GTSS export says a channel serves, split into the two columns
+     * the table and the export both want. Empty strings when nothing is
+     * loaded, so every caller can print it unconditionally.
+     */
+    channelInfo(signalName, channel) {
+      const signal = this.gtssById[signalName];
+      const entry = signal && signal.channels.find((c) => c.channel === channel);
+      if (!entry) return { direction: "", phases: "" };
+      return { direction: describeChannel(entry), phases: entry.phases.join(", ") };
+    },
     num(value) {
       return Number(value || 0).toLocaleString();
     },
@@ -1174,6 +1314,7 @@ export default {
           this.stats = result.stats;
           this.signals = result.signals;
           this.visibleChannels = [];
+          this.chartSignal = ALL_SIGNALS;
           this.ranOnce = true;
         } catch (err) {
           this.error = `Could not process this data: ${err.message}`;
@@ -1208,9 +1349,7 @@ export default {
      * unconditionally.
      */
     servesLabel(signalName, channel) {
-      const signal = this.gtssById[signalName];
-      if (!signal) return "";
-      return describeChannel(signal.channels.find((c) => c.channel === channel));
+      return this.channelInfo(signalName, channel).direction;
     },
     async loadGtssFiles(event) {
       const files = [...(event.target.files || [])];
@@ -1263,12 +1402,63 @@ export default {
       if (chart) chart.resetZoom();
     },
     downloadCsv() {
-      const csv = eventsToCsv(this.filteredEvents, (ms) => this.fullTime(ms));
-      const blob = new Blob([csv], { type: "text/csv" });
+      const csv = eventsToCsv(this.filteredEvents, (ms) => this.fullTime(ms), {
+        date: (ms) => this.dateOnly(ms),
+        channel: (event) => this.channelInfo(event.signal, event.channel),
+      });
+      this.download(new Blob([csv], { type: "text/csv" }), "preemption-events.csv");
+    },
+    /**
+     * The same events as a real workbook rather than a .csv renamed.
+     *
+     * It matters for exactly one reason: a timestamp arrives as a timestamp.
+     * Handed a csv, Excel guesses at the format, and a column of preemption
+     * start times is where guessing wrong about day and month does damage.
+     * Here the dates are date-typed, so sorting, filtering by day and
+     * pivoting on the date column all work without touching the data.
+     */
+    exportExcel() {
+      const columns = [
+        "Signal",
+        "Channel",
+        "Date",
+        "Start",
+        "End",
+        "Duration (s)",
+        "Status",
+        ...(this.hasDirections ? ["Direction", "Phases"] : []),
+        "Call to entry (s)",
+        "Track clearance (s)",
+        "Dwell (s)",
+        "Codes",
+      ];
+      const rows = this.filteredEvents.map((event) => {
+        const info = this.channelInfo(event.signal, event.channel);
+        return [
+          event.signal || "",
+          event.channel,
+          { day: event.startMs },
+          { date: event.startMs },
+          { date: event.endMs },
+          toSeconds(event.durationMs),
+          STATUS_LABELS[event.status],
+          ...(this.hasDirections ? [info.direction, info.phases] : []),
+          toSeconds(event.segments.callToEntry),
+          toSeconds(event.segments.trackClearance),
+          toSeconds(event.segments.dwell),
+          event.codes.map((c) => c.code).join(" "),
+        ];
+      });
+      this.download(
+        xlsxBlob({ sheetName: "Preemption events", columns, rows }),
+        "preemption-events.xlsx",
+      );
+    },
+    download(blob, filename) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "preemption-events.csv";
+      link.download = filename;
       link.click();
       URL.revokeObjectURL(url);
     },
@@ -1373,9 +1563,20 @@ export default {
 .heatmaps {
   margin-top: 8px;
 }
-.heatmap-signal {
-  max-width: 280px;
-  margin-bottom: 16px;
+.detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chart-signal {
+  max-width: 260px;
+  flex: 0 0 auto;
+}
+.heatmap-signal-name {
+  font-weight: 400;
+  opacity: 0.75;
 }
 .heatmap {
   margin-bottom: 24px;
@@ -1440,6 +1641,14 @@ export default {
 }
 .nowrap {
   white-space: nowrap;
+}
+/*
+ * "Main Street from the ESE (WB)" is five words in a column sized to its
+ * four-letter heading, which wrapped it onto five lines and made every row
+ * in the table five lines tall. Wide enough for two.
+ */
+.direction {
+  min-width: 190px;
 }
 .codes {
   font-family: monospace;

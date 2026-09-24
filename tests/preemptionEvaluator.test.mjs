@@ -288,11 +288,56 @@ test('eventsToCsv writes one row per event with a stable header', () => {
   const csv = eventsToCsv(events, (ms) => new Date(ms).toISOString());
   const lines = csv.split('\n');
   assert.equal(lines.length, 3);
-  assert.match(lines[0], /^signal,channel,start,end,duration_s,status,/);
+  assert.match(lines[0], /^signal,channel,date,start,end,duration_s,status,/);
   // The signal column leads, so a merged export says which intersection a row came from.
   assert.match(lines[1], /^,1,/);
   assert.ok(lines[1].includes('182'));
   assert.ok(lines[2].includes('Call never served') || lines[2].includes('"Call never served"'));
+});
+
+test('eventsToCsv gives the calendar day its own column', () => {
+  const { events } = evaluatePreemption(sequence(0, 1).join('\n'));
+  const iso = (ms) => new Date(ms).toISOString();
+  const csv = eventsToCsv(events, iso, { date: (ms) => iso(ms).slice(0, 10) });
+  const [header, row] = csv.split('\n');
+  const day = header.split(',').indexOf('date');
+  // Derivable from the timestamp, but a spreadsheet cannot group by "the date
+  // part of a string" unless it is told the layout -- and grouping by day is
+  // what the column is for.
+  assert.equal(row.split(',')[day], iso(events[0].startMs).slice(0, 10));
+});
+
+test('eventsToCsv adds direction and phases only when something supplies them', () => {
+  const { events } = evaluatePreemption(sequence(0, 1).join('\n'));
+  const iso = (ms) => new Date(ms).toISOString();
+
+  const plain = eventsToCsv(events, iso);
+  assert.ok(!plain.split('\n')[0].includes('direction'), 'no GTSS, no column');
+
+  const named = eventsToCsv(events, iso, {
+    channel: () => ({ direction: 'Main Street from the ESE (WB)', phases: '1, 6' }),
+  });
+  const [header, row] = named.split('\n');
+  assert.match(header, /^signal,channel,direction,phases,date,start,/);
+  assert.ok(row.includes('Main Street from the ESE (WB)'));
+  // The phases carry a comma of their own, so the cell has to be quoted.
+  assert.ok(row.includes('"1, 6"'));
+});
+
+test('eventsToCsv keeps the columns aligned when only some channels are named', () => {
+  const { events } = evaluatePreemption(
+    [...sequence(0, 1), ...sequence(600, 4)].join('\n'),
+  );
+  const csv = eventsToCsv(events, (ms) => new Date(ms).toISOString(), {
+    // Only channel 1 is in the export; channel 4 is not.
+    channel: (event) => (event.channel === 1 ? { direction: 'Main Street', phases: '2' } : null),
+  });
+  const lines = csv.split('\n');
+  const width = lines[0].split(',').length;
+  for (const line of lines.slice(1)) {
+    assert.equal(line.split(',').length, width, `ragged row: ${line}`);
+  }
+  assert.ok(lines.some((line) => line.includes('Main Street')));
 });
 
 test('eventsToCsv escapes a formatter that emits commas', () => {

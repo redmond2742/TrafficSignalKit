@@ -13,6 +13,11 @@
             preemption event is discarded as the file is read, so a full day of
             data is handled without waiting on the phase and detector rows that
             make up the bulk of it.
+            <p class="mt-2">
+              Add a block per signal to compare intersections side by side. If
+              your export already leads with a signal ID column, those names are
+              used instead of the labels you type.
+            </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -30,7 +35,39 @@
                 easy to miss when scrolling raw data
               </li>
               <li>A downloadable CSV of every event</li>
+              <li>
+                A <b>kit screen</b>: every event plotted by date and time of
+                day, coloured per signal and channel
+              </li>
             </ul>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+
+        <v-expansion-panel
+          title="Screening for Unauthorised Emitters"
+          value="kits"
+        >
+          <v-expansion-panel-text>
+            <p>
+              Switch the chart to <b>Kit screen</b>. Each dot is one preemption
+              event, placed by the date it happened and the time of day it
+              started.
+            </p>
+            <p class="mt-2">
+              A vehicle carrying an unauthorised emitter triggers preemption on
+              its driver's own commute, so its events land at close to the same
+              minute of the day, on weekdays, again and again. That reads as a
+              near-horizontal row of dots. Genuine emergency calls follow no
+              such schedule and scatter across the chart. Weekend events are
+              drawn as crosses, because the pattern being hunted is a weekday
+              one.
+            </p>
+            <p class="mt-2">
+              A flat row is a lead, not a finding: scheduled transit, a shift
+              change at a nearby station, or a recurring delivery can all look
+              similar. Confirm against the channel the calls arrive on and the
+              times in the event table before drawing conclusions.
+            </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -84,17 +121,47 @@
 
     <br />
 
-    <InputBox
-      v-model="inputData"
-      defaultText="Paste in High-Resolution Traffic Signal Data as CSV text (timestamp, enumeration, channel)"
-      accept=".csv,.txt,text/csv,text/plain"
-    />
+    <!--
+      One block per signal. Comparing signals is the point of the kit screen,
+      and a single box could not say which data came from where. A file that
+      already leads with a signal ID column keeps its own names instead.
+    -->
+    <div v-for="(source, index) in sources" :key="source.id" class="source-block">
+      <div class="source-head">
+        <v-text-field
+          v-model="source.label"
+          :placeholder="`Signal ${index + 1}`"
+          label="Signal name"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="source-name"
+        ></v-text-field>
+        <v-btn
+          v-if="sources.length > 1"
+          variant="text"
+          size="small"
+          prepend-icon="mdi-close"
+          @click="removeSource(index)"
+        >
+          Remove
+        </v-btn>
+      </div>
+      <InputBox
+        v-model="source.text"
+        defaultText="Paste in High-Resolution Traffic Signal Data as CSV text (timestamp, enumeration, channel)"
+        accept=".csv,.txt,text/csv,text/plain"
+      />
+    </div>
 
     <div class="action-row">
+      <v-btn variant="tonal" prepend-icon="mdi-plus" @click="addSource">
+        Add another signal
+      </v-btn>
       <v-btn
         color="primary"
         :loading="processing"
-        :disabled="!inputData"
+        :disabled="!hasInput"
         @click="evaluate"
       >
         Evaluate Preemption
@@ -160,6 +227,7 @@
         >
           <v-btn value="timeline" size="small">Timeline</v-btn>
           <v-btn value="durations" size="small">Durations</v-btn>
+          <v-btn value="scatter" size="small">Kit screen</v-btn>
         </v-btn-toggle>
         <v-chip-group v-model="visibleChannels" multiple column>
           <v-chip
@@ -180,6 +248,12 @@
           Every event on its channel, at the time it happened. Scroll to zoom
           the time axis &mdash; events are short next to a whole day of data.
         </template>
+        <template v-else-if="chartMode === 'scatter'">
+          Each dot is one event, placed by date and time of day. A vehicle
+          carrying an emitter calls on its own commute, so its dots form a
+          near-horizontal row on weekdays; genuine emergency calls scatter.
+          Weekends are drawn as crosses. Scroll to zoom, drag to pan.
+        </template>
         <template v-else>
           Every event lined up from its own start, so the durations compare
           directly.
@@ -190,7 +264,13 @@
         </template>
       </p>
       <div class="chart-wrapper" :style="{ height: chartHeight + 'px' }">
-        <Bar ref="gantt" :data="chartData" :options="chartOptions" />
+        <Scatter
+          v-if="chartMode === 'scatter'"
+          ref="gantt"
+          :data="chartData"
+          :options="chartOptions"
+        />
+        <Bar v-else ref="gantt" :data="chartData" :options="chartOptions" />
       </div>
 
       <h2 class="section-title">Channel summary</h2>
@@ -198,6 +278,7 @@
         <v-table density="compact">
           <thead>
             <tr>
+              <th v-if="multiSignal">Signal</th>
               <th>Channel</th>
               <th>Events</th>
               <th>Shortest</th>
@@ -209,7 +290,11 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="channel in viewSummary.channels" :key="channel.channel">
+            <tr
+              v-for="channel in viewSummary.channels"
+              :key="`${channel.signal}-${channel.channel}`"
+            >
+              <td v-if="multiSignal">{{ channel.signal || "—" }}</td>
               <td>Preempt {{ channel.channel }}</td>
               <td>{{ channel.count }}</td>
               <td>{{ secs(channel.minMs) }}</td>
@@ -233,6 +318,7 @@
         <v-table density="compact">
           <thead>
             <tr>
+              <th v-if="multiSignal">Signal</th>
               <th>Channel</th>
               <th>Start</th>
               <th>Duration</th>
@@ -249,6 +335,7 @@
               :key="index"
               :class="{ 'row-unserved': event.status === 'callOnly' }"
             >
+              <td v-if="multiSignal">{{ event.signal || "—" }}</td>
               <td>{{ event.channel }}</td>
               <td class="nowrap">{{ clockTime(event.startMs) }}</td>
               <td>{{ secs(event.durationMs) }}</td>
@@ -266,7 +353,7 @@
 </template>
 
 <script>
-import { Bar } from "vue-chartjs";
+import { Bar, Scatter } from "vue-chartjs";
 import zoom from "chartjs-plugin-zoom";
 import {
   Chart as ChartJS,
@@ -274,6 +361,7 @@ import {
   Tooltip,
   Legend,
   BarElement,
+  PointElement,
   LinearScale,
   CategoryScale,
 } from "chart.js";
@@ -283,13 +371,18 @@ import {
   PREEMPT_CODES,
   STATUS_LABELS,
   DEFAULT_MAX_EVENT_SECONDS,
-  evaluatePreemption,
+  MINUTES_PER_DAY,
+  evaluateSources,
+  buildScatterPoints,
+  seriesKey,
   eventsToCsv,
   summarizePreemption,
   toSeconds,
 } from "../utils/preemptionEvaluator.js";
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, LinearScale, CategoryScale, zoom);
+ChartJS.register(
+  Title, Tooltip, Legend, BarElement, PointElement, LinearScale, CategoryScale, zoom,
+);
 
 /**
  * The intervals drawn inside each event bar, in the order they occur. Each
@@ -305,6 +398,16 @@ const SEGMENTS = [
 ];
 
 const UNSERVED_COLOR = "#C62828";
+
+/**
+ * One colour per signal-and-channel series on the kit screen. Chosen to stay
+ * distinguishable against each other rather than to match the interval
+ * palette above, which encodes something different.
+ */
+const SERIES_COLORS = [
+  "#00695C", "#C62828", "#1565C0", "#EF6C00", "#6A1B9A", "#2E7D32",
+  "#AD1457", "#00838F", "#5D4037", "#37474F", "#9E9D24", "#4527A0",
+];
 /** Rendering every row of a very large result set is not worth the stall. */
 const MAX_TABLE_ROWS = 500;
 /** The durations view gives every event its own row, so it needs a ceiling. */
@@ -312,11 +415,12 @@ const MAX_CHART_ROWS = 40;
 
 export default {
   name: "PreemptionEvaluator",
-  components: { InputBox, Bar },
+  components: { InputBox, Bar, Scatter },
   data() {
     return {
       panel: [],
-      inputData: "",
+      sources: [{ id: 1, label: "", text: "" }],
+      nextSourceId: 2,
       maxEventSeconds: DEFAULT_MAX_EVENT_SECONDS,
       processing: false,
       ranOnce: false,
@@ -325,6 +429,7 @@ export default {
       summary: { channels: [], totals: {} },
       stats: null,
       visibleChannels: [],
+      signals: [],
       chartMode: "timeline",
       statusLabels: STATUS_LABELS,
     };
@@ -336,9 +441,55 @@ export default {
         label: meta.label,
       }));
     },
-    /** Always the full set, so a filter can never hide the chip that undoes it. */
+    hasInput() {
+      return this.sources.some((source) => (source.text || "").trim());
+    },
+    /** Whether the data spans more than one signal, which changes what is worth showing. */
+    multiSignal() {
+      return this.signals.length > 1;
+    },
+    /**
+     * Date against time of day, one point per event.
+     *
+     * A vehicle carrying an unauthorised emitter calls the signal on its own
+     * commute, so its points sit at nearly the same minute of the day, on
+     * weekdays, across many dates -- a near-horizontal row. Real emergency
+     * calls have no such structure.
+     */
+    scatterChartData() {
+      const points = buildScatterPoints(this.filteredEvents);
+      const bySeries = new Map();
+      for (const point of points) {
+        const key = seriesKey(point.signal, point.channel);
+        if (!bySeries.has(key)) bySeries.set(key, []);
+        bySeries.get(key).push({ x: point.dateMs, y: point.minuteOfDay, point });
+      }
+      const datasets = [...bySeries.entries()]
+        .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+        .map(([label, data], index) => {
+          const color = SERIES_COLORS[index % SERIES_COLORS.length];
+          return {
+            label,
+            data,
+            backgroundColor: color,
+            borderColor: color,
+            // Weekends hollowed out: the pattern being hunted is a weekday one.
+            pointStyle: data.map((d) => (d.point.isWeekend ? "crossRot" : "circle")),
+            pointRadius: 4,
+            pointHoverRadius: 7,
+          };
+        });
+      return { datasets };
+    },
+    /**
+     * Always the full set, so a filter can never hide the chip that undoes it.
+     * Deduplicated: the summary now has a row per signal and channel, so the
+     * same channel number appears once for each signal that has one.
+     */
     allChannels() {
-      return this.summary.channels.map((channel) => channel.channel);
+      return [...new Set(this.summary.channels.map((channel) => channel.channel))].sort(
+        (a, b) => a - b,
+      );
     },
     /**
      * What the tables and tiles report. Recomputed from the filtered events so
@@ -392,12 +543,14 @@ export default {
         .slice(0, MAX_CHART_ROWS);
     },
     chartHeight() {
+      if (this.chartMode === "scatter") return 480;
       if (this.chartMode === "durations") {
         return Math.max(240, this.durationEvents.length * 30 + 120);
       }
       return Math.max(240, this.chartChannels.length * 64 + 110);
     },
     chartData() {
+      if (this.chartMode === "scatter") return this.scatterChartData;
       return this.chartMode === "durations"
         ? this.durationChartData
         : this.timelineChartData;
@@ -475,7 +628,66 @@ export default {
       const pad = Math.max((max - min) * 0.02, 30000);
       return { min: min - pad, max: max + pad };
     },
+    /** Date across, minute of day up, both in local time. */
+    scatterOptions() {
+      const clock = this.clockTime;
+      const secs = this.secs;
+      const minuteLabel = (minute) => {
+        const h = Math.floor(minute / 60);
+        const m = Math.round(minute % 60);
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      };
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          x: {
+            type: "linear",
+            ticks: {
+              callback: (value) => new Date(value).toLocaleDateString(),
+              maxRotation: 0,
+              autoSkipPadding: 24,
+            },
+            title: { display: true, text: "Date" },
+          },
+          y: {
+            type: "linear",
+            min: 0,
+            max: MINUTES_PER_DAY,
+            // Midnight at the bottom, so the day reads upward like a clock face.
+            ticks: { stepSize: 120, callback: (value) => minuteLabel(value) },
+            title: { display: true, text: "Time of day" },
+          },
+        },
+        plugins: {
+          legend: { position: "bottom" },
+          tooltip: {
+            callbacks: {
+              title: (items) => items[0].raw.point.signal || "Signal",
+              label: (item) => {
+                const p = item.raw.point;
+                return `Preempt ${p.channel} — ${new Date(p.startMs).toLocaleString()}`;
+              },
+              afterBody: (items) => {
+                const p = items[0].raw.point;
+                return [
+                  `Time of day: ${minuteLabel(p.minuteOfDay)}`,
+                  `Duration: ${secs(p.durationMs)}`,
+                  p.isWeekend ? "Weekend" : "Weekday",
+                ];
+              },
+            },
+          },
+          zoom: {
+            pan: { enabled: true, mode: "xy" },
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "xy" },
+          },
+        },
+      };
+    },
     chartOptions() {
+      if (this.chartMode === "scatter") return this.scatterOptions;
       const clock = this.clockTime;
       const secs = this.secs;
       const extent = this.chartExtent;
@@ -621,26 +833,39 @@ export default {
       // Let the button paint its spinner before the parse takes the thread.
       setTimeout(() => {
         try {
-          const result = evaluatePreemption(this.inputData, {
-            maxEventSeconds: this.maxEventSeconds || DEFAULT_MAX_EVENT_SECONDS,
-          });
-          if (!result.layout.confident && !result.events.length) {
+          const result = evaluateSources(
+            this.sources.map((source, index) => ({
+              label: (source.label || "").trim() || `Signal ${index + 1}`,
+              text: source.text,
+            })),
+            { maxEventSeconds: this.maxEventSeconds || DEFAULT_MAX_EVENT_SECONDS },
+          );
+          if (!result.events.length) {
             this.error =
-              "Could not read this as high-resolution data. Expecting CSV lines of timestamp, enumeration, channel.";
+              "No preemption events found. Expecting CSV lines of timestamp, enumeration, channel.";
           }
           this.events = result.events;
           this.summary = result.summary;
           this.stats = result.stats;
+          this.signals = result.signals;
           this.visibleChannels = [];
           this.ranOnce = true;
         } catch (err) {
           this.error = `Could not process this data: ${err.message}`;
           this.events = [];
           this.summary = { channels: [], totals: {} };
+          this.signals = [];
         } finally {
           this.processing = false;
         }
       }, 0);
+    },
+    addSource() {
+      this.sources.push({ id: this.nextSourceId, label: "", text: "" });
+      this.nextSourceId += 1;
+    },
+    removeSource(index) {
+      this.sources.splice(index, 1);
     },
     resetZoom() {
       const chart = this.$refs.gantt && this.$refs.gantt.chart;
@@ -661,6 +886,18 @@ export default {
 </script>
 
 <style scoped>
+.source-block {
+  margin-bottom: 20px;
+}
+.source-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.source-name {
+  max-width: 280px;
+}
 .action-row {
   display: flex;
   flex-wrap: wrap;

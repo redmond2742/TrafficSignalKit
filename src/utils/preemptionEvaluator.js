@@ -161,12 +161,16 @@ export function detectLayout(text, sampleLines = 60) {
  * never has to materialise one string per line, and each row is rejected on
  * its event code before the timestamp is parsed or sliced.
  */
-export function scanPreemptionRows(text, layout) {
+export function scanPreemptionRows(text, layout, options = {}) {
   const src = String(text || '');
   const len = src.length;
   const { delimiter, tsCol } = layout;
   const codeCol = tsCol + 1;
   const paramCol = tsCol + 2;
+  // When the export leads with a signal ID column, that column names the
+  // signal; otherwise every row belongs to whatever the caller labelled it.
+  const idCol = tsCol > 0 ? tsCol - 1 : -1;
+  const fallbackSignal = options.signal || '';
 
   const rows = [];
   let scanned = 0;
@@ -193,9 +197,14 @@ export function scanPreemptionRows(text, layout) {
       let cE = -1;
       let pS = -1;
       let pE = -1;
+      let iS = -1;
+      let iE = -1;
       for (let i = pos; i <= end; i += 1) {
         if (i === end || src.charCodeAt(i) === delimiter) {
-          if (field === tsCol) {
+          if (field === idCol) {
+            iS = fieldStart;
+            iE = i;
+          } else if (field === tsCol) {
             tsS = fieldStart;
             tsE = i;
           } else if (field === codeCol) {
@@ -225,7 +234,8 @@ export function scanPreemptionRows(text, layout) {
           } else {
             if (tsMs < lastTs) sorted = false;
             lastTs = tsMs;
-            rows.push({ tsMs, code, channel, role: ROLE_BY_CODE[code] });
+            const signal = iE > iS ? sliceSpan(src, iS, iE) || fallbackSignal : fallbackSignal;
+            rows.push({ tsMs, code, channel, signal, role: ROLE_BY_CODE[code] });
           }
         }
       }
@@ -234,17 +244,27 @@ export function scanPreemptionRows(text, layout) {
   }
 
   if (!sorted) rows.sort((a, b) => a.tsMs - b.tsMs || a.code - b.code);
-  return { rows, scanned, malformed, badTimestamps, wasSorted: sorted };
+  const signals = [...new Set(rows.map((row) => row.signal))].filter(Boolean).sort();
+  return { rows, scanned, malformed, badTimestamps, wasSorted: sorted, signals };
 }
 
 function newEvent(row) {
   return {
+    signal: row.signal || '',
     channel: row.channel,
     startMs: row.tsMs,
     endMs: row.tsMs,
     marks: {},
     codes: [],
   };
+}
+
+/**
+ * Two signals can both have a preempt channel 1, and they are different
+ * inputs. Grouping on channel alone would interleave them into one sequence.
+ */
+function sequenceKey(row) {
+  return `${row.signal || ''}\u0000${row.channel}`;
 }
 
 /** Records the first timestamp seen for each role inside an event. */
@@ -309,6 +329,7 @@ export function buildPreemptionEvents(rows, options = {}) {
     const serviceStart = marks.entry ?? startMs;
     const serviceEnd = marks.exit ?? marks.forceOff ?? event.endMs;
     events.push({
+      signal: event.signal,
       channel: event.channel,
       startMs,
       endMs: event.endMs,
@@ -335,11 +356,12 @@ export function buildPreemptionEvents(rows, options = {}) {
   };
 
   for (const row of rows) {
-    const current = open.get(row.channel);
+    const key = sequenceKey(row);
+    const current = open.get(key);
     if (!current) {
       const started = newEvent(row);
       addRow(started, row);
-      open.set(row.channel, started);
+      open.set(key, started);
       continue;
     }
 
@@ -354,14 +376,19 @@ export function buildPreemptionEvents(rows, options = {}) {
       close(current);
       const started = newEvent(row);
       addRow(started, row);
-      open.set(row.channel, started);
+      open.set(key, started);
     } else {
       addRow(current, row);
     }
   }
 
   for (const event of open.values()) close(event);
-  events.sort((a, b) => a.startMs - b.startMs || a.channel - b.channel);
+  events.sort(
+    (a, b) =>
+      a.startMs - b.startMs ||
+      (a.signal < b.signal ? -1 : a.signal > b.signal ? 1 : 0) ||
+      a.channel - b.channel,
+  );
   return events;
 }
 
@@ -378,9 +405,14 @@ function quantile(sorted, q) {
 export function summarizePreemption(events) {
   const byChannel = new Map();
   for (const event of events) {
-    let bucket = byChannel.get(event.channel);
+    // Keyed by signal as well as channel: two signals both having a preempt 1
+    // is normal, and rolling them together would report one intersection's
+    // numbers as the other's.
+    const key = `${event.signal || ''}\u0000${event.channel}`;
+    let bucket = byChannel.get(key);
     if (!bucket) {
       bucket = {
+        signal: event.signal || '',
         channel: event.channel,
         count: 0,
         durations: [],
@@ -390,7 +422,7 @@ export function summarizePreemption(events) {
         lastMs: event.endMs,
         totalMs: 0,
       };
-      byChannel.set(event.channel, bucket);
+      byChannel.set(key, bucket);
     }
     bucket.count += 1;
     bucket.statuses[event.status] += 1;
@@ -405,6 +437,7 @@ export function summarizePreemption(events) {
     const durations = bucket.durations.slice().sort((a, b) => a - b);
     const delays = bucket.entryDelays.slice().sort((a, b) => a - b);
     return {
+      signal: bucket.signal,
       channel: bucket.channel,
       count: bucket.count,
       statuses: bucket.statuses,
@@ -418,7 +451,9 @@ export function summarizePreemption(events) {
       lastMs: bucket.lastMs,
     };
   });
-  channels.sort((a, b) => a.channel - b.channel);
+  channels.sort(
+    (a, b) => (a.signal < b.signal ? -1 : a.signal > b.signal ? 1 : 0) || a.channel - b.channel,
+  );
 
   const allDurations = events.filter((e) => e.durationMs > 0).map((e) => e.durationMs).sort((a, b) => a - b);
   return {
@@ -445,13 +480,14 @@ export function summarizePreemption(events) {
 /** Whole pipeline: raw text in, events and stats out. */
 export function evaluatePreemption(text, options = {}) {
   const layout = options.layout || detectLayout(text);
-  const scan = scanPreemptionRows(text, layout);
+  const scan = scanPreemptionRows(text, layout, { signal: options.signal });
   const events = buildPreemptionEvents(scan.rows, options);
   const summary = summarizePreemption(events);
   return {
     layout,
     events,
     summary,
+    signals: scan.signals,
     stats: {
       scanned: scan.scanned,
       kept: scan.rows.length,
@@ -470,6 +506,7 @@ export function toSeconds(ms) {
 }
 
 const CSV_COLUMNS = [
+  'signal',
   'channel',
   'start',
   'end',
@@ -495,6 +532,7 @@ export function eventsToCsv(events, formatStamp) {
   for (const event of events) {
     lines.push(
       [
+        event.signal,
         event.channel,
         stamp(event.startMs),
         stamp(event.endMs),
@@ -512,4 +550,97 @@ export function eventsToCsv(events, formatStamp) {
     );
   }
   return lines.join('\n');
+}
+
+/** Minutes in a day, for the scatter's y axis. */
+export const MINUTES_PER_DAY = 1440;
+
+/**
+ * One point per event, positioned by date and time of day.
+ *
+ * This is the screen for unauthorised preemption emitters. A vehicle carrying
+ * one calls the signal on its own commute, so its events land at close to the
+ * same minute of the day, on weekdays, again and again -- a near-horizontal
+ * row of dots. Genuine emergency calls have no such structure and scatter.
+ *
+ * Both axes are local time: an emitter's signature is tied to a human
+ * schedule, so shifting it into UTC would smear the pattern across two rows
+ * for anyone east or west of the meridian.
+ */
+export function buildScatterPoints(events) {
+  return (events || []).map((event) => {
+    const at = new Date(event.startMs);
+    const midnight = new Date(
+      at.getFullYear(),
+      at.getMonth(),
+      at.getDate(),
+    ).getTime();
+    const day = at.getDay();
+    return {
+      signal: event.signal || '',
+      channel: event.channel,
+      dateMs: midnight,
+      minuteOfDay: at.getHours() * 60 + at.getMinutes() + at.getSeconds() / 60,
+      weekday: day,
+      isWeekend: day === 0 || day === 6,
+      startMs: event.startMs,
+      durationMs: event.durationMs,
+      status: event.status,
+    };
+  });
+}
+
+/** How a scatter series is identified: one signal's one channel. */
+export function seriesKey(signal, channel) {
+  return signal ? `${signal} · Preempt ${channel}` : `Preempt ${channel}`;
+}
+
+/**
+ * Evaluates several pasted or uploaded sources as one dataset.
+ *
+ * Each source carries its own label, which becomes the signal name unless the
+ * data itself leads with a signal ID column -- in which case that wins, since
+ * a single export can hold several signals.
+ */
+export function evaluateSources(sources, options = {}) {
+  const events = [];
+  const stats = { scanned: 0, kept: 0, malformed: 0, badTimestamps: 0 };
+  const perSource = [];
+  const signals = new Set();
+
+  for (const source of sources || []) {
+    const text = source && source.text;
+    if (!text || !String(text).trim()) continue;
+    const result = evaluatePreemption(text, { ...options, signal: source.label || '' });
+    events.push(...result.events);
+    stats.scanned += result.stats.scanned;
+    stats.kept += result.stats.kept;
+    stats.malformed += result.stats.malformed;
+    stats.badTimestamps += result.stats.badTimestamps;
+    for (const signal of result.signals) signals.add(signal);
+    perSource.push({
+      label: source.label || '',
+      events: result.events.length,
+      signals: result.signals,
+      stats: result.stats,
+    });
+  }
+
+  events.sort(
+    (a, b) =>
+      a.startMs - b.startMs ||
+      (a.signal < b.signal ? -1 : a.signal > b.signal ? 1 : 0) ||
+      a.channel - b.channel,
+  );
+
+  return {
+    events,
+    perSource,
+    signals: [...signals].sort(),
+    summary: summarizePreemption(events),
+    stats: {
+      ...stats,
+      keptPercent: stats.scanned ? (stats.kept / stats.scanned) * 100 : 0,
+    },
+  };
 }

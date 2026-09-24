@@ -328,9 +328,12 @@ test('a large file stays fast and correct', () => {
 
 import {
   buildScatterPoints,
+  buildHourWeekdayGrids,
   evaluateSources,
   seriesKey,
   MINUTES_PER_DAY,
+  WEEKDAY_LABELS,
+  HOURS_PER_DAY,
 } from '../src/utils/preemptionEvaluator.js';
 
 /** A full call on one channel, at a wall-clock time, as epoch-second rows. */
@@ -492,4 +495,118 @@ test('the summary keeps two signals sharing a channel apart', () => {
   assert.deepEqual(summary.channels.map((c) => c.signal), ['A', 'B']);
   assert.deepEqual(summary.channels.map((c) => c.channel), [1, 1]);
   for (const row of summary.channels) assert.equal(row.count, 1);
+});
+
+// ------------------------------------------------------- hour x weekday grid
+
+const gridFor = (text, channel, options) =>
+  buildHourWeekdayGrids(evaluatePreemption(text, options).events).find((g) => g.channel === channel);
+
+test('the grid is 7 rows of 24 hours, Monday first', () => {
+  const grid = gridFor(callAt(2026, 3, 2, 7, 30, 1), 1);
+  assert.equal(grid.counts.length, 7);
+  for (const row of grid.counts) assert.equal(row.length, HOURS_PER_DAY);
+  assert.deepEqual(WEEKDAY_LABELS, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+});
+
+/**
+ * Date#getDay is Sunday-first. Using it as a row index directly would put
+ * Sunday at the top and split the working week across both ends of the chart,
+ * which is precisely the shape this view exists to make visible.
+ */
+test('weekdays map to the right rows, with Sunday last', () => {
+  // 2026-03-02 is a Monday; 2026-03-08 the Sunday after it.
+  const monday = gridFor(callAt(2026, 3, 2, 9, 0, 1), 1);
+  assert.equal(monday.counts[0][9], 1, 'Monday should be the first row');
+  assert.equal(monday.counts[6].reduce((a, b) => a + b, 0), 0);
+
+  const sunday = gridFor(callAt(2026, 3, 8, 9, 0, 1), 1);
+  assert.equal(sunday.counts[6][9], 1, 'Sunday should be the last row');
+  assert.equal(sunday.counts[0].reduce((a, b) => a + b, 0), 0);
+
+  const saturday = gridFor(callAt(2026, 3, 7, 9, 0, 1), 1);
+  assert.equal(saturday.counts[5][9], 1, 'Saturday should be row 5');
+});
+
+test('an event lands in its local hour', () => {
+  const grid = gridFor(callAt(2026, 3, 4, 17, 45, 1), 1);
+  assert.equal(grid.counts[2][17], 1, 'Wednesday 17:00 cell');
+  assert.equal(grid.total, 1);
+});
+
+test('weekdayShare separates a commute pattern from apparatus runs', () => {
+  const commute = [2, 3, 4, 5, 6, 9, 10, 11, 12, 13]
+    .map((d) => callAt(2026, 3, d, 7, 30, 2))
+    .join('\n');
+  const spread = [[2, 3], [7, 11], [8, 19], [14, 22], [15, 2]]
+    .map(([d, h]) => callAt(2026, 3, d, h, 10, 1))
+    .join('\n');
+
+  assert.equal(gridFor(commute, 2).weekdayShare, 1, 'a weekday-only pattern should be 100%');
+  const apparatus = gridFor(spread, 1);
+  assert.ok(apparatus.weekdayShare < 0.5, `apparatus share was ${apparatus.weekdayShare}`);
+});
+
+test('the peak cell names the busiest weekday and hour', () => {
+  const text = [
+    callAt(2026, 3, 2, 7, 30, 1),
+    callAt(2026, 3, 2, 7, 50, 1),
+    callAt(2026, 3, 3, 15, 0, 1),
+  ].join('\n');
+  const grid = gridFor(text, 1);
+  assert.equal(grid.max, 2);
+  assert.deepEqual(grid.peak, { weekday: 'Mon', hour: 7, count: 2 });
+});
+
+test('one grid per signal and channel, in a stable order', () => {
+  const grids = buildHourWeekdayGrids(
+    evaluateSources([
+      { label: 'Oak & 2nd', text: callAt(2026, 3, 2, 9, 0, 1) },
+      { label: 'Main & 1st', text: [callAt(2026, 3, 2, 9, 0, 2), callAt(2026, 3, 2, 9, 0, 1)].join('\n') },
+    ]).events,
+  );
+  assert.deepEqual(
+    grids.map((g) => `${g.signal}/${g.channel}`),
+    ['Main & 1st/1', 'Main & 1st/2', 'Oak & 2nd/1'],
+  );
+  for (const grid of grids) assert.equal(grid.total, 1);
+});
+
+test('counts accumulate rather than overwrite', () => {
+  const text = [1, 2, 3].map(() => callAt(2026, 3, 2, 7, 30, 1)).join('\n');
+  // Three identical calls collapse into one event; two distinct ones do not.
+  const two = [callAt(2026, 3, 2, 7, 30, 1), callAt(2026, 3, 2, 7, 55, 1)].join('\n');
+  assert.equal(gridFor(two, 1).counts[0][7], 2);
+  assert.ok(gridFor(text, 1).total >= 1);
+});
+
+test('no events gives no grids rather than throwing', () => {
+  for (const input of [[], null, undefined]) {
+    assert.deepEqual(buildHourWeekdayGrids(input), []);
+  }
+});
+
+test('every event is counted exactly once', () => {
+  const text = [
+    callAt(2026, 3, 2, 7, 30, 1),
+    callAt(2026, 3, 5, 14, 0, 1),
+    callAt(2026, 3, 7, 22, 0, 2),
+  ].join('\n');
+  const grids = buildHourWeekdayGrids(evaluatePreemption(text).events);
+  const counted = grids.reduce(
+    (sum, g) => sum + g.counts.reduce((s, row) => s + row.reduce((a, b) => a + b, 0), 0),
+    0,
+  );
+  assert.equal(counted, evaluatePreemption(text).events.length);
+  assert.equal(counted, grids.reduce((sum, g) => sum + g.total, 0));
+});
+
+test('a tied peak resolves to the earliest cell, and is stable', () => {
+  // Monday 07:00 and Tuesday 15:00 both have one event; the earlier cell wins
+  // so the same data always reports the same peak.
+  const text = [callAt(2026, 3, 2, 7, 30, 1), callAt(2026, 3, 3, 15, 0, 1)].join('\n');
+  const first = gridFor(text, 1);
+  const second = gridFor(text, 1);
+  assert.deepEqual(first.peak, { weekday: 'Mon', hour: 7, count: 1 });
+  assert.deepEqual(first.peak, second.peak);
 });

@@ -644,3 +644,75 @@ export function evaluateSources(sources, options = {}) {
     },
   };
 }
+
+/** Heatmap rows, Monday first so the working week is contiguous. */
+export const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** Date#getDay is Sunday-first; this maps it onto the row order above. */
+const ROW_BY_DAY = [6, 0, 1, 2, 3, 4, 5];
+
+export const HOURS_PER_DAY = 24;
+
+/**
+ * An hour-by-weekday grid of event counts, one per signal and channel.
+ *
+ * The scatter answers "is this the same time every day"; this answers "is it
+ * only on working days". An emitter riding a commute concentrates into a few
+ * cells in the Monday-to-Friday rows. Apparatus responding to real calls is
+ * spread across the whole week, because emergencies do not keep office hours.
+ *
+ * Local time, for the same reason the scatter uses it: the pattern is tied to
+ * a human schedule, and a UTC hour would shift it for anyone off the meridian.
+ */
+export function buildHourWeekdayGrids(events) {
+  const bySeries = new Map();
+
+  for (const event of events || []) {
+    const key = `${event.signal || ''}\u0000${event.channel}`;
+    let grid = bySeries.get(key);
+    if (!grid) {
+      grid = {
+        signal: event.signal || '',
+        channel: event.channel,
+        counts: Array.from({ length: WEEKDAY_LABELS.length }, () =>
+          new Array(HOURS_PER_DAY).fill(0)),
+        total: 0,
+        weekdayCount: 0,
+      };
+      bySeries.set(key, grid);
+    }
+    const at = new Date(event.startMs);
+    const row = ROW_BY_DAY[at.getDay()];
+    grid.counts[row][at.getHours()] += 1;
+    grid.total += 1;
+    // Rows 0-4 are Monday to Friday.
+    if (row < 5) grid.weekdayCount += 1;
+  }
+
+  const grids = [...bySeries.values()].map((grid) => {
+    let max = 0;
+    let peak = null;
+    for (let row = 0; row < grid.counts.length; row += 1) {
+      for (let hour = 0; hour < HOURS_PER_DAY; hour += 1) {
+        const count = grid.counts[row][hour];
+        if (count > max) {
+          max = count;
+          peak = { weekday: WEEKDAY_LABELS[row], hour, count };
+        }
+      }
+    }
+    return {
+      ...grid,
+      max,
+      peak,
+      // Reported as a plain share, not a score: what it means is the
+      // engineer's call, and scheduled transit looks much the same.
+      weekdayShare: grid.total ? grid.weekdayCount / grid.total : 0,
+    };
+  });
+
+  grids.sort(
+    (a, b) => (a.signal < b.signal ? -1 : a.signal > b.signal ? 1 : 0) || a.channel - b.channel,
+  );
+  return grids;
+}

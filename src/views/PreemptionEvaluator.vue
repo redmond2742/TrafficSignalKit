@@ -39,6 +39,10 @@
                 A <b>kit screen</b>: every event plotted by date and time of
                 day, coloured per signal and channel
               </li>
+              <li>
+                A <b>weekly pattern</b> heatmap per channel, hour against day
+                of week
+              </li>
             </ul>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -63,10 +67,21 @@
               one.
             </p>
             <p class="mt-2">
-              A flat row is a lead, not a finding: scheduled transit, a shift
-              change at a nearby station, or a recurring delivery can all look
-              similar. Confirm against the channel the calls arrive on and the
-              times in the event table before drawing conclusions.
+              <b>Weekly pattern</b> asks the other half of the question: not
+              "the same time every day" but "only on working days". Each
+              channel gets an hour-by-weekday grid, and the signal picker
+              switches between intersections. A commute rides Monday to Friday
+              and leaves the weekend rows empty. Apparatus answering real calls
+              fills the whole week, because emergencies keep no office hours.
+              The percentage beside each grid is the share of that channel's
+              events falling on a weekday.
+            </p>
+            <p class="mt-2">
+              A flat row or a weekday-only block is a lead, not a finding:
+              scheduled transit, a shift change at a nearby station, or a
+              recurring delivery can all look similar. Confirm against the
+              channel the calls arrive on and the times in the event table
+              before drawing conclusions.
             </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -228,6 +243,7 @@
           <v-btn value="timeline" size="small">Timeline</v-btn>
           <v-btn value="durations" size="small">Durations</v-btn>
           <v-btn value="scatter" size="small">Kit screen</v-btn>
+          <v-btn value="weekly" size="small">Weekly pattern</v-btn>
         </v-btn-toggle>
         <v-chip-group v-model="visibleChannels" multiple column>
           <v-chip
@@ -241,12 +257,25 @@
             Preempt {{ channel }}
           </v-chip>
         </v-chip-group>
-        <v-btn size="small" variant="text" @click="resetZoom">Reset zoom</v-btn>
+        <v-btn
+          v-if="chartMode !== 'weekly'"
+          size="small"
+          variant="text"
+          @click="resetZoom"
+        >
+          Reset zoom
+        </v-btn>
       </div>
       <p class="chart-hint">
         <template v-if="chartMode === 'timeline'">
           Every event on its channel, at the time it happened. Scroll to zoom
           the time axis &mdash; events are short next to a whole day of data.
+        </template>
+        <template v-if="chartMode === 'weekly'">
+          Events by hour and day of week, one grid per channel. A vehicle
+          riding a commute concentrates into a few cells in the Monday-to-Friday
+          rows. Apparatus answering real calls spreads across the whole week,
+          because emergencies keep no office hours.
         </template>
         <template v-else-if="chartMode === 'scatter'">
           Each dot is one event, placed by date and time of day. A vehicle
@@ -263,7 +292,57 @@
           </span>
         </template>
       </p>
-      <div class="chart-wrapper" :style="{ height: chartHeight + 'px' }">
+      <!-- A CSS grid rather than a canvas: no charting library has a matrix
+           type built in, and this stays legible and selectable at any size. -->
+      <div v-if="chartMode === 'weekly'" class="heatmaps">
+        <v-select
+          v-if="heatmapSignalOptions.length > 1"
+          v-model="heatmapSignal"
+          :items="heatmapSignalOptions"
+          label="Signal"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="heatmap-signal"
+        ></v-select>
+
+        <div v-for="grid in heatmaps" :key="`${grid.signal}-${grid.channel}`" class="heatmap">
+          <div class="heatmap-head">
+            <h3 class="heatmap-title">Preempt {{ grid.channel }}</h3>
+            <span class="heatmap-facts">
+              {{ grid.total }} {{ grid.total === 1 ? "event" : "events" }} ·
+              {{ Math.round(grid.weekdayShare * 100) }}% on weekdays
+              <template v-if="grid.peak">
+                · busiest {{ grid.peak.weekday }}
+                {{ hourLabel(grid.peak.hour) }}:00
+              </template>
+            </span>
+          </div>
+
+          <div class="heatmap-grid" role="img" :aria-label="`Preempt ${grid.channel}: ${grid.total} events by hour and day of week`">
+            <div class="heatmap-corner"></div>
+            <div v-for="hour in hourCount" :key="`h${hour}`" class="heatmap-hour">
+              {{ hour - 1 }}
+            </div>
+            <template v-for="(row, rowIndex) in grid.counts" :key="`r${rowIndex}`">
+              <div class="heatmap-day" :class="{ 'heatmap-day--weekend': rowIndex > 4 }">
+                {{ weekdayLabels[rowIndex] }}
+              </div>
+              <div
+                v-for="(count, hour) in row"
+                :key="`c${rowIndex}-${hour}`"
+                class="heatmap-cell"
+                :style="cellStyle(count, grid.max)"
+                :title="cellTitle(weekdayLabels[rowIndex], hour, count)"
+              >
+                {{ count || "" }}
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="chart-wrapper" :style="{ height: chartHeight + 'px' }">
         <Scatter
           v-if="chartMode === 'scatter'"
           ref="gantt"
@@ -372,6 +451,9 @@ import {
   STATUS_LABELS,
   DEFAULT_MAX_EVENT_SECONDS,
   MINUTES_PER_DAY,
+  WEEKDAY_LABELS,
+  HOURS_PER_DAY,
+  buildHourWeekdayGrids,
   evaluateSources,
   buildScatterPoints,
   seriesKey,
@@ -431,6 +513,9 @@ export default {
       visibleChannels: [],
       signals: [],
       chartMode: "timeline",
+      heatmapSignal: null,
+      weekdayLabels: WEEKDAY_LABELS,
+      hourCount: HOURS_PER_DAY,
       statusLabels: STATUS_LABELS,
     };
   },
@@ -447,6 +532,29 @@ export default {
     /** Whether the data spans more than one signal, which changes what is worth showing. */
     multiSignal() {
       return this.signals.length > 1;
+    },
+    /** Every grid for the data, before the signal picker narrows it. */
+    allHeatmaps() {
+      return buildHourWeekdayGrids(this.filteredEvents);
+    },
+    /** The signal the heatmaps are showing, defaulting to the first available. */
+    activeHeatmapSignal() {
+      const available = [...new Set(this.allHeatmaps.map((grid) => grid.signal))];
+      if (this.heatmapSignal !== null && available.includes(this.heatmapSignal)) {
+        return this.heatmapSignal;
+      }
+      return available[0] ?? null;
+    },
+    heatmapSignalOptions() {
+      return [...new Set(this.allHeatmaps.map((grid) => grid.signal))].map((signal) => ({
+        title: signal || "Unnamed signal",
+        value: signal,
+      }));
+    },
+    /** One heatmap per channel, for the selected signal. */
+    heatmaps() {
+      const signal = this.activeHeatmapSignal;
+      return this.allHeatmaps.filter((grid) => grid.signal === signal);
     },
     /**
      * Date against time of day, one point per event.
@@ -860,6 +968,23 @@ export default {
         }
       }, 0);
     },
+    /**
+     * Cell shading. Scaled against the busiest cell in that channel's own grid,
+     * so a quiet channel is still readable next to a busy one -- the shape of
+     * the week is the point here, not the absolute count.
+     */
+    cellStyle(count, max) {
+      if (!count) return { background: "rgba(var(--v-theme-on-surface), 0.04)" };
+      const intensity = 0.18 + 0.82 * (count / (max || 1));
+      return { background: `rgba(0, 105, 92, ${intensity.toFixed(3)})`, color: intensity > 0.55 ? "#fff" : "inherit" };
+    },
+    hourLabel(hour) {
+      return String(hour).padStart(2, "0");
+    },
+    cellTitle(weekday, hour, count) {
+      const plural = count === 1 ? "event" : "events";
+      return `${weekday} ${this.hourLabel(hour)}:00 — ${count} ${plural}`;
+    },
     addSource() {
       this.sources.push({ id: this.nextSourceId, label: "", text: "" });
       this.nextSourceId += 1;
@@ -955,6 +1080,68 @@ export default {
 .chart-wrapper {
   position: relative;
   width: 100%;
+}
+.heatmaps {
+  margin-top: 8px;
+}
+.heatmap-signal {
+  max-width: 280px;
+  margin-bottom: 16px;
+}
+.heatmap {
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+.heatmap-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.heatmap-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+.heatmap-facts {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.heatmap-grid {
+  display: grid;
+  /* A day label, then one column per hour. */
+  grid-template-columns: 38px repeat(24, minmax(22px, 1fr));
+  gap: 2px;
+  min-width: 600px;
+}
+.heatmap-corner {
+  /* empty cell above the day labels */
+}
+.heatmap-hour {
+  font-size: 0.65rem;
+  text-align: center;
+  opacity: 0.6;
+  padding-bottom: 2px;
+}
+.heatmap-day {
+  font-size: 0.72rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  opacity: 0.85;
+}
+.heatmap-day--weekend {
+  opacity: 0.5;
+}
+.heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  line-height: 1;
 }
 .table-wrapper {
   overflow-x: auto;

@@ -315,6 +315,36 @@ export const routeMeta = {
       "Quick reference notes and resources for traffic signal timing work.",
     path: "/reference",
   },
+  ConfigureOnceWithGtssPost: {
+    datePublished: "2026-09-24",
+    dateModified: "2026-09-24",
+    title: "What Is GTSS? Signal Configuration, Written Once",
+    description:
+      "Why re-entering phases, detector channels and approach speeds into every tool costs accuracy, and how the open GTSS standard fixes it.",
+    path: "/blog/configure-once-with-gtss",
+    faq: [
+      {
+        question: "What is GTSS?",
+        answer:
+          "GTSS is the General Traffic Signal Specification: a free, open standard that describes a traffic signal's configuration as a zip of plain comma-separated text files. It covers signals, approaches, phases, detectors, basic timings and preemption, and belongs to no vendor.",
+      },
+      {
+        question: "What does a GTSS feed contain?",
+        answer:
+          "signals.txt lists the signals and their coordinates; approaches.txt carries street name, compass bearing and posted speed per leg; phases.txt maps each phase to an approach and movement; detectors.txt lists every detector channel and the phase it calls; basic_timings.txt holds minimum green, yellow and all-red; preempt.txt maps preempt channels to phases.",
+      },
+      {
+        question: "How is GTSS related to GTFS?",
+        answer:
+          "GTSS borrows the shape of GTFS, the transit feed standard: a handful of agreed text files in a zip, referencing each other by ID, starting with agency.txt. GTFS made transit schedules portable between tools; GTSS applies the same approach to traffic signal configuration.",
+      },
+      {
+        question: "Where can I build a GTSS feed?",
+        answer:
+          "The specification and its documentation live at gtss.dev. The GTSS Builder at app.gtss.dev is a configuration tool for assembling a feed signal by signal, showing how complete each signal is as you go.",
+      },
+    ],
+  },
   OffsetsAreThePoint: {
     datePublished: "2026-01-26",
     dateModified: "2026-01-27",

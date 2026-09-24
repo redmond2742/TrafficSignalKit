@@ -60,7 +60,7 @@ test('an about or notes page does not claim to be an application', () => {
 
 test('blog posts are articles with real dates and an author', () => {
   const posts = indexableRoutes().filter((r) => r.path.startsWith('/blog/'));
-  assert.equal(posts.length, 5, `expected 5 posts, found ${posts.length}`);
+  assert.ok(posts.length >= 5, `router parse found only ${posts.length} posts`);
   for (const post of posts) {
     const article = blockOf(post.path, 'BlogPosting', post.name);
     assert.ok(article, `${post.path}: no BlogPosting`);

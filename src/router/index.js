@@ -23,6 +23,7 @@ import DelayEstimator from '../views/DelayEstimator'
 import MessageSignDesigner from '../views/MessageSignDesigner'
 import Blog from '../views/Blog'
 import OffsetsAreThePoint from '../views/OffsetsAreThePoint'
+import ConfigureOnceWithGtssPost from '../views/ConfigureOnceWithGtssPost'
 import HighResDataExplainerPost from '../views/HighResDataExplainerPost'
 import HighResSplitHistoryPost from '../views/HighResSplitHistoryPost'
 import TimeseriesAllEnumerationsPost from '../views/TimeseriesAllEnumerationsPost'
@@ -75,6 +76,11 @@ const routes = [
         path: '/blog/offsets-are-the-point',
         name: 'OffsetsAreThePoint',
         component: OffsetsAreThePoint,
+    },
+    {
+        path: '/blog/configure-once-with-gtss',
+        name: 'ConfigureOnceWithGtssPost',
+        component: ConfigureOnceWithGtssPost,
     },
     {
         path: '/blog/high-resolution-data-explainer',

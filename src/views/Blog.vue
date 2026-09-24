@@ -17,6 +17,29 @@
     <v-card
       class="blog-card blog-card--link"
       variant="outlined"
+      to="/blog/configure-once-with-gtss"
+      link
+    >
+      <v-card-title>Configure Once, Not Once Per Tool</v-card-title>
+      <v-card-subtitle>
+        Why this site leans on GTSS, the General Traffic Signal Specification
+      </v-card-subtitle>
+      <v-card-text>
+        <p>
+          Every tool here asks for the same phases, detector channels and
+          approach speeds. Re-entering them costs time and, more expensively,
+          accuracy. An open standard for signal configuration fixes that.
+        </p>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn color="primary" variant="text" to="/blog/configure-once-with-gtss">
+          Read the article
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+    <v-card
+      class="blog-card blog-card--link"
+      variant="outlined"
       to="/blog/offsets-are-the-point"
       link
     >

@@ -14,9 +14,11 @@
             data is handled without waiting on the phase and detector rows that
             make up the bulk of it.
             <p class="mt-2">
-              Add a block per signal to compare intersections side by side. If
-              your export already leads with a signal ID column, those names are
-              used instead of the labels you type.
+              Add a block per signal to compare intersections side by side.
+              Each block is identified by its <b>signal number</b>, which is
+              the same number a GTSS export uses, so naming the channels is
+              automatic. Data that already leads with a signal ID column brings
+              its own numbers and ignores the field.
             </p>
             <p class="mt-2">
               Load a <b>GTSS export</b> and each channel is named by what it
@@ -111,9 +113,10 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
             </p>
             <p class="mt-2">
               Load the zip with <b>Load GTSS export</b>. If preempt.txt ships
-              separately, select it at the same time. Signals whose names in
-              your data match the export's signal IDs are linked
-              automatically; anything else you pick from the dropdowns.
+              separately, select it at the same time. The signal field on each
+              block then becomes a picker over the signals the export actually
+              contains, listed by number and cross street, so there is no
+              separate linking step: the number is the link.
             </p>
             <p class="mt-2">
               <b>On direction:</b> compass_bearing is the bearing of the
@@ -182,14 +185,31 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
     -->
     <div v-for="(source, index) in sources" :key="source.id" class="source-block">
       <div class="source-head">
-        <v-text-field
-          v-model="source.label"
-          :placeholder="`Signal ${index + 1}`"
-          label="Signal name"
+        <!--
+          The signal number, not a free-text name: it is the key the GTSS
+          export uses, so typing it here is what links the two. When an export
+          is loaded this becomes a picker over the signals it actually has.
+        -->
+        <v-select
+          v-if="gtssSignalOptions.length"
+          v-model="source.signalId"
+          :items="gtssSignalOptions"
+          label="Signal"
           density="compact"
           variant="outlined"
           hide-details
+          clearable
           class="source-name"
+        ></v-select>
+        <v-text-field
+          v-else
+          v-model="source.signalId"
+          :placeholder="`${index + 1}`"
+          label="Signal number"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="source-name source-name--narrow"
         ></v-text-field>
         <v-btn
           v-if="sources.length > 1"
@@ -314,21 +334,17 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
 
       <template v-if="gtss">
         <h2 class="section-title">Preempt channels</h2>
-        <div v-if="signalLinkRows.length" class="link-row">
-          <v-select
-            v-for="row in signalLinkRows"
-            :key="row.name"
-            :model-value="signalLinks[row.name] ?? null"
-            :items="gtssSignalOptions"
-            :label="row.name"
-            density="compact"
-            variant="outlined"
-            hide-details
-            clearable
-            class="link-select"
-            @update:model-value="(value) => (signalLinks = { ...signalLinks, [row.name]: value })"
-          ></v-select>
-        </div>
+        <v-alert
+          v-if="unmatchedSignals.length"
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mb-3"
+        >
+          The export has nothing for
+          {{ unmatchedSignals.map((s) => `signal ${s}`).join(", ") }}. Set the
+          signal number on each block above to match the export.
+        </v-alert>
 
         <div v-if="directoryRows.length" class="table-wrapper">
           <v-table density="compact">
@@ -344,7 +360,12 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
             </thead>
             <tbody>
               <tr v-for="row in directoryRows" :key="`${row.name}-${row.channel}`">
-                <td v-if="multiSignal">{{ row.name }}</td>
+                <td v-if="multiSignal" class="nowrap">
+                  {{ row.name }}
+                  <span v-if="row.crossStreets" class="muted">
+                    {{ row.crossStreets }}
+                  </span>
+                </td>
                 <td>Preempt {{ row.channel }}</td>
                 <td>{{ row.serves || "—" }}</td>
                 <td class="nowrap">{{ row.phases || "—" }}</td>
@@ -355,8 +376,8 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
           </v-table>
         </div>
         <p v-else class="chart-hint">
-          Link each signal above to the matching one in the export to see what
-          its channels serve.
+          Set the signal number on each block above to match the export, and
+          each channel will be named by what it serves.
         </p>
       </template>
 
@@ -643,7 +664,7 @@ export default {
   data() {
     return {
       panel: [],
-      sources: [{ id: 1, label: "", text: "" }],
+      sources: [{ id: 1, signalId: "", text: "" }],
       nextSourceId: 2,
       maxEventSeconds: DEFAULT_MAX_EVENT_SECONDS,
       processing: false,
@@ -661,8 +682,6 @@ export default {
       gtssWarnings: [],
       gtssError: "",
       gtssLoading: false,
-      // signal name in the data -> signal id in the GTSS export
-      signalLinks: {},
       weekdayLabels: WEEKDAY_LABELS,
       hourCount: HOURS_PER_DAY,
       statusLabels: STATUS_LABELS,
@@ -685,7 +704,9 @@ export default {
     gtssSignalOptions() {
       if (!this.gtss) return [];
       return this.gtss.signals.map((signal) => ({
-        title: `${signal.label} — ${signal.channels.length} channel${signal.channels.length === 1 ? "" : "s"}`,
+        title: signal.crossStreets
+          ? `${signal.id} — ${signal.crossStreets}`
+          : `Signal ${signal.id}`,
         value: signal.id,
       }));
     },
@@ -695,32 +716,23 @@ export default {
       for (const signal of this.gtss ? this.gtss.signals : []) map[signal.id] = signal;
       return map;
     },
-    /** The signals present in the loaded data, each with its GTSS link. */
-    signalLinkRows() {
-      return this.signals.map((name) => ({
-        name,
-        linked: this.signalLinks[name] ?? null,
-      }));
-    },
-    /** True once at least one signal is linked, so direction columns are worth showing. */
+    /**
+     * True once any signal in the data is one the export knows about.
+     * The signal name in the data is the GTSS id, so this is a direct lookup.
+     */
     hasDirections() {
-      return Boolean(this.gtss) && Object.values(this.signalLinks).some(Boolean);
+      return this.signals.some((name) => this.gtssById[name]);
     },
-    /** Every channel entry for the signal shown in the weekly view. */
-    directoryForHeatmapSignal() {
-      const id = this.signalLinks[this.activeHeatmapSignal];
-      return id ? this.gtssById[id] : null;
-    },
-    /** Every channel the export knows about, for the linked signals. */
+    /** Every channel the export knows about, for the signals actually loaded. */
     directoryRows() {
       const rows = [];
-      for (const { name, linked } of this.signalLinkRows) {
-        const signal = linked ? this.gtssById[linked] : null;
+      for (const name of this.signals) {
+        const signal = this.gtssById[name];
         if (!signal) continue;
         for (const entry of signal.channels) {
           rows.push({
             name,
-            signalId: signal.id,
+            crossStreets: signal.crossStreets,
             channel: entry.channel,
             serves: describeChannel(entry),
             phases: entry.phases.join(", "),
@@ -730,6 +742,11 @@ export default {
         }
       }
       return rows;
+    },
+    /** Signals in the data that the export has nothing for. */
+    unmatchedSignals() {
+      if (!this.gtss) return [];
+      return this.signals.filter((name) => !this.gtssById[name]);
     },
     /** Every grid for the data, before the signal picker narrows it. */
     allHeatmaps() {
@@ -1141,7 +1158,9 @@ export default {
         try {
           const result = evaluateSources(
             this.sources.map((source, index) => ({
-              label: (source.label || "").trim() || `Signal ${index + 1}`,
+              // The label becomes the event's signal, and the signal is the
+              // GTSS key, so no separate linking step is needed.
+              label: String(source.signalId ?? "").trim() || String(index + 1),
               text: source.text,
             })),
             { maxEventSeconds: this.maxEventSeconds || DEFAULT_MAX_EVENT_SECONDS },
@@ -1156,7 +1175,6 @@ export default {
           this.signals = result.signals;
           this.visibleChannels = [];
           this.ranOnce = true;
-          this.autoLinkSignals();
         } catch (err) {
           this.error = `Could not process this data: ${err.message}`;
           this.events = [];
@@ -1190,8 +1208,7 @@ export default {
      * unconditionally.
      */
     servesLabel(signalName, channel) {
-      const id = this.signalLinks[signalName];
-      const signal = id ? this.gtssById[id] : null;
+      const signal = this.gtssById[signalName];
       if (!signal) return "";
       return describeChannel(signal.channels.find((c) => c.channel === channel));
     },
@@ -1219,7 +1236,6 @@ export default {
           this.gtss = directory;
           this.gtssWarnings = directory.warnings;
           this.gtssName = files.map((f) => f.name).join(", ");
-          this.autoLinkSignals();
         }
       } catch (err) {
         this.gtssError = `Could not read that export: ${err.message}`;
@@ -1229,32 +1245,14 @@ export default {
         event.target.value = "";
       }
     },
-    /**
-     * Links each signal in the data to one in the export.
-     *
-     * Data exported with a signal ID column already names its signals the way
-     * GTSS does, so those match outright; anything else is left for the user
-     * to pick rather than guessed at.
-     */
-    autoLinkSignals() {
-      if (!this.gtss) return;
-      const known = new Set(this.gtss.signals.map((signal) => signal.id));
-      const links = { ...this.signalLinks };
-      for (const name of this.signals) {
-        if (links[name]) continue;
-        if (known.has(name)) links[name] = name;
-      }
-      this.signalLinks = links;
-    },
     clearGtss() {
       this.gtss = null;
       this.gtssName = "";
       this.gtssWarnings = [];
       this.gtssError = "";
-      this.signalLinks = {};
     },
     addSource() {
-      this.sources.push({ id: this.nextSourceId, label: "", text: "" });
+      this.sources.push({ id: this.nextSourceId, signalId: "", text: "" });
       this.nextSourceId += 1;
     },
     removeSource(index) {
@@ -1289,7 +1287,10 @@ export default {
   margin-bottom: 8px;
 }
 .source-name {
-  max-width: 280px;
+  max-width: 320px;
+}
+.source-name--narrow {
+  max-width: 160px;
 }
 .action-row {
   display: flex;
@@ -1363,15 +1364,6 @@ export default {
 .gtss-hint {
   font-size: 0.82rem;
   opacity: 0.75;
-}
-.link-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.link-select {
-  max-width: 300px;
 }
 .heatmap-serves {
   font-weight: 400;

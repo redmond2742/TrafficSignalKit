@@ -135,8 +135,15 @@ export function buildPreemptDirectory(input) {
   }
 
   const signalMeta = new Map(signals.map((s) => [s.signal_id, s]));
+  const streetsBySignal = new Map();
+  for (const approach of approaches) {
+    if (!streetsBySignal.has(approach.signal_id)) streetsBySignal.set(approach.signal_id, []);
+    streetsBySignal.get(approach.signal_id).push(approach.street_name);
+  }
+
   const out = [...bySignal.entries()].map(([id, channels]) => ({
     id,
+    crossStreets: crossStreetName(streetsBySignal.get(id)),
     label: `Signal ${id}`,
     latitude: signalMeta.get(id) ? Number(signalMeta.get(id).latitude) : null,
     longitude: signalMeta.get(id) ? Number(signalMeta.get(id).longitude) : null,
@@ -157,6 +164,32 @@ export function buildPreemptDirectory(input) {
   });
 
   return { signals: out, agency, warnings };
+}
+
+/**
+ * A readable name for a signal, from the streets meeting at it.
+ *
+ * signals.txt carries only an ID and coordinates, so the name has to come from
+ * the approaches. The two streets with the most legs are the through routes;
+ * a single-leg entry is usually a driveway or a parking exit and would make a
+ * worse label than the cross street it sits opposite.
+ */
+export function crossStreetName(streets) {
+  const counts = new Map();
+  const order = new Map();
+  (streets || []).forEach((street, index) => {
+    if (!street) return;
+    counts.set(street, (counts.get(street) || 0) + 1);
+    if (!order.has(street)) order.set(street, index);
+  });
+  if (!counts.size) return '';
+  // Ties break on the order the approaches are listed, not alphabetically:
+  // at a four-leg signal with two single-leg cross streets, the export's own
+  // ordering is a better guess at which matters than the alphabet is.
+  const ranked = [...counts.entries()].sort(
+    (a, b) => b[1] - a[1] || order.get(a[0]) - order.get(b[0]),
+  );
+  return ranked.slice(0, 2).map(([street]) => street).join(' & ');
 }
 
 /** Reduces a channel's phases to the street and direction they share. */

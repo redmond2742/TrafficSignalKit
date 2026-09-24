@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  crossStreetName,
   parseTable,
   bearingToCompass,
   bearingToTravel,
@@ -168,4 +169,43 @@ test('signals sort numerically, not as strings', () => {
   for (const id of [10, 2, 1]) rows.push(`3,${id},EMERGENCY,1,120`);
   const { signals } = buildPreemptDirectory({ 'preempt.txt': rows.join('\n') });
   assert.deepEqual(signals.map((s) => s.id), ['1', '2', '10']);
+});
+
+// ------------------------------------------------------- cross-street naming
+
+test('a signal is named by the two streets with the most legs', () => {
+  const name = crossStreetName([
+    'Ygnacio Valley Road', 'Oakland Blvd', 'Ygnacio Valley Road', 'Bart Station',
+  ]);
+  assert.equal(name, 'Ygnacio Valley Road & Oakland Blvd');
+});
+
+/**
+ * signals.txt carries only an ID and coordinates, so the name has to come from
+ * the approaches, and at a four-leg signal the two cross streets often have one
+ * leg each. Breaking that tie on the export's own ordering beats the alphabet:
+ * alphabetical ordering picked "Bart Station" over "Oakland Blvd" at signal 1.
+ */
+test('a tie breaks on approach order, not alphabetically', () => {
+  assert.equal(
+    crossStreetName(['Main St', 'Main St', 'Oakland Blvd', 'Bart Station']),
+    'Main St & Oakland Blvd',
+  );
+  assert.equal(
+    crossStreetName(['Main St', 'Main St', 'Bart Station', 'Oakland Blvd']),
+    'Main St & Bart Station',
+    'reversing the input should reverse the tie',
+  );
+});
+
+test('cross-street naming copes with gaps and one-street signals', () => {
+  assert.equal(crossStreetName(['Main St', '', null, 'Main St']), 'Main St');
+  assert.equal(crossStreetName([]), '');
+  assert.equal(crossStreetName(null), '');
+  assert.equal(crossStreetName(undefined), '');
+});
+
+test('each signal carries its cross streets', () => {
+  const { signals } = buildPreemptDirectory(FILES);
+  assert.equal(signals[0].crossStreets, 'Ygnacio Valley Road & Oakland Blvd');
 });

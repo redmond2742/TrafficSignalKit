@@ -18,6 +18,12 @@
               your export already leads with a signal ID column, those names are
               used instead of the labels you type.
             </p>
+            <p class="mt-2">
+              Load a <b>GTSS export</b> and each channel is named by what it
+              actually serves &mdash; "Preempt 3" becomes "Ygnacio Valley Road
+              from the ESE (WB)" &mdash; so a pattern points at a direction
+              rather than a channel number.
+            </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -82,6 +88,39 @@
               recurring delivery can all look similar. Confirm against the
               channel the calls arrive on and the times in the event table
               before drawing conclusions.
+            </p>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+
+        <v-expansion-panel title="Naming Channels from a GTSS Export" value="gtss">
+          <v-expansion-panel-text>
+            <p>
+              A preempt channel number means nothing on its own. A GTSS export
+              carries the chain that gives it meaning:
+            </p>
+            <pre>
+preempt.txt     preempt_channel, signalID, type, phase, maxTime
+phases.txt      phase, signal_id, movement_type, approach_id
+approaches.txt  approach_id, signal_id, street_name, compass_bearing
+            </pre>
+            <p>
+              Channel 3 at signal 1 serves phases 1 and 6; both belong to
+              approach 1-2, which is Ygnacio Valley Road lying 120&deg; from
+              the intersection. So the channel is the <b>ESE approach</b>, and
+              the traffic on it is <b>westbound</b>.
+            </p>
+            <p class="mt-2">
+              Load the zip with <b>Load GTSS export</b>. If preempt.txt ships
+              separately, select it at the same time. Signals whose names in
+              your data match the export's signal IDs are linked
+              automatically; anything else you pick from the dropdowns.
+            </p>
+            <p class="mt-2">
+              <b>On direction:</b> compass_bearing is the bearing of the
+              approach leg from the intersection &mdash; where the vehicles
+              come from &mdash; so the travel direction shown is its
+              reciprocal. A channel serving phases on two different approaches
+              gets no direction at all rather than an arbitrary one.
             </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -169,6 +208,50 @@
       />
     </div>
 
+    <!--
+      A channel number alone says nothing. A GTSS export carries
+      preempt.txt -> phases.txt -> approaches.txt, which is what turns
+      "Preempt 3" into "Ygnacio Valley Road from the ESE".
+    -->
+    <div class="gtss-row">
+      <v-btn
+        variant="tonal"
+        prepend-icon="mdi-map-marker-distance"
+        :loading="gtssLoading"
+        @click="$refs.gtssInput.click()"
+      >
+        Load GTSS export
+      </v-btn>
+      <input
+        ref="gtssInput"
+        type="file"
+        class="gtss-file"
+        multiple
+        accept=".zip,.txt"
+        @change="loadGtssFiles"
+      />
+      <span v-if="gtssName" class="gtss-name">
+        {{ gtssName }}
+        <v-btn size="x-small" variant="text" @click="clearGtss">Clear</v-btn>
+      </span>
+      <span v-else class="gtss-hint">
+        Optional: the zip, plus preempt.txt if it ships separately
+      </span>
+    </div>
+
+    <v-alert v-if="gtssError" type="error" variant="tonal" density="compact" class="mb-3">
+      {{ gtssError }}
+    </v-alert>
+    <v-alert
+      v-else-if="gtssWarnings.length"
+      type="warning"
+      variant="tonal"
+      density="compact"
+      class="mb-3"
+    >
+      {{ gtssWarnings.join(" ") }}
+    </v-alert>
+
     <div class="action-row">
       <v-btn variant="tonal" prepend-icon="mdi-plus" @click="addSource">
         Add another signal
@@ -228,6 +311,54 @@
           never entered preemption.
         </v-alert>
       </div>
+
+      <template v-if="gtss">
+        <h2 class="section-title">Preempt channels</h2>
+        <div v-if="signalLinkRows.length" class="link-row">
+          <v-select
+            v-for="row in signalLinkRows"
+            :key="row.name"
+            :model-value="signalLinks[row.name] ?? null"
+            :items="gtssSignalOptions"
+            :label="row.name"
+            density="compact"
+            variant="outlined"
+            hide-details
+            clearable
+            class="link-select"
+            @update:model-value="(value) => (signalLinks = { ...signalLinks, [row.name]: value })"
+          ></v-select>
+        </div>
+
+        <div v-if="directoryRows.length" class="table-wrapper">
+          <v-table density="compact">
+            <thead>
+              <tr>
+                <th v-if="multiSignal">Signal</th>
+                <th>Channel</th>
+                <th>Serves</th>
+                <th>Phases</th>
+                <th>Type</th>
+                <th>Max</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in directoryRows" :key="`${row.name}-${row.channel}`">
+                <td v-if="multiSignal">{{ row.name }}</td>
+                <td>Preempt {{ row.channel }}</td>
+                <td>{{ row.serves || "—" }}</td>
+                <td class="nowrap">{{ row.phases || "—" }}</td>
+                <td>{{ row.type || "—" }}</td>
+                <td class="nowrap">{{ row.maxTime === null ? "—" : `${row.maxTime}s` }}</td>
+              </tr>
+            </tbody>
+          </v-table>
+        </div>
+        <p v-else class="chart-hint">
+          Link each signal above to the matching one in the export to see what
+          its channels serve.
+        </p>
+      </template>
 
       <h2 class="section-title">Events by channel</h2>
       <div class="chart-controls">
@@ -308,7 +439,12 @@
 
         <div v-for="grid in heatmaps" :key="`${grid.signal}-${grid.channel}`" class="heatmap">
           <div class="heatmap-head">
-            <h3 class="heatmap-title">Preempt {{ grid.channel }}</h3>
+            <h3 class="heatmap-title">
+              Preempt {{ grid.channel }}
+              <span v-if="servesLabel(grid.signal, grid.channel)" class="heatmap-serves">
+                — {{ servesLabel(grid.signal, grid.channel) }}
+              </span>
+            </h3>
             <span class="heatmap-facts">
               {{ grid.total }} {{ grid.total === 1 ? "event" : "events" }} ·
               {{ Math.round(grid.weekdayShare * 100) }}% on weekdays
@@ -359,6 +495,7 @@
             <tr>
               <th v-if="multiSignal">Signal</th>
               <th>Channel</th>
+              <th v-if="hasDirections">Serves</th>
               <th>Events</th>
               <th>Shortest</th>
               <th>Median</th>
@@ -375,6 +512,9 @@
             >
               <td v-if="multiSignal">{{ channel.signal || "—" }}</td>
               <td>Preempt {{ channel.channel }}</td>
+              <td v-if="hasDirections">
+                {{ servesLabel(channel.signal, channel.channel) || "—" }}
+              </td>
               <td>{{ channel.count }}</td>
               <td>{{ secs(channel.minMs) }}</td>
               <td>{{ secs(channel.medianMs) }}</td>
@@ -446,6 +586,8 @@ import {
 } from "chart.js";
 import { DateTime } from "luxon";
 import InputBox from "../components/foundational/InputBox.vue";
+import { readZipText } from "../utils/zipReader.js";
+import { buildPreemptDirectory, describeChannel } from "../utils/gtss.js";
 import {
   PREEMPT_CODES,
   STATUS_LABELS,
@@ -514,6 +656,13 @@ export default {
       signals: [],
       chartMode: "timeline",
       heatmapSignal: null,
+      gtss: null,
+      gtssName: "",
+      gtssWarnings: [],
+      gtssError: "",
+      gtssLoading: false,
+      // signal name in the data -> signal id in the GTSS export
+      signalLinks: {},
       weekdayLabels: WEEKDAY_LABELS,
       hourCount: HOURS_PER_DAY,
       statusLabels: STATUS_LABELS,
@@ -532,6 +681,55 @@ export default {
     /** Whether the data spans more than one signal, which changes what is worth showing. */
     multiSignal() {
       return this.signals.length > 1;
+    },
+    gtssSignalOptions() {
+      if (!this.gtss) return [];
+      return this.gtss.signals.map((signal) => ({
+        title: `${signal.label} — ${signal.channels.length} channel${signal.channels.length === 1 ? "" : "s"}`,
+        value: signal.id,
+      }));
+    },
+    /** GTSS entries keyed by signal id, for quick lookup while rendering. */
+    gtssById() {
+      const map = {};
+      for (const signal of this.gtss ? this.gtss.signals : []) map[signal.id] = signal;
+      return map;
+    },
+    /** The signals present in the loaded data, each with its GTSS link. */
+    signalLinkRows() {
+      return this.signals.map((name) => ({
+        name,
+        linked: this.signalLinks[name] ?? null,
+      }));
+    },
+    /** True once at least one signal is linked, so direction columns are worth showing. */
+    hasDirections() {
+      return Boolean(this.gtss) && Object.values(this.signalLinks).some(Boolean);
+    },
+    /** Every channel entry for the signal shown in the weekly view. */
+    directoryForHeatmapSignal() {
+      const id = this.signalLinks[this.activeHeatmapSignal];
+      return id ? this.gtssById[id] : null;
+    },
+    /** Every channel the export knows about, for the linked signals. */
+    directoryRows() {
+      const rows = [];
+      for (const { name, linked } of this.signalLinkRows) {
+        const signal = linked ? this.gtssById[linked] : null;
+        if (!signal) continue;
+        for (const entry of signal.channels) {
+          rows.push({
+            name,
+            signalId: signal.id,
+            channel: entry.channel,
+            serves: describeChannel(entry),
+            phases: entry.phases.join(", "),
+            type: entry.type,
+            maxTime: entry.maxTime,
+          });
+        }
+      }
+      return rows;
     },
     /** Every grid for the data, before the signal picker narrows it. */
     allHeatmaps() {
@@ -958,6 +1156,7 @@ export default {
           this.signals = result.signals;
           this.visibleChannels = [];
           this.ranOnce = true;
+          this.autoLinkSignals();
         } catch (err) {
           this.error = `Could not process this data: ${err.message}`;
           this.events = [];
@@ -984,6 +1183,75 @@ export default {
     cellTitle(weekday, hour, count) {
       const plural = count === 1 ? "event" : "events";
       return `${weekday} ${this.hourLabel(hour)}:00 — ${count} ${plural}`;
+    },
+    /**
+     * What a channel serves, from the GTSS export. Empty when nothing is
+     * loaded or the signal is not linked, so every caller can print it
+     * unconditionally.
+     */
+    servesLabel(signalName, channel) {
+      const id = this.signalLinks[signalName];
+      const signal = id ? this.gtssById[id] : null;
+      if (!signal) return "";
+      return describeChannel(signal.channels.find((c) => c.channel === channel));
+    },
+    async loadGtssFiles(event) {
+      const files = [...(event.target.files || [])];
+      if (!files.length) return;
+      this.gtssError = "";
+      this.gtssLoading = true;
+      try {
+        const collected = {};
+        for (const file of files) {
+          if (/\.zip$/i.test(file.name)) {
+            Object.assign(collected, await readZipText(await file.arrayBuffer()));
+          } else {
+            // preempt.txt often ships alongside the archive rather than inside it.
+            collected[file.name.split("/").pop()] = await file.text();
+          }
+        }
+        const directory = buildPreemptDirectory(collected);
+        if (!directory.signals.length) {
+          this.gtssError =
+            "No preempt channels found. The export needs preempt.txt, plus phases.txt and approaches.txt for directions.";
+          this.gtss = null;
+        } else {
+          this.gtss = directory;
+          this.gtssWarnings = directory.warnings;
+          this.gtssName = files.map((f) => f.name).join(", ");
+          this.autoLinkSignals();
+        }
+      } catch (err) {
+        this.gtssError = `Could not read that export: ${err.message}`;
+        this.gtss = null;
+      } finally {
+        this.gtssLoading = false;
+        event.target.value = "";
+      }
+    },
+    /**
+     * Links each signal in the data to one in the export.
+     *
+     * Data exported with a signal ID column already names its signals the way
+     * GTSS does, so those match outright; anything else is left for the user
+     * to pick rather than guessed at.
+     */
+    autoLinkSignals() {
+      if (!this.gtss) return;
+      const known = new Set(this.gtss.signals.map((signal) => signal.id));
+      const links = { ...this.signalLinks };
+      for (const name of this.signals) {
+        if (links[name]) continue;
+        if (known.has(name)) links[name] = name;
+      }
+      this.signalLinks = links;
+    },
+    clearGtss() {
+      this.gtss = null;
+      this.gtssName = "";
+      this.gtssWarnings = [];
+      this.gtssError = "";
+      this.signalLinks = {};
     },
     addSource() {
       this.sources.push({ id: this.nextSourceId, label: "", text: "" });
@@ -1080,6 +1348,35 @@ export default {
 .chart-wrapper {
   position: relative;
   width: 100%;
+}
+.gtss-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+.gtss-file {
+  display: none;
+}
+.gtss-name,
+.gtss-hint {
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+.link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.link-select {
+  max-width: 300px;
+}
+.heatmap-serves {
+  font-weight: 400;
+  font-size: 0.85rem;
+  opacity: 0.75;
 }
 .heatmaps {
   margin-top: 8px;

@@ -59,6 +59,11 @@
                 A <b>signal picker</b> on every chart, so two intersections
                 can be compared or one examined on its own
               </li>
+              <li>
+                A <b>time-space diagram</b>, once a GTSS export supplies the
+                coordinates: distance along the corridor against time, with
+                runs of calls that look like one vehicle joined up
+              </li>
             </ul>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -100,6 +105,16 @@
               events falling on a weekday.
             </p>
             <p class="mt-2">
+              <b>Time-space</b> asks the third question: not when, but where.
+              With a GTSS export loaded the signals are placed along the
+              corridor they form and every call is drawn at its own
+              intersection. A vehicle driving through calls each signal in
+              turn, which draws as a diagonal walking up the chart; one
+              signal triggered over and over draws as a flat row. Runs that
+              hold a direction at a speed a vehicle could keep are joined
+              with a line and listed underneath, with the route they took.
+            </p>
+            <p class="mt-2">
               A flat row or a weekday-only block is a lead, not a finding:
               scheduled transit, a shift change at a nearby station, or a
               recurring delivery can all look similar. Confirm against the
@@ -112,8 +127,11 @@
         <v-expansion-panel title="Naming Channels from a GTSS Export" value="gtss">
           <v-expansion-panel-text>
             <p>
-              A preempt channel number means nothing on its own. A GTSS export
-              carries the chain that gives it meaning:
+              A preempt channel number means nothing on its own. A
+              <b>GTSS export</b> &mdash; the General Traffic Signal
+              Specification, documented at
+              <a href="https://gtss.dev" target="_blank" rel="noopener">gtss.dev</a>
+              &mdash; carries the chain that gives it meaning:
             </p>
             <pre>
 preempt.txt     preempt_channel, signalID, type, phase, maxTime
@@ -132,6 +150,16 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
               block then becomes a picker over the signals the export actually
               contains, listed by number and cross street, so there is no
               separate linking step: the number is the link.
+            </p>
+            <p class="mt-2">
+              Have no export yet? The configuration builder at
+              <a href="https://app.gtss.dev" target="_blank" rel="noopener">app.gtss.dev</a>
+              produces one, and
+              <a href="https://gtss.dev" target="_blank" rel="noopener">gtss.dev</a>
+              covers what each file holds. Why this site leans on it at all is
+              the subject of
+              <router-link to="/blog/configure-once-with-gtss">
+                Configure Once, Not Once Per Tool</router-link>.
             </p>
             <p class="mt-2">
               <b>On direction:</b> compass_bearing is the bearing of the
@@ -194,28 +222,95 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
     <br />
 
     <!--
-      One block per signal. Comparing signals is the point of the kit screen,
-      and a single box could not say which data came from where. A file that
-      already leads with a signal ID column keeps its own names instead.
+      The export comes first because it changes what the signal fields below
+      it are: a picker over real intersections rather than a number to type.
+      It is its own card for the same reason -- it is loaded once for the
+      whole page, not once per signal, and sitting among the per-signal
+      blocks it read as though it belonged to one of them.
     -->
-    <div v-for="(source, index) in sources" :key="source.id" class="source-block">
+    <v-card class="setup-card gtss-card" variant="outlined">
+      <div class="setup-card__head">
+        <h2 class="setup-card__title">
+          <v-icon icon="mdi-map-marker-distance" size="small" class="mr-1" />
+          Signal configuration
+          <span class="setup-card__optional">optional</span>
+        </h2>
+        <p class="setup-card__hint">
+          A GTSS export names each preempt channel by what it serves, and
+          carries the coordinates the time-space diagram needs. Without one
+          the tool still works; channels stay numbers.
+          <a href="https://gtss.dev" target="_blank" rel="noopener">
+            What is GTSS?
+          </a>
+        </p>
+      </div>
+      <div class="gtss-row">
+        <v-btn
+          variant="tonal"
+          prepend-icon="mdi-map-marker-distance"
+          :loading="gtssLoading"
+          @click="$refs.gtssInput.click()"
+        >
+          Load GTSS export
+        </v-btn>
+        <input
+          ref="gtssInput"
+          type="file"
+          class="gtss-file"
+          multiple
+          accept=".zip,.txt"
+          @change="loadGtssFiles"
+        />
+        <span v-if="gtssName" class="gtss-name">
+          <v-icon icon="mdi-check" size="small" class="gtss-tick" />
+          {{ gtssName }}
+          <span class="muted">
+            — {{ gtss.signals.length }}
+            {{ gtss.signals.length === 1 ? "signal" : "signals" }}
+          </span>
+          <v-btn size="x-small" variant="text" @click="clearGtss">Clear</v-btn>
+        </span>
+        <span v-else class="gtss-hint">
+          The zip, plus preempt.txt if it ships separately
+        </span>
+      </div>
+    </v-card>
+
+    <!--
+      One card per signal, so it is obvious which data belongs to which
+      intersection. Comparing signals is the point of the kit screen and the
+      time-space diagram, and an unboxed list could not say where a paste
+      came from. A file that already leads with a signal ID column keeps its
+      own names instead.
+    -->
+    <v-card
+      v-for="(source, index) in sources"
+      :key="source.id"
+      class="setup-card source-card"
+      variant="outlined"
+    >
       <div class="source-head">
         <!--
           The signal number, not a free-text name: it is the key the GTSS
-          export uses, so typing it here is what links the two. When an export
-          is loaded this becomes a picker over the signals it actually has.
+          export uses, so what goes here is what links the two. With an export
+          loaded this offers its signals, but stays a combobox rather than a
+          picker -- data often covers an intersection the export has not
+          caught up with, and refusing to accept the number would be refusing
+          to process the file.
         -->
-        <v-select
+        <v-combobox
           v-if="gtssSignalOptions.length"
           v-model="source.signalId"
           :items="gtssSignalOptions"
+          :return-object="false"
           label="Signal"
+          placeholder="Pick one, or type any number"
           density="compact"
           variant="outlined"
           hide-details
           clearable
           class="source-name"
-        ></v-select>
+        ></v-combobox>
         <v-text-field
           v-else
           v-model="source.signalId"
@@ -226,6 +321,10 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
           hide-details
           class="source-name source-name--narrow"
         ></v-text-field>
+        <span v-if="signalNote(source.signalId)" class="signal-note">
+          {{ signalNote(source.signalId) }}
+        </span>
+        <v-spacer />
         <v-btn
           v-if="sources.length > 1"
           variant="text"
@@ -241,38 +340,7 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
         defaultText="Paste in High-Resolution Traffic Signal Data as CSV text (timestamp, enumeration, channel)"
         accept=".csv,.txt,text/csv,text/plain"
       />
-    </div>
-
-    <!--
-      A channel number alone says nothing. A GTSS export carries
-      preempt.txt -> phases.txt -> approaches.txt, which is what turns
-      "Preempt 3" into "Main Street from the ESE".
-    -->
-    <div class="gtss-row">
-      <v-btn
-        variant="tonal"
-        prepend-icon="mdi-map-marker-distance"
-        :loading="gtssLoading"
-        @click="$refs.gtssInput.click()"
-      >
-        Load GTSS export
-      </v-btn>
-      <input
-        ref="gtssInput"
-        type="file"
-        class="gtss-file"
-        multiple
-        accept=".zip,.txt"
-        @change="loadGtssFiles"
-      />
-      <span v-if="gtssName" class="gtss-name">
-        {{ gtssName }}
-        <v-btn size="x-small" variant="text" @click="clearGtss">Clear</v-btn>
-      </span>
-      <span v-else class="gtss-hint">
-        Optional: the zip, plus preempt.txt if it ships separately
-      </span>
-    </div>
+    </v-card>
 
     <v-alert v-if="gtssError" type="error" variant="tonal" density="compact" class="mb-3">
       {{ gtssError }}
@@ -381,7 +449,7 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
                     {{ row.crossStreets }}
                   </span>
                 </td>
-                <td>Preempt {{ row.channel }}</td>
+                <td class="nowrap">{{ channelLabel(row.name, row.channel) }}</td>
                 <td>{{ row.serves || "—" }}</td>
                 <td class="nowrap">{{ row.phases || "—" }}</td>
                 <td>{{ row.type || "—" }}</td>
@@ -426,6 +494,14 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
           <v-btn value="durations" size="small">Durations</v-btn>
           <v-btn value="scatter" size="small">Kit screen</v-btn>
           <v-btn value="weekly" size="small">Weekly pattern</v-btn>
+          <v-btn
+            value="timespace"
+            size="small"
+            :disabled="!hasCorridor"
+            :title="hasCorridor ? '' : 'Needs a GTSS export with two or more placed signals'"
+          >
+            Time-space
+          </v-btn>
         </v-btn-toggle>
         <v-chip-group v-model="visibleChannels" multiple column>
           <v-chip
@@ -436,9 +512,25 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
             variant="outlined"
             size="small"
           >
-            Preempt {{ channel }}
+            {{ chipLabel(channel) }}
           </v-chip>
         </v-chip-group>
+        <v-checkbox
+          v-if="chartMode === 'timespace'"
+          v-model="showProgressions"
+          label="Join runs"
+          density="compact"
+          hide-details
+          class="run-toggle"
+        ></v-checkbox>
+        <v-btn
+          v-if="chartMode === 'timespace'"
+          size="small"
+          variant="text"
+          @click="showEverything"
+        >
+          Show all time
+        </v-btn>
         <v-btn
           v-if="chartMode !== 'weekly'"
           size="small"
@@ -458,6 +550,24 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
           riding a commute concentrates into a few cells in the Monday-to-Friday
           rows. Apparatus answering real calls spreads across the whole week,
           because emergencies keep no office hours.
+        </template>
+        <template v-else-if="chartMode === 'timespace'">
+          Distance along the corridor against time, built from the
+          coordinates in the GTSS export. One vehicle working its way through
+          calls each signal in turn, which draws as a diagonal;
+          <span v-if="progressions.length">
+            {{ progressions.length }}
+            {{ progressions.length === 1 ? "run is" : "runs are" }} joined
+            below.
+          </span>
+          <span v-else>
+            no run of {{ minProgressionSignals }} or more signals was found in
+            this data.
+          </span>
+          Repeated calls at one signal sit on a flat row instead.
+          <b>It opens on the first run rather than the whole file</b>, because
+          a trip takes two minutes and the file covers weeks; pick a row in
+          the table below to move to another, or scroll to zoom.
         </template>
         <template v-else-if="chartMode === 'scatter'">
           Each dot is one event, placed by date and time of day. A vehicle
@@ -483,7 +593,7 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
               <span v-if="chartShowsSignal" class="heatmap-signal-name">
                 {{ grid.signal || "—" }} ·
               </span>
-              Preempt {{ grid.channel }}
+              {{ channelLabel(grid.signal, grid.channel) }}
               <span v-if="servesLabel(grid.signal, grid.channel)" class="heatmap-serves">
                 — {{ servesLabel(grid.signal, grid.channel) }}
               </span>
@@ -498,7 +608,7 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
             </span>
           </div>
 
-          <div class="heatmap-grid" role="img" :aria-label="`Preempt ${grid.channel}: ${grid.total} events by hour and day of week`">
+          <div class="heatmap-grid" role="img" :aria-label="`${channelLabel(grid.signal, grid.channel)}: ${grid.total} events by hour and day of week`">
             <div class="heatmap-corner"></div>
             <div v-for="hour in hourCount" :key="`h${hour}`" class="heatmap-hour">
               {{ hour - 1 }}
@@ -522,14 +632,62 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
       </div>
 
       <div v-else class="chart-wrapper" :style="{ height: chartHeight + 'px' }">
+        <!-- Point charts through Scatter, interval charts through Bar. -->
         <Scatter
-          v-if="chartMode === 'scatter'"
+          v-if="pointChart"
           ref="gantt"
           :data="chartData"
           :options="chartOptions"
         />
         <Bar v-else ref="gantt" :data="chartData" :options="chartOptions" />
       </div>
+
+      <template v-if="chartMode === 'timespace' && progressions.length">
+        <h3 class="run-title">
+          Runs through the corridor
+          <span class="muted">
+            — calls at {{ minProgressionSignals }}+ signals, one direction,
+            at a speed a vehicle could hold
+          </span>
+        </h3>
+        <div class="table-wrapper">
+          <v-table density="compact">
+            <thead>
+              <tr>
+                <th>Start</th>
+                <th>Signals</th>
+                <th>Route</th>
+                <th>Distance</th>
+                <th>Elapsed</th>
+                <th>Avg speed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(run, index) in progressions"
+                :key="index"
+                class="run-row"
+                :class="{ 'run-row--active': isFocused(run) }"
+                @click="focusRun(run)"
+              >
+                <td class="nowrap">{{ fullTime(run.startMs) }}</td>
+                <td>{{ run.signals }}</td>
+                <td>{{ run.points.map((p) => p.station).join(" → ") }}</td>
+                <td class="nowrap">{{ distance(run.distanceFt) }}</td>
+                <td class="nowrap">{{ secs(run.endMs - run.startMs) }}</td>
+                <td class="nowrap">{{ Math.round(run.speedMph) }} mph</td>
+              </tr>
+            </tbody>
+          </v-table>
+        </div>
+        <p class="chart-hint">
+          A run is a lead, not a finding. Apparatus answering a call travels
+          a corridor too, and so does anything with a legitimate emitter.
+          What separates the two is whether the same route repeats on the
+          same schedule &mdash; check the kit screen and the weekly pattern
+          for the signals named above.
+        </p>
+      </template>
 
       <h2 class="section-title">Channel summary</h2>
       <div class="table-wrapper">
@@ -554,7 +712,7 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
               :key="`${channel.signal}-${channel.channel}`"
             >
               <td v-if="multiSignal">{{ channel.signal || "—" }}</td>
-              <td>Preempt {{ channel.channel }}</td>
+              <td class="nowrap">{{ channelLabel(channel.signal, channel.channel) }}</td>
               <td v-if="hasDirections">
                 {{ servesLabel(channel.signal, channel.channel) || "—" }}
               </td>
@@ -658,6 +816,13 @@ import { readZipText } from "../utils/zipReader.js";
 import { xlsxBlob } from "../utils/xlsx.js";
 import { buildPreemptDirectory, describeChannel } from "../utils/gtss.js";
 import {
+  MIN_PROGRESSION_SIGNALS,
+  buildTimeSpacePoints,
+  findProgressions,
+  formatDistance,
+  projectSignals,
+} from "../utils/preemptCorridor.js";
+import {
   PREEMPT_CODES,
   STATUS_LABELS,
   DEFAULT_MAX_EVENT_SECONDS,
@@ -691,6 +856,14 @@ const SEGMENTS = [
 ];
 
 const UNSERVED_COLOR = "#C62828";
+
+/** The joining line under a run of calls that looks like one vehicle. */
+const PROGRESSION_COLOR = "rgba(198, 40, 40, 0.55)";
+
+/** Breathing room above and below the end signals, so their dots are not clipped. */
+function corridorPad(corridor) {
+  return Math.max((corridor ? corridor.spanFt : 0) * 0.08, 150);
+}
 
 /**
  * One colour per signal-and-channel series on the kit screen. Chosen to stay
@@ -732,6 +905,9 @@ export default {
       signals: [],
       chartMode: "timeline",
       chartSignal: ALL_SIGNALS,
+      showProgressions: true,
+      timeSpaceFocus: null,
+      minProgressionSignals: MIN_PROGRESSION_SIGNALS,
       gtss: null,
       gtssName: "",
       gtssWarnings: [],
@@ -846,7 +1022,94 @@ export default {
       return buildHourWeekdayGrids(this.chartEvents);
     },
     /**
-     * Date against time of day, one point per event.
+     * The signals laid out along the corridor they form, from the export's
+     * coordinates. Null whenever there is no corridor to draw: fewer than two
+     * placed signals, or every signal at one spot.
+     */
+    corridor() {
+      if (!this.gtss) return null;
+      const present = new Set(this.signals);
+      return projectSignals(this.gtss.signals.filter((signal) => present.has(signal.id)));
+    },
+    /** Whether the time-space view has anything to show. */
+    hasCorridor() {
+      return Boolean(this.corridor);
+    },
+    timeSpacePoints() {
+      return buildTimeSpacePoints(this.chartEvents, this.corridor);
+    },
+    /**
+     * Runs of calls that look like one vehicle working along the corridor.
+     * Drawn as a joining line, because the diagonal is the finding and a
+     * scatter of dots leaves the reader to trace it by eye.
+     */
+    progressions() {
+      if (!this.showProgressions) return [];
+      return findProgressions(this.timeSpacePoints, { minSignals: this.minProgressionSignals });
+    },
+    /**
+     * The window the time-space chart opens on.
+     *
+     * Not the full extent, which is the obvious choice and the wrong one: a
+     * trip down the corridor takes two minutes, and three weeks of data drawn
+     * across one chart width packs every signal's calls into a solid band. A
+     * time-space diagram is read over minutes. So it opens on the first run
+     * it found -- the thing worth looking at -- and the runs table below
+     * moves it to any of the others.
+     */
+    timeSpaceExtent() {
+      if (this.timeSpaceFocus) return this.timeSpaceFocus;
+      const points = this.timeSpacePoints;
+      if (!points.length) return { min: undefined, max: undefined };
+      const run = this.progressions[0];
+      if (run) return this.windowAround(run.startMs, run.endMs);
+      // Nothing found: two hours from the start is still readable, where
+      // three weeks is not.
+      return { min: points[0].startMs - 60000, max: points[0].startMs + 2 * 3600000 };
+    },
+    timeSpaceChartData() {
+      const bySeries = new Map();
+      for (const point of this.timeSpacePoints) {
+        const key = this.channelLabel(point.signal, point.channel);
+        if (!bySeries.has(key)) bySeries.set(key, []);
+        bySeries.get(key).push({ x: point.startMs, y: point.offsetFt, point });
+      }
+      const datasets = [...bySeries.entries()]
+        .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+        .map(([label, data], index) => {
+          const color = SERIES_COLORS[index % SERIES_COLORS.length];
+          return {
+            label,
+            data,
+            backgroundColor: color,
+            borderColor: color,
+            pointRadius: 4,
+            pointHoverRadius: 7,
+            showLine: false,
+            order: 1,
+          };
+        });
+
+      // Drawn under the dots, in one colour: the runs are one kind of thing,
+      // and colouring them individually would compete with the channel
+      // colours that carry the direction.
+      this.progressions.forEach((run, index) => {
+        datasets.push({
+          label: index === 0 ? "Vehicle through the corridor" : `__run_${index}`,
+          data: run.points.map((point) => ({ x: point.startMs, y: point.offsetFt, point, run })),
+          borderColor: PROGRESSION_COLOR,
+          backgroundColor: PROGRESSION_COLOR,
+          borderWidth: 2,
+          pointRadius: 0,
+          showLine: true,
+          fill: false,
+          order: 2,
+        });
+      });
+
+      return { datasets };
+    },
+    /** Date against time of day, one point per event.
      *
      * A vehicle carrying an unauthorised emitter calls the signal on its own
      * commute, so its points sit at nearly the same minute of the day, on
@@ -863,7 +1126,12 @@ export default {
       }
       const datasets = [...bySeries.entries()]
         .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-        .map(([label, data], index) => {
+        .map(([, data], index) => {
+          // seriesKey is a pure util with no view of the export, so the
+          // direction is attached here rather than baked into the key.
+          const first = data[0].point;
+          const channel = this.channelLabel(first.signal, first.channel);
+          const label = first.signal ? `${first.signal} · ${channel}` : channel;
           const color = SERIES_COLORS[index % SERIES_COLORS.length];
           return {
             label,
@@ -932,20 +1200,25 @@ export default {
       const channels = new Set(this.chartEvents.map((event) => event.channel));
       return [...channels].sort((a, b) => a - b);
     },
-    /** The timeline's rows, one per channel, or per signal and channel. */
+    /**
+     * The timeline's rows. Built through rowLabel so the axis and the bars
+     * cannot disagree about what a row is called, and sorted by signal then
+     * channel number rather than by the label text -- "Preempt 10/NB" sorts
+     * before "Preempt 2/NB" alphabetically, which is not an order anyone
+     * reads a channel list in.
+     */
     chartRows() {
-      if (!this.chartShowsSignal) {
-        return this.chartChannels.map((channel) => `Preempt ${channel}`);
-      }
-      const seen = new Set();
-      const rows = [];
+      const seen = new Map();
       for (const event of this.chartEvents) {
         const label = this.rowLabel(event);
-        if (seen.has(label)) continue;
-        seen.add(label);
-        rows.push(label);
+        if (!seen.has(label)) seen.set(label, [event.signal || "", event.channel]);
       }
-      return rows.sort();
+      return [...seen.entries()]
+        .sort((a, b) => {
+          if (a[1][0] !== b[1][0]) return a[1][0] < b[1][0] ? -1 : 1;
+          return a[1][1] - b[1][1];
+        })
+        .map(([label]) => label);
     },
     /** Longest first, capped, so the durations view stays readable. */
     durationEvents() {
@@ -956,12 +1229,22 @@ export default {
     },
     chartHeight() {
       if (this.chartMode === "scatter") return 480;
+      if (this.chartMode === "timespace") return 520;
       if (this.chartMode === "durations") {
         return Math.max(240, this.durationEvents.length * 30 + 120);
       }
       return Math.max(240, this.chartChannels.length * 64 + 110);
     },
+    /**
+     * Which Chart.js type draws this mode. Both point modes were addressed by
+     * name here, so adding one silently routed it to the bar chart, where
+     * every event drew as a full-width bar at its station's height.
+     */
+    pointChart() {
+      return this.chartMode === "scatter" || this.chartMode === "timespace";
+    },
     chartData() {
+      if (this.chartMode === "timespace") return this.timeSpaceChartData;
       if (this.chartMode === "scatter") return this.scatterChartData;
       return this.chartMode === "durations"
         ? this.durationChartData
@@ -1044,9 +1327,90 @@ export default {
       const pad = Math.max((max - min) * 0.02, 30000);
       return { min: min - pad, max: max + pad };
     },
+    /**
+     * Time across, distance along the corridor up. The classic time-space
+     * diagram, with preemption calls in place of vehicle trajectories.
+     */
+    timeSpaceOptions() {
+      const corridor = this.corridor;
+      const stations = corridor ? corridor.stations : [];
+      const full = this.fullTime;
+      const label = this.channelLabel;
+      const secs = this.secs;
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        parsing: false,
+        scales: {
+          x: {
+            type: "linear",
+            min: this.timeSpaceExtent.min,
+            max: this.timeSpaceExtent.max,
+            ticks: {
+              callback: (value) => this.stampLabel(value),
+              maxRotation: 0,
+              autoSkipPadding: 24,
+            },
+            title: { display: true, text: "Time" },
+          },
+          y: {
+            type: "linear",
+            min: -corridorPad(corridor),
+            max: (corridor ? corridor.spanFt : 0) + corridorPad(corridor),
+            // Ticks at the signals themselves rather than round numbers of
+            // feet: the question is which intersection, not how far along.
+            afterBuildTicks: (axis) => {
+              axis.ticks = stations.map((station) => ({ value: station.offsetFt }));
+            },
+            ticks: {
+              autoSkip: false,
+              callback: (value) => {
+                const station = stations.find((s) => Math.abs(s.offsetFt - value) < 1);
+                return station ? station.label : "";
+              },
+            },
+            title: { display: true, text: "Signal, by position along the corridor" },
+          },
+        },
+        plugins: {
+          legend: {
+            position: "bottom",
+            // The runs share one colour and one entry; the rest would be a
+            // wall of identical swatches.
+            labels: { filter: (item) => !item.text.startsWith("__run_") },
+          },
+          tooltip: {
+            callbacks: {
+              title: (items) => items[0].raw.point.station,
+              label: (item) => {
+                const p = item.raw.point;
+                return `${label(p.signal, p.channel)} — ${full(p.startMs)}`;
+              },
+              afterBody: (items) => {
+                const raw = items[0].raw;
+                const lines = [`Duration: ${secs(raw.point.durationMs)}`];
+                if (raw.run) {
+                  lines.push(
+                    `Part of a run through ${raw.run.signals} signals`,
+                    `${formatDistance(raw.run.distanceFt)} at about ${Math.round(raw.run.speedMph)} mph`,
+                  );
+                }
+                return lines;
+              },
+            },
+          },
+          zoom: {
+            pan: { enabled: true, mode: "xy" },
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "xy" },
+          },
+        },
+      };
+    },
     /** Date across, minute of day up, both in local time. */
     scatterOptions() {
       const clock = this.clockTime;
+      const label = this.channelLabel;
       const secs = this.secs;
       const minuteLabel = (minute) => {
         const h = Math.floor(minute / 60);
@@ -1083,7 +1447,7 @@ export default {
               title: (items) => items[0].raw.point.signal || "Signal",
               label: (item) => {
                 const p = item.raw.point;
-                return `Preempt ${p.channel} — ${new Date(p.startMs).toLocaleString()}`;
+                return `${label(p.signal, p.channel)} — ${new Date(p.startMs).toLocaleString()}`;
               },
               afterBody: (items) => {
                 const p = items[0].raw.point;
@@ -1103,6 +1467,7 @@ export default {
       };
     },
     chartOptions() {
+      if (this.chartMode === "timespace") return this.timeSpaceOptions;
       if (this.chartMode === "scatter") return this.scatterOptions;
       const clock = this.clockTime;
       const full = this.fullTime;
@@ -1248,13 +1613,35 @@ export default {
      * every row.
      */
     rowLabel(event) {
-      const channel = `Preempt ${event.channel}`;
+      const channel = this.channelLabel(event.signal, event.channel);
       return this.chartShowsSignal ? `${event.signal || "—"} · ${channel}` : channel;
     },
     /** Date and clock, for an axis label that has to stay narrow. */
     stampLabel(ms) {
       if (!Number.isFinite(ms)) return "";
       return DateTime.fromMillis(ms).toFormat("LL/dd HH:mm:ss");
+    },
+    distance(feet) {
+      return formatDistance(feet);
+    },
+    /** A viewing window around a run, with room either side to see it arrive. */
+    windowAround(startMs, endMs) {
+      const pad = Math.max((endMs - startMs) * 0.6, 120000);
+      return { min: startMs - pad, max: endMs + pad };
+    },
+    /** Move the chart to a run picked from the table below it. */
+    focusRun(run) {
+      this.timeSpaceFocus = this.windowAround(run.startMs, run.endMs);
+      this.resetZoom();
+    },
+    showEverything() {
+      const points = this.timeSpacePoints;
+      if (!points.length) return;
+      this.timeSpaceFocus = {
+        min: points[0].startMs - 60000,
+        max: points[points.length - 1].startMs + 60000,
+      };
+      this.resetZoom();
     },
     dateOnly(ms) {
       if (!Number.isFinite(ms)) return "";
@@ -1268,8 +1655,42 @@ export default {
     channelInfo(signalName, channel) {
       const signal = this.gtssById[signalName];
       const entry = signal && signal.channels.find((c) => c.channel === channel);
-      if (!entry) return { direction: "", phases: "" };
-      return { direction: describeChannel(entry), phases: entry.phases.join(", ") };
+      if (!entry) return { direction: "", phases: "", travel: "" };
+      return {
+        direction: describeChannel(entry),
+        phases: entry.phases.join(", "),
+        travel: entry.travel || "",
+      };
+    },
+    /**
+     * "Preempt 3/WB". The channel number says which input fired; the travel
+     * direction says what it does, and on a chart axis or a legend there is
+     * only room for the short form of both.
+     */
+    channelLabel(signalName, channel) {
+      const travel = this.channelInfo(signalName, channel).travel;
+      return travel ? `Preempt ${channel}/${travel}` : `Preempt ${channel}`;
+    },
+    /**
+     * The same label for a filter chip, which spans every signal. Two signals
+     * can point their channel 3 in different directions, and claiming one of
+     * them on a control that filters both would be worse than staying quiet.
+     */
+    chipLabel(channel) {
+      const travels = new Set(
+        this.signals.map((signal) => this.channelInfo(signal, channel).travel).filter(Boolean),
+      );
+      return travels.size === 1 ? `Preempt ${channel}/${[...travels][0]}` : `Preempt ${channel}`;
+    },
+    /** Says when a typed signal number is not one the export knows. */
+    isFocused(run) {
+      if (!this.timeSpaceFocus) return false;
+      return run.startMs >= this.timeSpaceFocus.min && run.endMs <= this.timeSpaceFocus.max;
+    },
+    signalNote(signalId) {
+      const id = String(signalId ?? "").trim();
+      if (!id || !this.gtss) return "";
+      return this.gtssById[id] ? "" : "not in the export — channels stay numbers";
     },
     num(value) {
       return Number(value || 0).toLocaleString();
@@ -1315,6 +1736,7 @@ export default {
           this.signals = result.signals;
           this.visibleChannels = [];
           this.chartSignal = ALL_SIGNALS;
+          this.timeSpaceFocus = null;
           this.ranOnce = true;
         } catch (err) {
           this.error = `Could not process this data: ${err.message}`;
@@ -1467,6 +1889,68 @@ export default {
 </script>
 
 <style scoped>
+/*
+ * The export and each signal get their own bordered card. Before this they
+ * were an unboxed run of fields, and the export -- loaded once for the whole
+ * page -- sat below them reading as though it belonged to the last one.
+ */
+.setup-card {
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+}
+.gtss-card {
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+.setup-card__head {
+  margin-bottom: 12px;
+}
+.setup-card__title {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+.setup-card__optional {
+  margin-left: 8px;
+  font-size: 0.72rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+}
+.setup-card__hint {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  opacity: 0.75;
+  text-align: left;
+}
+.gtss-tick {
+  color: rgb(var(--v-theme-primary));
+}
+.signal-note {
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+.run-toggle {
+  flex: 0 0 auto;
+}
+.run-title {
+  text-align: left;
+  font-size: 1rem;
+  margin: 16px 0 8px;
+}
+.run-row {
+  cursor: pointer;
+}
+.run-row:hover td {
+  background: rgba(var(--v-theme-primary), 0.06);
+}
+.run-row--active td {
+  background: rgba(var(--v-theme-primary), 0.12);
+  font-weight: 600;
+}
 .source-block {
   margin-bottom: 20px;
 }

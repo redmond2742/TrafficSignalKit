@@ -9,9 +9,8 @@
  *   approaches.txt approach_id, signal_id, street_name, compass_bearing
  *
  * So channel 3 at signal 1 serves phases 1 and 6, both of which belong to
- * approach 1-2, which is Ygnacio Valley Road lying 120 degrees from the
- * intersection. That makes "Preempt 3" readable as "Ygnacio Valley Road from
- * the ESE, westbound".
+ * approach 1-2, which is Main Street lying 120 degrees from the intersection.
+ * That makes "Preempt 3" readable as "Main Street from the ESE, westbound".
  *
  * preempt.txt is not always inside the export; it is accepted separately too.
  *
@@ -213,7 +212,7 @@ function summariseApproaches(list) {
   };
 }
 
-/** A one-line description for a channel, e.g. "Ygnacio Valley Road from the ESE (WB)". */
+/** A one-line description for a channel, e.g. "Main Street from the ESE (WB)". */
 export function describeChannel(entry) {
   if (!entry) return '';
   const street = entry.streets.length ? entry.streets.join(' / ') : '';

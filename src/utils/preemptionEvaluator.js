@@ -508,6 +508,7 @@ export function toSeconds(ms) {
 const CSV_COLUMNS = [
   'signal',
   'channel',
+  'date',
   'start',
   'end',
   'duration_s',
@@ -526,14 +527,30 @@ function csvCell(value) {
 }
 
 /** Exports the event table, using the same formatter the UI shows. */
-export function eventsToCsv(events, formatStamp) {
+export function eventsToCsv(events, formatStamp, options) {
   const stamp = formatStamp || ((ms) => new Date(ms).toISOString());
-  const lines = [CSV_COLUMNS.join(',')];
+  // The calendar day in its own column. It is derivable from the timestamp,
+  // but a spreadsheet cannot group by "the date part of a string" without
+  // being told how the string is laid out, and that is the grouping this
+  // export exists for.
+  const dayOf = (options && options.date) || ((ms) => stamp(ms).slice(0, 10));
+  // Direction and phases come from a GTSS export, which the util has no
+  // business loading; the caller that has one passes a lookup.
+  const describe = (options && options.channel) || (() => null);
+  const named = events.some((event) => describe(event));
+  const columns = named
+    ? [...CSV_COLUMNS.slice(0, 2), 'direction', 'phases', ...CSV_COLUMNS.slice(2)]
+    : CSV_COLUMNS;
+
+  const lines = [columns.join(',')];
   for (const event of events) {
+    const info = named ? describe(event) || {} : null;
     lines.push(
       [
         event.signal,
         event.channel,
+        ...(named ? [info.direction || '', info.phases || ''] : []),
+        dayOf(event.startMs),
         stamp(event.startMs),
         stamp(event.endMs),
         toSeconds(event.durationMs),

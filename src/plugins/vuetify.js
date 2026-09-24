@@ -19,6 +19,7 @@ import {
   mdiClipboardTextOutline,
   mdiClose,
   mdiContentCopy,
+  mdiFileTableOutline,
   mdiFullscreen,
   mdiFullscreenExit,
   mdiGithub,
@@ -38,7 +39,7 @@ import {
 } from '@mdi/js'
 
 /**
- * The 21 icons the site actually uses, as SVG paths.
+ * The 22 icons the site actually uses, as SVG paths.
  *
  * This replaces @mdi/font, which shipped all four webfont formats (3.3MB, of
  * which a browser uses one) plus a stylesheet declaring roughly 7,400 icon
@@ -54,6 +55,7 @@ export const ICONS = {
   'mdi-clipboard-text-outline': mdiClipboardTextOutline,
   'mdi-close': mdiClose,
   'mdi-content-copy': mdiContentCopy,
+  'mdi-file-table-outline': mdiFileTableOutline,
   'mdi-fullscreen': mdiFullscreen,
   'mdi-fullscreen-exit': mdiFullscreenExit,
   'mdi-github': mdiGithub,

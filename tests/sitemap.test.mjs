@@ -43,9 +43,11 @@ test('the sitemap contains no redirecting or unroutable urls', () => {
   }
 });
 
-test('the blog posts are present, which they were not before', () => {
+test('every blog post is present, which none of them were before', () => {
+  const posts = indexableRoutes().filter((route) => route.path.startsWith('/blog/'));
   const urls = sitemapUrls().filter((url) => url.includes('/blog/'));
-  assert.equal(urls.length, 5, `expected 5 blog posts in the sitemap, found ${urls.length}`);
+  assert.ok(posts.length >= 5, `router parse found only ${posts.length} posts`);
+  assert.equal(urls.length, posts.length, 'a blog post is missing from the sitemap');
 });
 
 test('it is well-formed and declares the sitemap namespace', () => {

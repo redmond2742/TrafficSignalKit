@@ -8,6 +8,8 @@ import {
   summarizePreemption,
   evaluatePreemption,
   eventsToCsv,
+  sortEventsFor,
+  DURATION_SORTS,
   toSeconds,
   STATUS_LABELS,
 } from '../src/utils/preemptionEvaluator.js';
@@ -654,4 +656,82 @@ test('a tied peak resolves to the earliest cell, and is stable', () => {
   const second = gridFor(text, 1);
   assert.deepEqual(first.peak, { weekday: 'Mon', hour: 7, count: 1 });
   assert.deepEqual(first.peak, second.peak);
+});
+
+
+/* --------------------------------------------------- durations chart order */
+
+/** Events reduced to what the sorters read, so the cases stay legible. */
+const ev = (startMs, durationMs, segments = {}) => ({ startMs, durationMs, segments });
+
+test('sortEventsFor puts the longest first by default', () => {
+  const rows = sortEventsFor([ev(10, 50), ev(20, 300), ev(30, 120)], 'duration');
+  assert.deepEqual(rows.map((e) => e.durationMs), [300, 120, 50]);
+});
+
+test('sortEventsFor falls back to longest for an unknown key', () => {
+  const rows = sortEventsFor([ev(10, 50), ev(20, 300)], 'nonsense');
+  assert.deepEqual(rows.map((e) => e.durationMs), [300, 50]);
+  assert.deepEqual(sortEventsFor([ev(10, 50), ev(20, 300)]).map((e) => e.durationMs), [300, 50]);
+});
+
+test('sortEventsFor orders by date both ways', () => {
+  const rows = [ev(300, 5), ev(100, 5), ev(200, 5)];
+  assert.deepEqual(sortEventsFor(rows, 'date').map((e) => e.startMs), [100, 200, 300]);
+  assert.deepEqual(sortEventsFor(rows, 'dateDesc').map((e) => e.startMs), [300, 200, 100]);
+});
+
+test('sortEventsFor orders by each interval independently', () => {
+  const rows = [
+    ev(1, 100, { callToEntry: 5000, trackClearance: 1000, dwell: 200 }),
+    ev(2, 100, { callToEntry: 1000, trackClearance: 9000, dwell: 400 }),
+    ev(3, 100, { callToEntry: 3000, trackClearance: 2000, dwell: 100 }),
+  ];
+  // Every event has the same total duration, so only the chosen interval
+  // can be deciding the order.
+  assert.deepEqual(sortEventsFor(rows, 'callToEntry').map((e) => e.startMs), [1, 3, 2]);
+  assert.deepEqual(sortEventsFor(rows, 'trackClearance').map((e) => e.startMs), [2, 3, 1]);
+  assert.deepEqual(sortEventsFor(rows, 'dwell').map((e) => e.startMs), [2, 1, 3]);
+});
+
+test('an event missing an interval sorts below one that has it', () => {
+  const rows = [
+    ev(1, 100, {}),                       // no track clearance at all
+    ev(2, 100, { trackClearance: 0 }),    // cleared instantly
+    ev(3, 100, { trackClearance: 8000 }),
+  ];
+  // A missing interval is not a zero-length one: zero belongs level with the
+  // event that really did clear instantly, and absent belongs at the bottom.
+  assert.deepEqual(sortEventsFor(rows, 'trackClearance').map((e) => e.startMs), [3, 2, 1]);
+});
+
+test('sortEventsFor leaves the caller list alone', () => {
+  // The event table reads the same array, so sorting for the chart must not
+  // reorder it underneath.
+  const rows = [ev(10, 50), ev(20, 300)];
+  const before = [...rows];
+  sortEventsFor(rows, 'duration');
+  assert.deepEqual(rows, before);
+});
+
+test('ties keep a stable order rather than an accidental one', () => {
+  const rows = [ev(300, 100), ev(100, 100), ev(200, 100)];
+  assert.deepEqual(sortEventsFor(rows, 'duration').map((e) => e.startMs), [100, 200, 300]);
+});
+
+test('every offered sort is one sortEventsFor implements', () => {
+  // The picker is built from this list, so an entry with no implementation
+  // would silently fall back to longest-first and look like a broken control.
+  const rows = [
+    ev(1, 300, { callToEntry: 1, trackClearance: 2, dwell: 3 }),
+    ev(2, 100, { callToEntry: 9, trackClearance: 8, dwell: 7 }),
+  ];
+  const byKey = new Map();
+  for (const sort of DURATION_SORTS) {
+    byKey.set(sort.value, sortEventsFor(rows, sort.value).map((e) => e.startMs).join(','));
+    assert.ok(sort.title, `${sort.value} needs a label`);
+  }
+  assert.equal(byKey.size, DURATION_SORTS.length, 'duplicate keys in the picker');
+  // These two events disagree on every measure, so no two sorts should agree.
+  assert.equal(new Set(byKey.values()).size, 2, 'expected both orders to appear');
 });

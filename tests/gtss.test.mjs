@@ -250,3 +250,42 @@ test('each signal carries its cross streets', () => {
   const { signals } = buildPreemptDirectory(FILES);
   assert.equal(signals[0].crossStreets, 'Main Street & 1st Street');
 });
+
+
+/* ------------------------------------------------- how many signals, exactly */
+
+test('signalCount counts the whole export, not just the preempted signals', () => {
+  // Four signals described, one of which has preempt channels. Reporting only
+  // the one would read as a thin export when it is a complete one.
+  const files = {
+    ...FILES,
+    'signals.txt': [
+      'signal_id,agency_id,latitude,longitude',
+      '1,EX-CA,37.9045,-122.0680',
+      '2,EX-CA,37.9050,-122.0690',
+      '3,EX-CA,37.9055,-122.0700',
+      '4,EX-CA,37.9060,-122.0710',
+    ].join('\n'),
+  };
+  const directory = buildPreemptDirectory(files);
+  assert.equal(directory.signals.length, 1, 'only signal 1 has preempt channels');
+  assert.equal(directory.signalCount, 4, 'but the export describes four');
+});
+
+test('signalCount is null when signals.txt is missing, not zero', () => {
+  const { 'signals.txt': _omitted, ...withoutSignals } = FILES;
+  const directory = buildPreemptDirectory(withoutSignals);
+  // Unknown is not none. A caller printing "1 of 0" would be stating
+  // something false; null lets it print the one number it actually has.
+  assert.equal(directory.signalCount, null);
+  assert.equal(directory.signals.length, 1, 'preempt channels still resolve');
+});
+
+test('signalCount is zero for an empty signals.txt', () => {
+  const directory = buildPreemptDirectory({
+    ...FILES,
+    'signals.txt': 'signal_id,agency_id,latitude,longitude',
+  });
+  // Present but empty is a real answer, and distinct from missing.
+  assert.equal(directory.signalCount, 0);
+});

@@ -95,7 +95,13 @@ const uniq = (values) => [...new Set(values.filter((v) => v !== '' && v != null)
 /**
  * Builds, per signal, what each preempt channel serves.
  *
- * Returns { signals: [{ id, label, channels: [...] }], warnings: [...] }.
+ * Returns { signals, signalCount, warnings, agency }, where `signals` holds
+ * only the intersections that have preempt channels. `signalCount` is how
+ * many signals.txt describes in total, which is usually the larger number:
+ * an export covers a whole agency, and most of its signals have no preemption
+ * at all. Reporting only the first would suggest the export was thinner than
+ * it is.
+ *
  * A channel whose phases cannot be resolved still appears, with whatever is
  * known, rather than being dropped -- a gap in the export should be visible,
  * not silently hide a channel that the data plainly uses.
@@ -186,7 +192,15 @@ export function buildPreemptDirectory(input) {
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
 
-  return { signals: out, agency, warnings };
+  return {
+    signals: out,
+    // Signals the export describes at all, preemption or not. Null rather
+    // than zero when signals.txt is missing: unknown is not none, and the
+    // caller should be able to tell the difference before printing a count.
+    signalCount: files['signals.txt'] === undefined ? null : signals.length,
+    agency,
+    warnings,
+  };
 }
 
 /**

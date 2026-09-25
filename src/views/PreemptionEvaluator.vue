@@ -23,7 +23,7 @@
             <p class="mt-2">
               Load a <b>GTSS export</b> and each channel is named by what it
               actually serves &mdash; "Preempt 3" becomes "Main Street from
-              the ESE (WB)" &mdash; so a pattern points at a direction
+              the WNW (EB)" &mdash; so a pattern points at a direction
               rather than a channel number.
             </p>
           </v-expansion-panel-text>
@@ -63,6 +63,11 @@
                 A <b>time-space diagram</b>, once a GTSS export supplies the
                 coordinates: distance along the corridor against time, with
                 runs of calls that look like one vehicle joined up
+              </li>
+              <li>
+                A <b>leg table</b> under it, pairing consecutive calls in one
+                direction at neighbouring signals and working out the speed
+                between them from the signals' own coordinates
               </li>
             </ul>
           </v-expansion-panel-text>
@@ -115,6 +120,14 @@
               with a line and listed underneath, with the route they took.
             </p>
             <p class="mt-2">
+              Under that, every <b>leg</b> is listed on its own: two calls in
+              one direction at neighbouring signals, the time between them,
+              the straight-line distance from the signals' coordinates, and
+              the speed that implies. A trip averaging 30 mph across a mile
+              can still hide a leg at 70, and the leg is the number worth
+              arguing with.
+            </p>
+            <p class="mt-2">
               A flat row or a weekday-only block is a lead, not a finding:
               scheduled transit, a shift change at a nearby station, or a
               recurring delivery can all look similar. Confirm against the
@@ -140,9 +153,10 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
             </pre>
             <p>
               Channel 3 at signal 1 serves phases 1 and 6; both belong to
-              approach 1-2, which is Main Street lying 120&deg; from the
-              intersection. So the channel is the <b>ESE approach</b>, and
-              the traffic on it is <b>westbound</b>.
+              approach 1-2, which is Main Street with a compass bearing of
+              120&deg;. That is the heading traffic holds as it arrives, so
+              the movement is <b>eastbound</b> and it enters the intersection
+              from the <b>WNW</b>.
             </p>
             <p class="mt-2">
               Load the zip with <b>Load GTSS export</b>. If preempt.txt ships
@@ -162,11 +176,18 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
                 Configure Once, Not Once Per Tool</router-link>.
             </p>
             <p class="mt-2">
-              <b>On direction:</b> compass_bearing is the bearing of the
-              approach leg from the intersection &mdash; where the vehicles
-              come from &mdash; so the travel direction shown is its
-              reciprocal. A channel serving phases on two different approaches
-              gets no direction at all rather than an arbitrary one.
+              <b>On direction:</b> compass_bearing is the heading of the
+              approach <i>to</i> the intersection &mdash; the way vehicles are
+              pointed as they arrive &mdash; so a bearing of 240&deg; is
+              westbound, and the leg it came from is the reciprocal, the ENE.
+              A channel serving phases on two different approaches gets no
+              direction at all rather than an arbitrary one.
+            </p>
+            <p class="mt-2">
+              This ran the opposite way round until a WSW approach carrying
+              phases 2 and 5 came back labelled eastbound. If a direction here
+              still disagrees with the phases you know, the bearing in
+              approaches.txt is the thing to check first.
             </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -689,6 +710,75 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
         </p>
       </template>
 
+      <template v-if="chartMode === 'timespace'">
+        <h3 class="run-title">
+          Signal-to-signal legs
+          <span class="muted">
+            — consecutive calls in one direction at neighbouring signals
+            <template v-if="pairMedianMph !== null">
+              · median {{ Math.round(pairMedianMph) }} mph over
+              {{ eventPairs.length }}
+              {{ eventPairs.length === 1 ? "leg" : "legs" }}
+            </template>
+          </span>
+        </h3>
+        <div v-if="eventPairs.length" class="table-wrapper">
+          <v-table density="compact">
+            <thead>
+              <tr>
+                <th>Direction</th>
+                <th>From</th>
+                <th>Called</th>
+                <th>To</th>
+                <th>Called</th>
+                <th>Between</th>
+                <th>Distance</th>
+                <th>Avg speed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, index) in shownPairs" :key="index">
+                <td class="nowrap">{{ row.direction }}</td>
+                <td>
+                  {{ row.fromStation }}
+                  <span class="muted">Preempt {{ row.fromChannel }}</span>
+                </td>
+                <td class="nowrap">{{ fullTime(row.fromMs) }}</td>
+                <td>
+                  {{ row.toStation }}
+                  <span class="muted">Preempt {{ row.toChannel }}</span>
+                </td>
+                <td class="nowrap">{{ fullTime(row.toMs) }}</td>
+                <td class="nowrap">{{ secs(row.gapMs) }}</td>
+                <td class="nowrap">{{ distance(row.distanceFt) }}</td>
+                <td class="nowrap">{{ Math.round(row.speedMph) }} mph</td>
+              </tr>
+            </tbody>
+          </v-table>
+        </div>
+        <p class="chart-hint">
+          <template v-if="eventPairs.length">
+            <span v-if="shownPairs.length < eventPairs.length">
+              First {{ shownPairs.length }} of {{ eventPairs.length }}.
+            </span>
+            Distance is the straight line between the two signals' own
+            coordinates, so it is a floor on how far anything drove and the
+            speed is a slight underestimate on a road that bends. Calls that
+            skip a signal are not paired: whatever happened in between was
+            not observed, and averaging across it would report a speed for a
+            leg nobody saw.
+          </template>
+          <template v-else-if="!hasDirections">
+            Legs are matched on the direction each channel serves, which needs
+            a GTSS export covering these signals.
+          </template>
+          <template v-else>
+            No two consecutive calls in one direction at neighbouring signals
+            were close enough in time to be one vehicle.
+          </template>
+        </p>
+      </template>
+
       <h2 class="section-title">Channel summary</h2>
       <div class="table-wrapper">
         <v-table density="compact">
@@ -820,6 +910,7 @@ import {
   buildTimeSpacePoints,
   findProgressions,
   formatDistance,
+  pairAdjacentEvents,
   projectSignals,
 } from "../utils/preemptCorridor.js";
 import {
@@ -1036,7 +1127,29 @@ export default {
       return Boolean(this.corridor);
     },
     timeSpacePoints() {
-      return buildTimeSpacePoints(this.chartEvents, this.corridor);
+      return buildTimeSpacePoints(this.chartEvents, this.corridor, {
+        // The util has no view of the export, so the direction each channel
+        // serves is handed to it here.
+        direction: (event) => this.channelInfo(event.signal, event.channel).travel,
+      });
+    },
+    /**
+     * Each leg of a trip: two calls in one direction at neighbouring signals,
+     * the time between them, how far apart those signals actually are, and
+     * the speed that implies. The whole-run table above averages across a
+     * corridor; this is where a single slow or impossible leg shows up.
+     */
+    eventPairs() {
+      return pairAdjacentEvents(this.timeSpacePoints, this.corridor);
+    },
+    /** Median leg speed, which a single outlier cannot drag the way a mean can. */
+    pairMedianMph() {
+      const speeds = this.eventPairs.map((row) => row.speedMph).sort((a, b) => a - b);
+      if (!speeds.length) return null;
+      const middle = Math.floor(speeds.length / 2);
+      return speeds.length % 2
+        ? speeds[middle]
+        : (speeds[middle - 1] + speeds[middle]) / 2;
     },
     /**
      * Runs of calls that look like one vehicle working along the corridor.
@@ -1171,6 +1284,9 @@ export default {
     },
     shownEvents() {
       return this.filteredEvents.slice(0, MAX_TABLE_ROWS);
+    },
+    shownPairs() {
+      return this.eventPairs.slice(0, MAX_TABLE_ROWS);
     },
     unservedCount() {
       return this.viewSummary.totals.statuses

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   FEET_PER_MILE,
   buildTimeSpacePoints,
+  haversineFeet,
+  pairAdjacentEvents,
   findProgressions,
   formatDistance,
   projectSignals,
@@ -199,4 +201,126 @@ test('formatDistance switches units where feet stop reading', () => {
   assert.equal(formatDistance(FEET_PER_MILE), '1.00 mi');
   assert.equal(formatDistance(FEET_PER_MILE / 2), '0.50 mi');
   assert.equal(formatDistance(NaN), '');
+});
+
+
+/* ------------------------------------------------------------- leg pairing */
+
+const EB = (signal, ms, channel = 1) => ({ signal, channel, startMs: ms, endMs: ms + 60000, durationMs: 60000, status: 'complete' });
+/** Every channel 1 is eastbound; channel 2 is westbound. */
+const DIRECTION = { direction: (e) => (e.channel === 1 ? 'EB' : 'WB') };
+
+const pointsFor = (events, corridor) => buildTimeSpacePoints(events, corridor, DIRECTION);
+
+test('haversineFeet measures a known separation', () => {
+  // 0.0034 degrees of longitude at 37N is about 1,000 ft.
+  const d = haversineFeet(
+    { latitude: 37.0, longitude: -122.0 },
+    { latitude: 37.0, longitude: -121.9966 },
+  );
+  assert.ok(Math.abs(d - 1000) < 40, `${d} ft`);
+  // A degree of latitude is about 364,000 ft, and does not depend on longitude.
+  const north = haversineFeet({ latitude: 37, longitude: -122 }, { latitude: 38, longitude: -122 });
+  assert.ok(Math.abs(north - 364000) < 2000, `${north} ft`);
+  assert.equal(haversineFeet({ latitude: 37, longitude: -122 }, { latitude: 37, longitude: -122 }), 0);
+});
+
+test('haversineFeet refuses a point with no coordinates', () => {
+  assert.equal(haversineFeet(null, { latitude: 1, longitude: 1 }), null);
+  assert.equal(haversineFeet({ latitude: 1 }, { latitude: 1, longitude: 1 }), null);
+  assert.equal(haversineFeet({ latitude: 'x', longitude: 1 }, { latitude: 1, longitude: 1 }), null);
+});
+
+test('pairAdjacentEvents reports each leg with its own speed', () => {
+  const corridor = projectSignals(EAST_WEST);
+  // 1,000 ft in 30s, then 1,000 ft in 60s: about 23 mph then about 11 mph.
+  const rows = pairAdjacentEvents(pointsFor([EB('1', 0), EB('2', 30000), EB('3', 90000)], corridor), corridor);
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((r) => `${r.fromSignal}->${r.toSignal}`), ['1->2', '2->3']);
+  assert.ok(Math.abs(rows[0].speedMph - 22.7) < 1.5, `${rows[0].speedMph}`);
+  assert.ok(Math.abs(rows[1].speedMph - 11.4) < 1.5, `${rows[1].speedMph}`);
+  // The average over the trip hides the slow leg, which is the point of
+  // reporting legs rather than only whole runs.
+  assert.equal(rows[0].gapMs, 30000);
+  assert.equal(rows[1].gapMs, 60000);
+  assert.ok(Math.abs(rows[0].distanceFt - 1000) < 40);
+});
+
+test('pairAdjacentEvents measures between the signals, not along the fitted line', () => {
+  // Signal 2 sits well off the line through 1 and 3, so its projected offset
+  // and its real distance from signal 1 are different numbers.
+  const corridor = projectSignals([
+    { id: '1', latitude: 37.0, longitude: -122.0 },
+    { id: '2', latitude: 37.0025, longitude: -121.9966 },
+    { id: '3', latitude: 37.0, longitude: -121.9932 },
+  ]);
+  const [row] = pairAdjacentEvents(pointsFor([EB('1', 0), EB('2', 30000)], corridor), corridor);
+  const projected = Math.abs(
+    corridor.stations.find((s) => s.id === '2').offsetFt -
+      corridor.stations.find((s) => s.id === '1').offsetFt,
+  );
+  const straight = haversineFeet(
+    { latitude: 37.0, longitude: -122.0 },
+    { latitude: 37.0025, longitude: -121.9966 },
+  );
+  assert.ok(Math.abs(row.distanceFt - straight) < 1, 'uses the real separation');
+  assert.ok(Math.abs(row.distanceFt - projected) > 50, 'and it differs from the projection');
+});
+
+test('pairAdjacentEvents will not pair across a skipped signal', () => {
+  const corridor = projectSignals(EAST_WEST);
+  // Signal 2 never fires, so 1 and 3 are two blocks apart. Averaging across
+  // the gap would report a speed for a leg nobody observed.
+  const rows = pairAdjacentEvents(pointsFor([EB('1', 0), EB('3', 60000)], corridor), corridor);
+  assert.deepEqual(rows, []);
+});
+
+test('pairAdjacentEvents keeps the directions apart', () => {
+  const corridor = projectSignals(EAST_WEST);
+  // An eastbound call then a westbound one at the next signal is two vehicles.
+  const rows = pairAdjacentEvents(
+    pointsFor([EB('1', 0, 1), EB('2', 30000, 2)], corridor),
+    corridor,
+  );
+  assert.deepEqual(rows, []);
+});
+
+test('pairAdjacentEvents needs a direction to match on', () => {
+  const corridor = projectSignals(EAST_WEST);
+  // No export lookup, so no direction: there is nothing to pair on, and
+  // guessing from the channel number would cross intersections that do not
+  // number their channels the same way.
+  const bare = buildTimeSpacePoints([EB('1', 0), EB('2', 30000)], corridor);
+  assert.deepEqual(pairAdjacentEvents(bare, corridor), []);
+});
+
+test('pairAdjacentEvents rejects a leg no vehicle could drive', () => {
+  const corridor = projectSignals(EAST_WEST);
+  assert.deepEqual(
+    pairAdjacentEvents(pointsFor([EB('1', 0), EB('2', 500)], corridor), corridor),
+    [],
+    '1,000 ft in half a second',
+  );
+  assert.deepEqual(
+    pairAdjacentEvents(pointsFor([EB('1', 0), EB('2', 3600000)], corridor), corridor),
+    [],
+    '1,000 ft in an hour',
+  );
+});
+
+test('pairAdjacentEvents pairs a call with the next leg, not with every later call', () => {
+  const corridor = projectSignals(EAST_WEST);
+  // Signal 2 fires twice after signal 1 fires once. The first is where that
+  // vehicle got to; the second is somebody else. Pairing signal 1 with both
+  // invents a leg, and reports it at a speed nothing travelled.
+  const rows = pairAdjacentEvents(
+    pointsFor([EB('1', 0), EB('2', 30000), EB('2', 60000)], corridor),
+    corridor,
+  );
+  assert.equal(rows.length, 1, `paired ${rows.length} legs off one call`);
+  assert.equal(rows[0].toMs, 30000, 'the first arrival, not the later one');
+});
+
+test('pairAdjacentEvents returns nothing without a corridor', () => {
+  assert.deepEqual(pairAdjacentEvents([], null), []);
 });

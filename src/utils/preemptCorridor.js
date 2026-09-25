@@ -119,9 +119,18 @@ export function offsetsById(corridor) {
  * One point per event, at its signal's place on the corridor and the moment
  * it started. Events at a signal the export has no coordinates for are left
  * out: there is nowhere honest to draw them.
+ *
+ * `options.direction` is a lookup from an event to the travel direction its
+ * channel serves ("WB"). The util has no view of the export, so the caller
+ * that does supplies it; without one the pairing below has nothing to match
+ * on and returns nothing.
  */
-export function buildTimeSpacePoints(events, corridor) {
+export function buildTimeSpacePoints(events, corridor, options) {
   const stations = offsetsById(corridor);
+  const order = new Map(
+    (corridor ? corridor.stations : []).map((station, index) => [station.id, index]),
+  );
+  const direction = (options && options.direction) || (() => '');
   const points = [];
   for (const event of events || []) {
     const station = stations.get(event.signal);
@@ -130,7 +139,11 @@ export function buildTimeSpacePoints(events, corridor) {
       signal: event.signal,
       station: station.label,
       channel: event.channel,
+      direction: direction(event) || '',
       offsetFt: station.offsetFt,
+      stationIndex: order.get(event.signal),
+      latitude: station.latitude,
+      longitude: station.longitude,
       startMs: event.startMs,
       endMs: event.endMs,
       durationMs: event.durationMs,
@@ -138,6 +151,104 @@ export function buildTimeSpacePoints(events, corridor) {
     });
   }
   return points.sort((a, b) => a.startMs - b.startMs);
+}
+
+/** Mean earth radius in feet, for great-circle distances. */
+const EARTH_RADIUS_FT = 20902231;
+
+/**
+ * Great-circle distance between two coordinates, in feet.
+ *
+ * Straight-line, so it is a floor on how far anything actually drove: a road
+ * that bends between two signals is longer than this, which makes every speed
+ * derived from it a slight underestimate. Over one block the difference is
+ * small, and the alternative is a routing engine this tool has no business
+ * carrying.
+ */
+export function haversineFeet(from, to) {
+  if (!from || !to) return null;
+  const lat1 = Number(from.latitude);
+  const lon1 = Number(from.longitude);
+  const lat2 = Number(to.latitude);
+  const lon2 = Number(to.longitude);
+  if (![lat1, lon1, lat2, lon2].every(Number.isFinite)) return null;
+  const toRad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * toRad;
+  const dLon = (lon2 - lon1) * toRad;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_FT * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/**
+ * Sequential calls in one direction at neighbouring signals, paired up.
+ *
+ * Where findProgressions reports a whole trip, this reports each leg of one:
+ * the two calls, the time between them, how far apart the signals actually
+ * are, and the speed that implies. It is the arithmetic someone would
+ * otherwise do by hand off the event table, and the leg is the unit worth
+ * checking -- a trip averaging 30 mph over a mile can still hide a leg at 70.
+ *
+ * Distance comes from the signals' own coordinates rather than their position
+ * on the fitted corridor line, so a signal sitting off the corridor is
+ * measured where it is instead of where the line put it.
+ *
+ * Neighbouring means consecutive along the corridor, so a call that skips a
+ * signal does not pair: whatever happened in between is missing, and averaging
+ * across it would report a speed for a leg nobody observed.
+ */
+export function pairAdjacentEvents(points, corridor, options) {
+  const opts = options || {};
+  const minMph = opts.minMph ?? MIN_PROGRESSION_MPH;
+  const maxMph = opts.maxMph ?? MAX_PROGRESSION_MPH;
+  const maxGapMs = opts.maxGapMs ?? MAX_PROGRESSION_GAP_MS;
+  if (!corridor) return [];
+
+  const ordered = [...(points || [])].sort((a, b) => a.startMs - b.startMs);
+  const rows = [];
+
+  for (let i = 0; i < ordered.length; i += 1) {
+    const from = ordered[i];
+    if (!from.direction || from.stationIndex === undefined) continue;
+    for (let j = i + 1; j < ordered.length; j += 1) {
+      const to = ordered[j];
+      if (to.startMs - from.startMs > maxGapMs) break;
+      if (to.direction !== from.direction) continue;
+      if (Math.abs(to.stationIndex - from.stationIndex) !== 1) continue;
+
+      const distanceFt = haversineFeet(from, to);
+      if (!(distanceFt > 0)) break;
+      const seconds = (to.startMs - from.startMs) / 1000;
+      if (seconds <= 0) break;
+      const mph = (distanceFt / seconds) * MPH_PER_FPS;
+      // Out of range is not a pair: it is two calls that happen to be near
+      // each other. Stop rather than look further, because the next candidate
+      // is later still and so only slower.
+      if (mph > maxMph) continue;
+      if (mph < minMph) break;
+
+      rows.push({
+        direction: from.direction,
+        fromSignal: from.signal,
+        fromStation: from.station,
+        fromChannel: from.channel,
+        fromMs: from.startMs,
+        toSignal: to.signal,
+        toStation: to.station,
+        toChannel: to.channel,
+        toMs: to.startMs,
+        gapMs: to.startMs - from.startMs,
+        distanceFt,
+        speedMph: mph,
+      });
+      // One pair per call: the first neighbouring match is the next leg, and
+      // anything after it is a later trip.
+      break;
+    }
+  }
+
+  return rows;
 }
 
 /** Feet per second between two points, unsigned. */

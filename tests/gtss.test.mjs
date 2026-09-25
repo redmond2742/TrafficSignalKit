@@ -4,6 +4,7 @@ import {
   crossStreetName,
   parseTable,
   bearingToCompass,
+  bearingToOrigin,
   bearingToTravel,
   buildPreemptDirectory,
   describeChannel,
@@ -64,17 +65,51 @@ test('bearings map onto the 16-point compass', () => {
 });
 
 /**
- * compass_bearing is the bearing of the leg from the intersection, so traffic
- * on it travels the other way. Getting this backwards would label every
- * approach with the opposite direction, which is worse than labelling none.
+ * compass_bearing is the heading of the approach *to* the intersection -- the
+ * way vehicles are pointed as they arrive -- so the travel direction is the
+ * bearing itself, not its reciprocal.
+ *
+ * This ran the other way round until a WSW approach carrying phases 2 and 5
+ * came back labelled eastbound. Getting it backwards puts the wrong direction
+ * on every approach in the export, which is worse than labelling none.
+ *
+ * Note what these assertions do NOT rest on: that opposing legs of a street
+ * disagree. They disagree under either reading of the field, so that property
+ * cannot tell the two apart and is no evidence for either. These are pinned
+ * to the specification instead, which says the bearing is "of the approach to
+ * the intersection", and to the builder that writes the files, which stores
+ * the bearing measured from where traffic comes from back toward the signal.
  */
-test('travel direction is the reciprocal of the approach bearing', () => {
-  assert.equal(bearingToTravel(0), 'SB', 'a leg to the north carries southbound traffic');
-  assert.equal(bearingToTravel(180), 'NB');
-  assert.equal(bearingToTravel(90), 'WB');
-  assert.equal(bearingToTravel(270), 'EB');
-  assert.equal(bearingToTravel(120), 'WB');
+test('travel direction follows the approach bearing, not its reciprocal', () => {
+  assert.equal(bearingToTravel(0), 'NB', 'pointed north is northbound');
+  assert.equal(bearingToTravel(180), 'SB');
+  assert.equal(bearingToTravel(90), 'EB');
+  assert.equal(bearingToTravel(270), 'WB');
+  // The case that was reported wrong: a WSW approach is westbound.
+  assert.equal(bearingToTravel(240), 'WB');
+  assert.equal(bearingToTravel(120), 'EB');
   assert.equal(bearingToTravel('x'), null);
+});
+
+test('the origin compass is the reciprocal of the travel bearing', () => {
+  // A vehicle heading WSW into the signal entered from the ENE.
+  assert.equal(bearingToOrigin(240), 'ENE');
+  assert.equal(bearingToOrigin(0), 'S');
+  assert.equal(bearingToOrigin(90), 'W');
+  assert.equal(bearingToOrigin(270), 'E');
+  assert.equal(bearingToOrigin('x'), null);
+});
+
+test('a channel is never labelled with the direction opposite its bearing', () => {
+  // The whole failure mode in one assertion: whatever the compass point a
+  // bearing resolves to, the travel direction must agree with it rather than
+  // oppose it. A reciprocal anywhere in the chain trips this for every value.
+  const opposite = { NB: 'SB', SB: 'NB', EB: 'WB', WB: 'EB', NEB: 'SWB', SWB: 'NEB', SEB: 'NWB', NWB: 'SEB' };
+  for (let bearing = 0; bearing < 360; bearing += 5) {
+    const travel = bearingToTravel(bearing);
+    const straightOn = bearingToTravel(bearing + 180);
+    assert.equal(straightOn, opposite[travel], `bearing ${bearing} reversed to ${straightOn}`);
+  }
 });
 
 test('a channel resolves to the street and direction its phases serve', () => {
@@ -87,11 +122,13 @@ test('a channel resolves to the street and direction its phases serve', () => {
   const three = signal.channels.find((c) => c.channel === 3);
   assert.deepEqual(three.phases, [1, 6], 'both phases on the channel');
   assert.deepEqual(three.streets, ['Main Street']);
-  assert.equal(three.compass, 'ESE');
-  assert.equal(three.travel, 'WB');
+  // approach 1-2 has compass_bearing 120: pointed ESE, so eastbound, and it
+  // was entered from the WNW.
+  assert.equal(three.compass, 'WNW');
+  assert.equal(three.travel, 'EB');
   assert.equal(three.maxTime, 120);
   assert.equal(three.type, 'EMERGENCY');
-  assert.equal(describeChannel(three), 'Main Street from the ESE (WB)');
+  assert.equal(describeChannel(three), 'Main Street from the WNW (EB)');
 });
 
 test('opposite legs of one street get opposite directions', () => {
@@ -101,7 +138,9 @@ test('opposite legs of one street get opposite directions', () => {
   const four = signal.channels.find((c) => c.channel === 4);
   assert.equal(three.streets[0], four.streets[0], 'same street');
   assert.notEqual(three.travel, four.travel, 'opposite legs must not share a direction');
-  assert.equal(four.travel, 'EB');
+  // approach 1-4 is bearing 272: pointed west, so westbound.
+  assert.equal(four.travel, 'WB');
+  assert.equal(four.compass, 'E');
 });
 
 test('channels come back in channel order', () => {

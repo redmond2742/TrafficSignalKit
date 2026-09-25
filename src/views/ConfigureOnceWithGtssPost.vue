@@ -110,10 +110,11 @@
       </p>
       <p>
         Load a GTSS feed and the same finding reads: <em>Main Street from
-        the ESE, westbound</em>, called forty times, almost all on weekday
+        the WNW, eastbound</em>, called forty times, almost all on weekday
         mornings. It follows the chain the feed already contains — the channel
         serves phases 1 and 6, both belong to approach 1-2, and that approach
-        is Main Street lying 120° from the intersection. Nobody typed any of
+        is Main Street with a compass bearing of 120°, the heading traffic
+        holds as it arrives. Nobody typed any of
         that in. The same chain is what turns a detector channel into a
         lane and a phase into a direction everywhere else.
       </p>

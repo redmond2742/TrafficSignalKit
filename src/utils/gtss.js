@@ -9,8 +9,9 @@
  *   approaches.txt approach_id, signal_id, street_name, compass_bearing
  *
  * So channel 3 at signal 1 serves phases 1 and 6, both of which belong to
- * approach 1-2, which is Main Street lying 120 degrees from the intersection.
- * That makes "Preempt 3" readable as "Main Street from the ESE, westbound".
+ * approach 1-2, which is Main Street with a compass bearing of 120 degrees.
+ * That is the heading traffic holds as it arrives, so "Preempt 3" reads as
+ * "Main Street from the WNW, eastbound".
  *
  * preempt.txt is not always inside the export; it is accepted separately too.
  *
@@ -22,7 +23,7 @@ const COMPASS = [
   'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
 ];
 
-/** Cardinal-ish travel direction, for the movement rather than the leg. */
+/** Cardinal-ish travel direction, from a heading in degrees. */
 const TRAVEL = { N: 'NB', NNE: 'NB', NE: 'NEB', ENE: 'EB', E: 'EB', ESE: 'EB', SE: 'SEB', SSE: 'SB',
   S: 'SB', SSW: 'SB', SW: 'SWB', WSW: 'WB', W: 'WB', WNW: 'WB', NW: 'NWB', NNW: 'NB' };
 
@@ -39,16 +40,39 @@ export function bearingToCompass(bearing) {
 /**
  * The direction traffic on this approach is travelling.
  *
- * compass_bearing is the bearing of the approach leg from the intersection --
- * where the vehicles come from -- so the movement is the reciprocal. Verified
- * against this schema: of 151 streets with two legs at one signal, 149 have
- * their bearings within 40 degrees of opposite, which only holds if the field
- * describes the leg rather than the direction of travel.
+ * compass_bearing is the heading of the approach *to* the intersection: the
+ * way vehicles are pointed as they arrive. So the travel direction is the
+ * bearing itself, and a bearing of 240 is westbound.
+ *
+ * This was the reciprocal until it was reported wrong from real data -- a
+ * WSW approach carrying phases 2 and 5 was being labelled eastbound. The
+ * evidence offered for the reciprocal was that of 151 streets with two legs
+ * at one signal, 149 had bearings within 40 degrees of opposite. That is a
+ * fact about opposing approaches, not about the field: two legs of a street
+ * point opposite ways whether the number describes the leg or the movement,
+ * so the test could not tell the two readings apart and was never evidence
+ * for either. The specification settles it -- "compass_bearing indicates the
+ * compass bearing of the approach to the intersection" -- and so does the
+ * builder that writes these files, which takes the click for where traffic
+ * comes from and stores the bearing back toward the signal.
  */
 export function bearingToTravel(bearing) {
   const degrees = Number(bearing);
   if (!Number.isFinite(degrees)) return null;
-  return TRAVEL[bearingToCompass(degrees + 180)] ?? null;
+  return TRAVEL[bearingToCompass(degrees)] ?? null;
+}
+
+/**
+ * The compass point traffic on this approach arrives from.
+ *
+ * The reciprocal of the bearing: a vehicle heading WSW into the intersection
+ * entered it from the ENE. This is the half of the label that says which leg
+ * of the intersection is meant.
+ */
+export function bearingToOrigin(bearing) {
+  const degrees = Number(bearing);
+  if (!Number.isFinite(degrees)) return null;
+  return bearingToCompass(degrees + 180);
 }
 
 /** Splits a GTSS text file into objects keyed by its header row. */
@@ -206,13 +230,15 @@ function summariseApproaches(list) {
     streets,
     movements,
     bearing: Number.isFinite(bearing) ? bearing : null,
-    compass: sameApproach ? bearingToCompass(bearing) : null,
+    // Where the traffic came from, which is the reciprocal of where it is
+    // pointed. `travel` is the bearing itself; see bearingToTravel.
+    compass: sameApproach ? bearingToOrigin(bearing) : null,
     travel: sameApproach ? bearingToTravel(bearing) : null,
     sameApproach,
   };
 }
 
-/** A one-line description for a channel, e.g. "Main Street from the ESE (WB)". */
+/** A one-line description for a channel, e.g. "Main Street from the WNW (EB)". */
 export function describeChannel(entry) {
   if (!entry) return '';
   const street = entry.streets.length ? entry.streets.join(' / ') : '';

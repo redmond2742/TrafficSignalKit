@@ -569,6 +569,57 @@ export function eventsToCsv(events, formatStamp, options) {
   return lines.join('\n');
 }
 
+/**
+ * How the durations view can be ordered.
+ *
+ * Longest-first answers "what were the outliers"; by date answers "did this
+ * change over the week"; the interval sorts answer "where did the time go",
+ * which is a different question per interval -- a long wait before entry is a
+ * detection or a call-handling problem, while a long dwell is the vehicle
+ * still in the intersection.
+ */
+export const DURATION_SORTS = [
+  { value: 'duration', title: 'Longest first' },
+  { value: 'date', title: 'Date, earliest first' },
+  { value: 'dateDesc', title: 'Date, latest first' },
+  { value: 'callToEntry', title: 'Longest wait for entry' },
+  { value: 'trackClearance', title: 'Longest track clearance' },
+  { value: 'dwell', title: 'Longest dwell' },
+];
+
+const SORT_KEYS = new Set(DURATION_SORTS.map((sort) => sort.value));
+
+/**
+ * A segment as a number that sorts. A sequence missing the interval entirely
+ * is not a zero-length one: zero would sort level with an event that really
+ * did clear instantly, so it goes to the bottom of a longest-first list
+ * instead of into the middle of it.
+ */
+function segmentValue(event, key) {
+  const value = event.segments ? event.segments[key] : null;
+  return Number.isFinite(value) ? value : -Infinity;
+}
+
+/**
+ * Orders events for the durations chart. Returns a new array; the caller's
+ * own ordering is never disturbed, because the table below the chart reads
+ * from the same list.
+ */
+export function sortEventsFor(events, key) {
+  const list = [...(events || [])];
+  const how = SORT_KEYS.has(key) ? key : 'duration';
+  if (how === 'date') return list.sort((a, b) => a.startMs - b.startMs);
+  if (how === 'dateDesc') return list.sort((a, b) => b.startMs - a.startMs);
+  if (how === 'duration') {
+    // Ties broken by time so the order is stable between renders rather than
+    // depending on how the sort happened to be implemented.
+    return list.sort((a, b) => b.durationMs - a.durationMs || a.startMs - b.startMs);
+  }
+  return list.sort(
+    (a, b) => segmentValue(b, how) - segmentValue(a, how) || a.startMs - b.startMs,
+  );
+}
+
 /** Minutes in a day, for the scatter's y axis. */
 export const MINUTES_PER_DAY = 1440;
 

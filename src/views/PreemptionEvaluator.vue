@@ -285,10 +285,13 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
         <span v-if="gtssName" class="gtss-name">
           <v-icon icon="mdi-check" size="small" class="gtss-tick" />
           {{ gtssName }}
-          <span class="muted">
-            — {{ gtss.signals.length }}
-            {{ gtss.signals.length === 1 ? "signal" : "signals" }}
-          </span>
+          <!--
+            Two numbers, because one of them alone misleads. An export covers
+            a whole agency and most of its signals have no preemption at all,
+            so "5 signals" read as a thin export when it was a complete one
+            with five preempted intersections in it.
+          -->
+          <span class="muted">— {{ gtssSummary }}</span>
           <v-btn size="x-small" variant="text" @click="clearGtss">Clear</v-btn>
         </span>
         <span v-else class="gtss-hint">
@@ -319,6 +322,16 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
           caught up with, and refusing to accept the number would be refusing
           to process the file.
         -->
+        <!--
+          A combobox, so a number the export has never heard of is still
+          accepted. It already was, but nothing on screen said so: the
+          placeholder vanishes the moment a value is set, and typing an
+          unknown number empties the menu, which reads as a refusal.
+          Vuetify closes that menu rather than rendering a no-data slot, so
+          the reassurance has to live outside it -- a hint that stays put
+          whatever the field holds, and a note beside the field that appears
+          as soon as what is typed is not in the export.
+        -->
         <v-combobox
           v-if="gtssSignalOptions.length"
           v-model="source.signalId"
@@ -326,9 +339,11 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
           :return-object="false"
           label="Signal"
           placeholder="Pick one, or type any number"
+          persistent-placeholder
+          hint="From the export, or type any signal number"
+          persistent-hint
           density="compact"
           variant="outlined"
-          hide-details
           clearable
           class="source-name"
         ></v-combobox>
@@ -536,6 +551,48 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
             {{ chipLabel(channel) }}
           </v-chip>
         </v-chip-group>
+        <v-select
+          v-if="chartMode === 'durations'"
+          v-model="durationSort"
+          :items="durationSorts"
+          label="Sort by"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="chart-sort"
+        ></v-select>
+        <div v-if="dateBounds" class="date-range">
+          <v-text-field
+            v-model="dateFrom"
+            type="date"
+            label="From"
+            :min="dateBounds.min"
+            :max="dateBounds.max"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="date-field"
+          ></v-text-field>
+          <v-text-field
+            v-model="dateTo"
+            type="date"
+            label="To"
+            :min="dateBounds.min"
+            :max="dateBounds.max"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="date-field"
+          ></v-text-field>
+          <v-btn
+            v-if="dateFrom || dateTo"
+            size="small"
+            variant="text"
+            @click="clearDates"
+          >
+            All dates
+          </v-btn>
+        </div>
         <v-checkbox
           v-if="chartMode === 'timespace'"
           v-model="showProgressions"
@@ -599,9 +656,12 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
         <template v-else>
           Every event lined up from its own start, so the durations compare
           directly.
-          <span v-if="durationEvents.length < filteredEvents.length">
-            Showing the {{ durationEvents.length }} longest of
-            {{ filteredEvents.length }}.
+          <span v-if="durationEvents.length < chartEvents.length">
+            Showing {{ durationEvents.length }} of
+            {{ chartEvents.length }}, {{ durationSortLabel }}.
+          </span>
+          <span v-else-if="durationSort !== 'duration'">
+            Ordered {{ durationSortLabel }}.
           </span>
         </template>
       </p>
@@ -917,6 +977,7 @@ import {
   PREEMPT_CODES,
   STATUS_LABELS,
   DEFAULT_MAX_EVENT_SECONDS,
+  DURATION_SORTS,
   MINUTES_PER_DAY,
   WEEKDAY_LABELS,
   HOURS_PER_DAY,
@@ -924,6 +985,7 @@ import {
   evaluateSources,
   buildScatterPoints,
   seriesKey,
+  sortEventsFor,
   eventsToCsv,
   summarizePreemption,
   toSeconds,
@@ -972,6 +1034,20 @@ const SERIES_COLORS = [
  */
 const ALL_SIGNALS = "\u0000all";
 
+const DAY_MS = 86400000;
+
+/**
+ * "2024-03-14" as local midnight. `new Date(string)` reads a bare date as UTC,
+ * which lands on the previous afternoon west of the meridian and shifts the
+ * filter by a day.
+ */
+function parseLocalDay(text) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(text || "").trim());
+  if (!match) return null;
+  const [, y, m, d] = match;
+  return new Date(Number(y), Number(m) - 1, Number(d)).getTime();
+}
+
 /** Rendering every row of a very large result set is not worth the stall. */
 const MAX_TABLE_ROWS = 500;
 /** The durations view gives every event its own row, so it needs a ceiling. */
@@ -996,6 +1072,10 @@ export default {
       signals: [],
       chartMode: "timeline",
       chartSignal: ALL_SIGNALS,
+      durationSort: "duration",
+      durationSorts: DURATION_SORTS,
+      dateFrom: "",
+      dateTo: "",
       showProgressions: true,
       timeSpaceFocus: null,
       minProgressionSignals: MIN_PROGRESSION_SIGNALS,
@@ -1078,6 +1158,46 @@ export default {
     activeChartSignal() {
       return this.signals.includes(this.chartSignal) ? this.chartSignal : ALL_SIGNALS;
     },
+    /** Both counts, because either one alone gives the wrong impression. */
+    gtssSummary() {
+      if (!this.gtss) return "";
+      const withPreempt = this.gtss.signals.length;
+      const noun = withPreempt === 1 ? "signal" : "signals";
+      const total = this.gtss.signalCount;
+      if (!Number.isFinite(total)) {
+        return `${withPreempt} ${noun} with preempt channels`;
+      }
+      return `${withPreempt} of ${total} ${total === 1 ? "signal" : "signals"} have preempt channels`;
+    },
+    /** The days the loaded data covers, which is what the date pickers offer. */
+    dateBounds() {
+      if (!this.filteredEvents.length) return null;
+      let min = Infinity;
+      let max = -Infinity;
+      for (const event of this.filteredEvents) {
+        if (event.startMs < min) min = event.startMs;
+        if (event.startMs > max) max = event.startMs;
+      }
+      if (!Number.isFinite(min)) return null;
+      return { min: this.dateOnly(min), max: this.dateOnly(max) };
+    },
+    /**
+     * The date filter as epoch bounds.
+     *
+     * Parsed as local calendar days rather than through Date(string), which
+     * reads a bare "2024-03-14" as UTC midnight -- an hour range that starts
+     * on the previous afternoon for anyone west of the meridian, quietly
+     * dropping or adding a day's events at the edge of the filter.
+     */
+    dateWindow() {
+      const start = parseLocalDay(this.dateFrom);
+      const end = parseLocalDay(this.dateTo);
+      return {
+        fromMs: start === null ? null : start,
+        // Inclusive of the whole closing day, which is what picking it means.
+        toMs: end === null ? null : end + DAY_MS - 1,
+      };
+    },
     chartSignalOptions() {
       return [
         { title: "All signals", value: ALL_SIGNALS },
@@ -1097,8 +1217,19 @@ export default {
      */
     chartEvents() {
       const signal = this.activeChartSignal;
-      if (signal === ALL_SIGNALS) return this.filteredEvents;
-      return this.filteredEvents.filter((event) => event.signal === signal);
+      const { fromMs, toMs } = this.dateWindow;
+      let events = this.filteredEvents;
+      if (signal !== ALL_SIGNALS) {
+        events = events.filter((event) => event.signal === signal);
+      }
+      if (fromMs !== null || toMs !== null) {
+        events = events.filter(
+          (event) =>
+            (fromMs === null || event.startMs >= fromMs) &&
+            (toMs === null || event.startMs <= toMs),
+        );
+      }
+      return events;
     },
     /**
      * Whether a chart row has to name its signal to stay unambiguous. Two
@@ -1338,10 +1469,12 @@ export default {
     },
     /** Longest first, capped, so the durations view stays readable. */
     durationEvents() {
-      return this.chartEvents
-        .slice()
-        .sort((a, b) => b.durationMs - a.durationMs)
-        .slice(0, MAX_CHART_ROWS);
+      return sortEventsFor(this.chartEvents, this.durationSort).slice(0, MAX_CHART_ROWS);
+    },
+    /** What the current sort is called, for the line under the chart. */
+    durationSortLabel() {
+      const sort = DURATION_SORTS.find((item) => item.value === this.durationSort);
+      return sort ? sort.title.toLowerCase() : "longest first";
     },
     chartHeight() {
       if (this.chartMode === "scatter") return 480;
@@ -1806,7 +1939,9 @@ export default {
     signalNote(signalId) {
       const id = String(signalId ?? "").trim();
       if (!id || !this.gtss) return "";
-      return this.gtssById[id] ? "" : "not in the export — channels stay numbers";
+      return this.gtssById[id]
+        ? ""
+        : "not in the export — used as typed, channels stay numbers";
     },
     num(value) {
       return Number(value || 0).toLocaleString();
@@ -1853,6 +1988,8 @@ export default {
           this.visibleChannels = [];
           this.chartSignal = ALL_SIGNALS;
           this.timeSpaceFocus = null;
+          this.dateFrom = "";
+          this.dateTo = "";
           this.ranOnce = true;
         } catch (err) {
           this.error = `Could not process this data: ${err.message}`;
@@ -1921,6 +2058,10 @@ export default {
         this.gtssLoading = false;
         event.target.value = "";
       }
+    },
+    clearDates() {
+      this.dateFrom = "";
+      this.dateTo = "";
     },
     clearGtss() {
       this.gtss = null;
@@ -2049,6 +2190,9 @@ export default {
   font-size: 0.78rem;
   opacity: 0.7;
 }
+.source-head {
+  align-items: flex-start;
+}
 .run-toggle {
   flex: 0 0 auto;
 }
@@ -2173,6 +2317,19 @@ export default {
 .chart-signal {
   max-width: 260px;
   flex: 0 0 auto;
+}
+.chart-sort {
+  max-width: 220px;
+  flex: 0 0 auto;
+}
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.date-field {
+  max-width: 165px;
 }
 .heatmap-signal-name {
   font-weight: 400;

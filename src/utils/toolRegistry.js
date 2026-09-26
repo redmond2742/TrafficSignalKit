@@ -85,6 +85,16 @@ export const NAV_GROUPS = [
 
 export const TOOLS = [
   {
+    path: "/single-loop-speed-estimator",
+    title: "Single Loop Speed Estimator",
+    navTitle: "Single Loop Speed",
+    description:
+      "Estimate speeds from one loop's occupancy time, filtered by signal colour",
+    topics: ["Detectors", "Controller Data", "Speed"],
+    group: "data",
+    home: false,
+  },
+  {
     path: "/yellow-red-running",
     title: "Yellow & Red Light Running Tool (V2)",
     navTitle: "Yellow & Red Light Running Tool",

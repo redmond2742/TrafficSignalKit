@@ -16,6 +16,7 @@ import HighResDetectors from '../views/HighResDetectors'
 import PracticeExam from '../views/PracticeExam'
 import HighResPreemptionPlotter from '../views/HighResPreemptionPlotter'
 import PreemptionEvaluator from '../views/PreemptionEvaluator'
+import SingleLoopSpeedEstimator from '../views/SingleLoopSpeedEstimator'
 import HighResEnumerationMatrix from '../views/HighResEnumerationMatrix'
 import Reference from '../views/Reference'
 import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
@@ -167,6 +168,11 @@ const routes = [
         path: '/preemption-plotter',
         name: 'preemptionPlotter',
         component: HighResPreemptionPlotter,
+    },
+    {
+        path: '/single-loop-speed-estimator',
+        name: 'singleLoopSpeedEstimator',
+        component: SingleLoopSpeedEstimator,
     },
     {
         path: '/preemption-evaluator',

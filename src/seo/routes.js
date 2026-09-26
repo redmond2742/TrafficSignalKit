@@ -161,6 +161,12 @@ export const routeMeta = {
       "Plot preemption enumerations (101-119) over time for diagnostics.",
     path: "/preemption-plotter",
   },
+  singleLoopSpeedEstimator: {
+    title: "Single Loop Speed Estimator | Speed from Detector Occupancy",
+    description:
+      "Estimate vehicle speeds from a single inductive loop using occupancy time, loop length and average vehicle length, with a green/yellow/red filter.",
+    path: "/single-loop-speed-estimator",
+  },
   preemptionEvaluator: {
     title: "Preemption Evaluator | Event Duration & Channel Analysis",
     description:

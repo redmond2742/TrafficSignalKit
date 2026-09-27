@@ -12,6 +12,26 @@
             (event 132). It builds a calendar view that shows which pattern ran
             at each time of day. Use the summary table to confirm cycle lengths
             and the calendar to verify day-to-day pattern schedules.
+            <p class="mt-2">
+              The <b>pattern ranking</b> answers a different question: not
+              what ran when, but which patterns are worth the time. A signal
+              can hold a dozen patterns in its table while three of them cover
+              most of the week, and those three are where studying pays. Sort
+              it by total time to find them, by runs to see what the
+              controller switches to most often, or by longest run to find the
+              one that holds a whole peak.
+            </p>
+            <p class="mt-2">
+              <b>Most used pattern by day</b> reduces each day to the pattern
+              that held the intersection longest. "Day covered" is how much of
+              the 24 hours the file describes at all, so a day with four hours
+              of data is not read as a quiet one.
+            </p>
+            <p class="mt-2">
+              A pattern running overnight is cut at midnight and counted
+              against both days, but it stays one run: the controller switched
+              once, and reporting two would overstate how often it changes.
+            </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -49,6 +69,81 @@
     >
       {{ warningMessage }}
     </v-alert>
+
+    <!--
+      Which patterns are worth the time. Sortable, because the answer changes
+      with the question: total time says what to study first, runs say what
+      the controller switches to most often, and longest run says which one
+      actually holds an intersection for a whole peak.
+    -->
+    <v-card v-if="patternRanking.length" class="pa-4 mt-6" variant="outlined">
+      <h2 class="section-title">Pattern Ranking</h2>
+      <p class="table-hint">
+        {{ patternRanking.length }}
+        {{ patternRanking.length === 1 ? "pattern" : "patterns" }} over
+        {{ span(rankingTotalMs) }} of data. Click a column to sort.
+      </p>
+      <v-data-table
+        :headers="rankingHeaders"
+        :items="patternRanking"
+        :items-per-page="10"
+        density="compact"
+        class="rank-table"
+      >
+        <template #item.pattern="{ item }">
+          <span class="rank-pattern">{{ item.pattern }}</span>
+        </template>
+        <template #item.cycleLength="{ item }">
+          {{ item.cycleLength ?? "Unknown" }}
+          <span v-if="item.cycleLengths.length > 1" class="muted">
+            (also {{ item.cycleLengths.filter((c) => c !== item.cycleLength).join(", ") }})
+          </span>
+        </template>
+        <template #item.totalMs="{ item }">{{ span(item.totalMs) }}</template>
+        <template #item.share="{ item }">
+          <div class="share-cell">
+            <div class="share-bar" :style="{ width: `${Math.max(item.share * 100, 1)}%` }"></div>
+            <span class="share-text">{{ percent(item.share) }}</span>
+          </div>
+        </template>
+        <template #item.longestRunMs="{ item }">{{ span(item.longestRunMs) }}</template>
+      </v-data-table>
+    </v-card>
+
+    <!--
+      One row a day. The calendar above shows every change; this answers the
+      simpler question of what the day mostly was.
+    -->
+    <v-card v-if="dailyRows.length" class="pa-4 mt-6" variant="outlined">
+      <h2 class="section-title">Most Used Pattern by Day</h2>
+      <p class="table-hint">
+        The pattern that held the intersection longest on each day. "Day
+        covered" is how much of the 24 hours the data describes at all, so a
+        partial day is not mistaken for a quiet one.
+      </p>
+      <v-data-table
+        :headers="dailyHeaders"
+        :items="dailyRows"
+        :items-per-page="10"
+        density="compact"
+        class="rank-table"
+      >
+        <template #item.dayKey="{ item }">
+          <span class="nowrap">{{ item.dayKey }}</span>
+          <span class="muted">{{ item.weekday }}</span>
+        </template>
+        <template #item.topPattern="{ item }">
+          <span class="rank-pattern">{{ item.topPattern ?? "—" }}</span>
+          <span v-if="item.runnersUp.length" class="muted">
+            then {{ item.runnersUp.map((p) => p.pattern).join(", ") }}
+          </span>
+        </template>
+        <template #item.topCycle="{ item }">{{ item.topCycle ?? "Unknown" }}</template>
+        <template #item.topMs="{ item }">{{ span(item.topMs) }}</template>
+        <template #item.topShare="{ item }">{{ percent(item.topShare) }}</template>
+        <template #item.coverage="{ item }">{{ percent(item.coverage) }}</template>
+      </v-data-table>
+    </v-card>
 
     <v-card v-if="patternSummary.length" class="pa-4 mt-6" variant="outlined">
       <h2 class="section-title">Cycle Lengths by Pattern</h2>
@@ -171,6 +266,12 @@
 <script>
 import { DateTime } from "luxon";
 import InputBox from "../components/foundational/InputBox.vue";
+import {
+  dailyPatternUse,
+  formatDuration as formatSpan,
+  rankPatterns,
+  splitSegmentsByDay,
+} from "../utils/patternUsage.js";
 import convertTime from "../mixins/convertTime";
 
 export default {
@@ -195,6 +296,59 @@ export default {
     };
   },
   computed: {
+    /**
+     * Which patterns carry the day, longest-running first.
+     *
+     * The calendar says what ran when. This says what to study: a signal can
+     * hold a dozen patterns while three of them cover most of the week, and
+     * those three are where the time goes.
+     */
+    patternRanking() {
+      return rankPatterns(this.segments);
+    },
+    rankingHeaders() {
+      return [
+        { title: "Pattern", key: "pattern", align: "start" },
+        { title: "Cycle (s)", key: "cycleLength" },
+        { title: "Total time", key: "totalMs", value: (row) => row.totalMs },
+        { title: "Share", key: "share" },
+        { title: "Days", key: "dayCount" },
+        { title: "Runs", key: "runCount" },
+        { title: "Longest run", key: "longestRunMs", value: (row) => row.longestRunMs },
+      ];
+    },
+    dailyUse() {
+      return dailyPatternUse(this.segments);
+    },
+    dailyHeaders() {
+      return [
+        { title: "Day", key: "dayKey", align: "start" },
+        { title: "Most used pattern", key: "topPattern" },
+        { title: "Cycle (s)", key: "topCycle" },
+        { title: "Time on it", key: "topMs", value: (row) => row.topMs },
+        { title: "Share of the day's data", key: "topShare" },
+        { title: "Patterns that ran", key: "patternCount" },
+        { title: "Day covered", key: "coverage" },
+      ];
+    },
+    /** Flattened for the table, because v-data-table sorts on flat keys. */
+    dailyRows() {
+      return this.dailyUse.map((day) => ({
+        dayKey: day.dayKey,
+        weekday: DateTime.fromMillis(day.dayStartMs).toFormat("ccc"),
+        topPattern: day.top ? day.top.pattern : null,
+        topCycle: day.top ? day.top.cycleLength : null,
+        topMs: day.top ? day.top.totalMs : 0,
+        topShare: day.top ? day.top.share : 0,
+        patternCount: day.patternCount,
+        coverage: day.coverage,
+        runnersUp: day.patterns.slice(1, 4),
+      }));
+    },
+    /** How much of the loaded span each pattern would be studied for. */
+    rankingTotalMs() {
+      return this.patternRanking.reduce((sum, row) => sum + row.totalMs, 0);
+    },
     patternSummary() {
       const summaryMap = new Map();
       this.segments.forEach((segment) => {
@@ -492,48 +646,56 @@ export default {
       );
       return segment ? segment.pattern : null;
     },
+    span(ms) {
+      return formatSpan(ms);
+    },
+    percent(value) {
+      return Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : "—";
+    },
     formatDuration(value) {
       if (value === null || value === undefined || Number.isNaN(value)) {
         return "—";
       }
       return value.toFixed(1);
     },
+    /**
+     * The calendar's per-day entries, cut from the same splitter the ranking
+     * uses. Two clippers would be two chances to disagree about which day an
+     * overnight pattern belongs to, and the calendar and the tables below it
+     * have to name the same day.
+     */
     buildDayMap() {
       const dayMap = new Map();
-      this.segments.forEach((segment, index) => {
-        const start = DateTime.fromISO(segment.startIso);
-        const end = DateTime.fromISO(segment.endIso);
-        if (!start.isValid || !end.isValid) {
-          return;
+      splitSegmentsByDay(this.segments).forEach((piece, index) => {
+        if (!dayMap.has(piece.dayKey)) {
+          dayMap.set(piece.dayKey, []);
         }
-        let cursor = start.startOf("day");
-        const endDay = end.startOf("day");
-        while (cursor <= endDay) {
-          const dayKey = cursor.toISODate();
-          const dayStart = cursor;
-          const dayEnd = cursor.endOf("day");
-          const entryStart = start > dayStart ? start : dayStart;
-          const entryEnd = end < dayEnd ? end : dayEnd;
-
-          if (!dayMap.has(dayKey)) {
-            dayMap.set(dayKey, []);
-          }
-          dayMap.get(dayKey).push({
-            id: `${dayKey}-${index}`,
-            pattern: segment.pattern,
-            cycleLength: segment.cycleLength,
-            start: entryStart.toFormat("HH:mm:ss"),
-            end: entryEnd.toFormat("HH:mm:ss"),
-          });
-          cursor = cursor.plus({ days: 1 });
-        }
+        dayMap.get(piece.dayKey).push({
+          id: `${piece.dayKey}-${index}`,
+          pattern: piece.pattern,
+          cycleLength: piece.cycleLength,
+          startMs: piece.startMs,
+          start: DateTime.fromMillis(piece.startMs).toFormat("HH:mm:ss"),
+          end: this.endOfDayLabel(piece),
+        });
       });
 
       dayMap.forEach((entries) => {
-        entries.sort((a, b) => a.start.localeCompare(b.start));
+        entries.sort((a, b) => a.startMs - b.startMs);
       });
 
       return dayMap;
+    },
+    /**
+     * A piece that runs to the end of its day ends at the next midnight, and
+     * printing that as 00:00:00 in a row dated the day before reads as a
+     * pattern that lasted no time. 24:00:00 is how a time-of-day table says
+     * the same thing without the contradiction.
+     */
+    endOfDayLabel(piece) {
+      const end = DateTime.fromMillis(piece.endMs);
+      const sameDay = end.toISODate() === DateTime.fromMillis(piece.startMs).toISODate();
+      return sameDay ? end.toFormat("HH:mm:ss") : "24:00:00";
     },
     selectDay(date) {
       this.selectedDay = date;
@@ -543,6 +705,38 @@ export default {
 </script>
 
 <style scoped>
+.table-hint {
+  text-align: left;
+  font-size: 0.82rem;
+  opacity: 0.75;
+  margin: 0 0 8px;
+}
+.rank-pattern {
+  font-weight: 600;
+}
+.muted {
+  font-size: 0.78rem;
+  opacity: 0.65;
+  margin-left: 6px;
+}
+.nowrap {
+  white-space: nowrap;
+}
+/* A bar behind the number: the ranking is read by eye before it is read. */
+.share-cell {
+  position: relative;
+  min-width: 96px;
+  padding: 2px 0;
+}
+.share-bar {
+  position: absolute;
+  inset: 2px auto 2px 0;
+  background: rgba(var(--v-theme-primary), 0.22);
+  border-radius: 3px;
+}
+.share-text {
+  position: relative;
+}
 .section-title {
   font-weight: 600;
 }

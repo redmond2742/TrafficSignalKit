@@ -42,6 +42,10 @@
                 which is what separates a stop-bar loop's queue from its
                 moving traffic
               </li>
+              <li>
+                A <b>detector-to-phase table</b>, so each channel carries its
+                own phase and the bars split green, yellow and red
+              </li>
               <li>Median, fastest and slowest across everything kept</li>
             </ul>
           </v-expansion-panel-text>
@@ -91,6 +95,23 @@
               An advance or mid-block loop needs neither: traffic crosses it
               at speed whatever the signal is doing, so leave all three
               colours on.
+            </p>
+            <p class="mt-2">
+              <b>Which phase?</b> Paste a detector-to-phase table &mdash; two
+              numbers a line, detector first &mdash; and each channel carries
+              its own, so switching channel switches the colour with it. It is
+              the same table the
+              <router-link to="/detection-plotter">
+                Detection Channel Plotter</router-link>
+              takes, so one written for that tool works here untouched. A zero
+              means the detector deliberately has no phase, which is a
+              different answer from not mentioning it at all.
+            </p>
+            <p class="mt-2">
+              With a phase known, the bars split by colour rather than showing
+              one total. On a stop-bar loop that is the whole picture in one
+              bar: how much of the hour was traffic moving on green, and how
+              much was a queue sitting on the loop at red.
             </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -224,6 +245,41 @@
         {{ scanNote }}
       </v-alert>
 
+      <!--
+        The same two-column table the Detection Channel Plotter takes, so one
+        written for that tool works here untouched. With it, each channel
+        carries its own phase and the colour follows the detector rather than
+        a picker that has to be reset every time the channel changes.
+      -->
+      <v-card class="setup-card" variant="outlined">
+        <div class="setup-card__head">
+          <h2 class="setup-card__title">
+            Detector-to-phase assignments
+            <span class="setup-card__optional">optional</span>
+          </h2>
+          <p class="setup-card__hint">
+            Two numbers a line, detector first. A zero means the detector
+            deliberately has no phase. Without a table, pick one phase below
+            and it applies to whichever channel is selected.
+          </p>
+        </div>
+        <v-textarea
+          v-model="phaseMapInput"
+          placeholder="Det 5&#9;2&#10;Det 9&#9;6&#10;Det 12&#9;0"
+          label="Detector-to-phase table"
+          rows="4"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="mapping-textarea"
+        ></v-textarea>
+        <p v-if="unknownAssignments.length" class="setup-card__hint mt-2">
+          This data has no colour rows for
+          {{ unknownAssignments.join(", ") }}, so those channels stay
+          uncoloured.
+        </p>
+      </v-card>
+
       <v-card class="setup-card" variant="outlined">
         <div class="settings-row">
           <v-select
@@ -236,7 +292,7 @@
             class="setting"
           ></v-select>
           <v-select
-            v-if="phases.length"
+            v-if="phases.length && phaseSource === 'picker'"
             v-model="phase"
             :items="phaseOptions"
             label="Phase for the colour filter"
@@ -245,6 +301,14 @@
             hide-details
             class="setting"
           ></v-select>
+          <div v-else-if="phaseSource === 'table'" class="setting-note">
+            Colour from <b>phase {{ activePhase }}</b>, per the assignment
+            table.
+          </div>
+          <div v-else-if="phaseSource === 'unassigned'" class="setting-note">
+            The assignment table gives channel {{ channel }} no phase, so
+            these arrivals have no colour.
+          </div>
           <v-chip-group v-model="states" multiple column>
             <v-chip
               v-for="option in stateOptions"
@@ -332,7 +396,9 @@
               <th>{{ bucket === "event" ? "Occupancy" : "Total occupancy" }}</th>
               <th v-if="bucket !== 'event'">Median occupancy</th>
               <th v-if="bucket !== 'event'">Occupied</th>
-              <th v-if="bucket === 'event' && phases.length">Colour</th>
+              <th v-if="bucket !== 'event' && hasColours">By colour</th>
+              <th v-if="bucket === 'event' && hasColours">Phase</th>
+              <th v-if="bucket === 'event' && hasColours">Colour</th>
               <th>Estimated speed</th>
             </tr>
           </thead>
@@ -343,9 +409,18 @@
               <td class="nowrap">{{ secs(rowItem.totalMs) }}</td>
               <td v-if="bucket !== 'event'" class="nowrap">{{ secs(rowItem.medianMs) }}</td>
               <td v-if="bucket !== 'event'" class="nowrap">{{ share(rowItem.occupiedShare) }}</td>
-              <td v-if="bucket === 'event' && phases.length">
+              <td v-if="bucket !== 'event' && hasColours" class="nowrap">
+                <span v-for="part in splitStates(rowItem)" :key="part.state" class="split">
+                  <span :class="`state-dot state-dot--${part.state}`"></span>
+                  {{ secs(part.ms) }}
+                </span>
+              </td>
+              <td v-if="bucket === 'event' && hasColours">
+                {{ rowItem.phase === null ? "—" : rowItem.phase }}
+              </td>
+              <td v-if="bucket === 'event' && hasColours">
                 <span v-if="rowItem.state" :class="`state-dot state-dot--${rowItem.state}`"></span>
-                {{ rowItem.state || "—" }}
+                {{ rowItem.state || "unknown" }}
               </td>
               <td class="nowrap">{{ mph(rowItem.medianMph) }}</td>
             </tr>
@@ -375,12 +450,14 @@ import {
   DEFAULT_VEHICLE_FEET,
   SIGNAL_STATES,
   TIME_BUCKETS,
+  UNKNOWN_STATE,
   bucketOccupancies,
   buildOccupancies,
   buildPhaseIntervals,
   detectLayout,
   estimateSpeedMph,
   occupancySecondsForSpeed,
+  parseDetectorPhaseMap,
   scanLoopRows,
   stateAt,
   summarizeOccupancies,
@@ -390,7 +467,13 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, LinearScale, CategoryScale)
 
 /** Colour per signal state, used on the chips, the dots and the bars. */
 const STATE_COLORS = { green: "#2E7D32", yellow: "#F9A825", red: "#C62828" };
+/** Arrivals the colour timeline cannot place get the neutral colour. */
 const BUCKET_COLOR = "#00695C";
+/** Stack order, so green is always at the left of every bar. */
+const STACK_ORDER = ["green", "yellow", "red", UNKNOWN_STATE];
+const STACK_LABELS = {
+  green: "Green", yellow: "Yellow", red: "Red", [UNKNOWN_STATE]: "Colour unknown",
+};
 /** A speed to anchor the settings note, so the numbers mean something. */
 const REFERENCE_MPH = 30;
 /** Rendering every row of a very large result set is not worth the stall. */
@@ -419,6 +502,7 @@ export default {
       pairing: { unmatchedOn: 0, unmatchedOff: 0, overlong: 0 },
       channel: null,
       phase: null,
+      phaseMapInput: "",
       states: [...SIGNAL_STATES],
       bucket: "hour",
       bucketOptions: TIME_BUCKETS,
@@ -430,15 +514,50 @@ export default {
   },
   computed: {
     channelOptions() {
-      return this.channels.map((value) => ({ title: `Channel ${value}`, value }));
+      return this.channels.map((value) => {
+        const assigned = this.phaseMap.get(value);
+        if (assigned === null) return { title: `Channel ${value} — no phase`, value };
+        if (assigned === undefined) return { title: `Channel ${value}`, value };
+        return { title: `Channel ${value} → phase ${assigned}`, value };
+      });
     },
     phaseOptions() {
       return this.phases.map((value) => ({ title: `Phase ${value}`, value }));
     },
-    /** The colour timeline for the selected phase, built once per change. */
+    phaseMap() {
+      return parseDetectorPhaseMap(this.phaseMapInput);
+    },
+    /**
+     * The phase whose colour applies to the selected channel.
+     *
+     * The assignment table wins when it names this detector, because it is
+     * the specific answer; the picker is the fallback for data pasted without
+     * one. A detector the table names with a zero is deliberately unassigned
+     * and gets no colour at all, which is different from one the table never
+     * mentions.
+     */
+    activePhase() {
+      if (this.channel !== null && this.phaseMap.has(this.channel)) {
+        return this.phaseMap.get(this.channel);
+      }
+      return this.phase;
+    },
+    /** Where that phase came from, so the page can say which it used. */
+    phaseSource() {
+      if (this.channel === null || !this.phaseMap.has(this.channel)) return "picker";
+      return this.phaseMap.get(this.channel) === null ? "unassigned" : "table";
+    },
+    /** The colour timeline for the active phase, built once per change. */
     phaseIntervals() {
-      if (this.phase === null) return [];
-      return buildPhaseIntervals(this.phaseRows, this.phase);
+      if (this.activePhase === null || this.activePhase === undefined) return [];
+      return buildPhaseIntervals(this.phaseRows, this.activePhase);
+    },
+    /** Assignments that name a phase this data has no colour rows for. */
+    unknownAssignments() {
+      const known = new Set(this.phases);
+      return [...this.phaseMap.entries()]
+        .filter(([, phase]) => phase !== null && !known.has(phase))
+        .map(([detector, phase]) => `channel ${detector} → phase ${phase}`);
     },
     /**
      * Every occupancy on the selected channel, each tagged with the colour
@@ -451,8 +570,13 @@ export default {
         maxOccupancySeconds: this.maxOccupancySeconds,
       });
       const intervals = this.phaseIntervals;
-      if (!intervals.length) return occupancies;
-      return occupancies.map((row) => ({ ...row, state: stateAt(intervals, row.onMs) }));
+      const phase = this.activePhase ?? null;
+      if (!intervals.length) return occupancies.map((row) => ({ ...row, phase }));
+      return occupancies.map((row) => ({
+        ...row,
+        phase,
+        state: stateAt(intervals, row.onMs),
+      }));
     },
     stateCounts() {
       const counts = {};
@@ -511,6 +635,7 @@ export default {
     referenceSpeed() {
       return REFERENCE_MPH;
     },
+
     bucketHeading() {
       const found = TIME_BUCKETS.find((item) => item.value === this.bucket);
       return found ? found.title.replace(/^By /, "Every ") : "Every bucket";
@@ -540,21 +665,46 @@ export default {
     chartHeight() {
       return Math.max(260, Math.min(this.chartRows.length, 60) * 22 + 140);
     },
+    /** Whether any colour is known, which decides if the bars can be split. */
+    hasColours() {
+      return this.phaseIntervals.length > 0;
+    },
     chartData() {
       const rows = this.chartRows;
       const labels = rows.map((row) => this.rowLabel(row));
+      if (!this.hasColours) {
+        return {
+          labels,
+          datasets: [
+            {
+              label: this.bucket === "event" ? "Occupancy" : "Total occupancy",
+              data: rows.map((row) => ({ x: row.totalMs / 1000, y: this.rowLabel(row), row })),
+              backgroundColor: BUCKET_COLOR,
+              borderWidth: 0,
+            },
+          ],
+        };
+      }
+      // One dataset per colour, stacked. A stop-bar loop's hour then shows at
+      // a glance how much of its occupancy was traffic moving on green and
+      // how much was a queue sitting on the loop at red -- a single total
+      // hides exactly that difference.
       return {
         labels,
-        datasets: [
-          {
-            label: this.bucket === "event" ? "Occupancy" : "Total occupancy",
-            data: rows.map((row) => ({ x: row.totalMs / 1000, y: this.rowLabel(row), row })),
-            backgroundColor: rows.map((row) =>
-              row.state ? STATE_COLORS[row.state] || BUCKET_COLOR : BUCKET_COLOR,
-            ),
+        datasets: STACK_ORDER
+          .filter((state) => rows.some((row) => row.byState[state] > 0))
+          .map((state) => ({
+            label: STACK_LABELS[state],
+            data: rows.map((row) => ({
+              x: row.byState[state] / 1000,
+              y: this.rowLabel(row),
+              row,
+              state,
+            })),
+            backgroundColor: STATE_COLORS[state] || BUCKET_COLOR,
             borderWidth: 0,
-          },
-        ],
+            stack: "occupancy",
+          })),
       };
     },
     chartOptions() {
@@ -563,6 +713,8 @@ export default {
       const num = this.num;
       const share = this.share;
       const bucket = this.bucket;
+      const stacked = this.hasColours;
+      const phase = this.activePhase;
       return {
         indexAxis: "y",
         responsive: true,
@@ -571,11 +723,13 @@ export default {
         scales: {
           x: {
             type: "linear",
+            stacked: stacked,
             beginAtZero: true,
             title: { display: true, text: "Time the loop was occupied (seconds)" },
           },
           y: {
             type: "category",
+            stacked: stacked,
             ticks: { autoSkip: true, maxTicksLimit: 40 },
             title: {
               display: true,
@@ -584,7 +738,7 @@ export default {
           },
         },
         plugins: {
-          legend: { display: false },
+          legend: { display: stacked, position: "bottom" },
           tooltip: {
             callbacks: {
               title: (items) => items[0].label,
@@ -594,11 +748,11 @@ export default {
                 return `Estimated speed: ${mph(row.medianMph)}`;
               },
               afterBody: (items) => {
-                const row = items[0].raw.row;
+                const raw = items[0].raw;
+                const row = raw.row;
                 const lines = [];
                 if (bucket === "event") {
                   lines.push(`Occupancy: ${secs(row.totalMs)}`);
-                  if (row.state) lines.push(`Signal was ${row.state}`);
                 } else {
                   lines.push(
                     `${num(row.count)} ${row.count === 1 ? "vehicle" : "vehicles"}`,
@@ -606,6 +760,23 @@ export default {
                     `Median occupancy: ${secs(row.medianMs)}`,
                     `Loop occupied ${share(row.occupiedShare)} of the ${bucket}`,
                   );
+                }
+                if (stacked && phase !== null && phase !== undefined) {
+                  // Which phase the colour came from, because on a page that
+                  // can read any detector the answer is not obvious.
+                  lines.push(`Colour is phase ${phase}`);
+                  if (bucket === "event") {
+                    lines.push(`Signal was ${row.state || "unknown"}`);
+                  } else {
+                    for (const state of STACK_ORDER) {
+                      const ms = row.byState[state];
+                      if (ms > 0) {
+                        lines.push(
+                          `  ${STACK_LABELS[state]}: ${secs(ms)} over ${num(row.countByState[state])}`,
+                        );
+                      }
+                    }
+                  }
                 }
                 return lines;
               },
@@ -632,6 +803,17 @@ export default {
     },
     share(value) {
       return Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : "—";
+    },
+    /**
+     * The colours a bucket actually carries, in stack order. Filtered here
+     * rather than in the template, because v-if beats v-for on one element in
+     * Vue 3 and the loop variable would not exist yet.
+     */
+    splitStates(row) {
+      if (!row.byState) return [];
+      return STACK_ORDER
+        .filter((state) => row.byState[state] > 0)
+        .map((state) => ({ state, ms: row.byState[state] }));
     },
     rowLabel(row) {
       if (!Number.isFinite(row.startMs)) return "";
@@ -686,7 +868,7 @@ export default {
       );
     },
     downloadCsv() {
-      const header = ["on", "off", "occupancy_s", "channel", "state", "estimated_mph"];
+      const header = ["on", "off", "occupancy_s", "channel", "phase", "state", "estimated_mph"];
       const lines = [header.join(",")];
       for (const row of this.filteredOccupancies) {
         const speed = estimateSpeedMph(row.occupancyMs, this.loopFeet, this.vehicleFeet);
@@ -696,6 +878,7 @@ export default {
             DateTime.fromMillis(row.offMs).toFormat("yyyy-LL-dd HH:mm:ss.S"),
             (row.occupancyMs / 1000).toFixed(2),
             row.channel,
+            row.phase ?? "",
             row.state || "",
             speed === null ? "" : speed.toFixed(1),
           ].join(","),
@@ -824,4 +1007,21 @@ export default {
 .state-dot--green { background: #2e7d32; }
 .state-dot--yellow { background: #f9a825; }
 .state-dot--red { background: #c62828; }
+.state-dot--unknown { background: #00695c; }
+.split {
+  display: inline-block;
+  margin-right: 10px;
+}
+.mapping-textarea :deep(textarea) {
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+.setup-card__optional {
+  margin-left: 8px;
+  font-size: 0.72rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+}
 </style>

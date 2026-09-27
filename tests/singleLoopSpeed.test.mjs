@@ -9,6 +9,8 @@ import {
   buildPhaseIntervals,
   detectLayout,
   estimateSpeedMph,
+  parseDetectorPhaseMap,
+  UNKNOWN_STATE,
   occupancySecondsForSpeed,
   scanLoopRows,
   stateAt,
@@ -364,4 +366,96 @@ test('summarizeOccupancies survives an empty set', () => {
   const summary = summarizeOccupancies([], 6, 17);
   assert.equal(summary.count, 0);
   assert.equal(summary.medianMph, null);
+});
+
+
+/* --------------------------------------------- detector-to-phase assignments */
+
+test('parseDetectorPhaseMap reads two numbers a line, detector first', () => {
+  const map = parseDetectorPhaseMap('5\t2\n9\t6\n12  4');
+  assert.equal(map.get(5), 2);
+  assert.equal(map.get(9), 6);
+  assert.equal(map.get(12), 4, 'spaces separate as well as tabs');
+  assert.equal(map.size, 3);
+});
+
+test('parseDetectorPhaseMap tolerates the labels people paste round the numbers', () => {
+  // The same table written for the Detection Channel Plotter has to work here
+  // without being retyped.
+  const map = parseDetectorPhaseMap('Det 5\t2\nDetector 9 -> phase 6\nchannel,phase\n');
+  assert.equal(map.get(5), 2);
+  assert.equal(map.get(9), 6);
+  assert.equal(map.size, 2, 'the header row carries no two numbers and is skipped');
+});
+
+test('zero means deliberately unassigned, and is not the same as absent', () => {
+  const map = parseDetectorPhaseMap('5\t0\n9\t6');
+  assert.equal(map.has(5), true, 'detector 5 was mentioned');
+  assert.equal(map.get(5), null, 'and deliberately given no phase');
+  assert.equal(map.has(7), false, 'detector 7 was never mentioned at all');
+  // The caller needs to tell those apart to explain why a channel has no
+  // colours, so has() and get() must disagree here.
+  assert.notEqual(map.has(5), map.has(7));
+});
+
+test('a later line corrects an earlier one', () => {
+  const map = parseDetectorPhaseMap('5\t2\n5\t6');
+  assert.equal(map.get(5), 6, 'the correction pasted underneath wins');
+});
+
+test('parseDetectorPhaseMap survives junk', () => {
+  assert.equal(parseDetectorPhaseMap('').size, 0);
+  assert.equal(parseDetectorPhaseMap(null).size, 0);
+  assert.equal(parseDetectorPhaseMap('no numbers here\nnor here').size, 0);
+  assert.equal(parseDetectorPhaseMap('5').size, 0, 'one number is not a pair');
+});
+
+/* ------------------------------------------------- colour split per bucket */
+
+test('a bucket splits its occupancy by the colour showing', () => {
+  const base = new Date(2024, 2, 14, 7, 0, 0).getTime();
+  const [row] = bucketOccupancies(
+    [
+      { channel: 5, onMs: base + 1000, occupancyMs: 500, state: 'green' },
+      { channel: 5, onMs: base + 2000, occupancyMs: 700, state: 'green' },
+      { channel: 5, onMs: base + 3000, occupancyMs: 300, state: 'yellow' },
+      { channel: 5, onMs: base + 4000, occupancyMs: 9000, state: 'red' },
+    ],
+    'hour', 6, 17,
+  );
+  assert.equal(row.totalMs, 10500);
+  assert.equal(row.byState.green, 1200);
+  assert.equal(row.byState.yellow, 300);
+  assert.equal(row.byState.red, 9000);
+  assert.equal(row.byState[UNKNOWN_STATE], 0);
+  // The split has to add back up to the total, or a stacked bar would be a
+  // different length from the number beside it.
+  const summed = Object.values(row.byState).reduce((a, b) => a + b, 0);
+  assert.equal(summed, row.totalMs);
+  assert.deepEqual(row.countByState, { green: 2, yellow: 1, red: 1, [UNKNOWN_STATE]: 0 });
+});
+
+test('an arrival with no colour lands in its own bucket, not in red', () => {
+  const base = new Date(2024, 2, 14, 7, 0, 0).getTime();
+  const [row] = bucketOccupancies(
+    [
+      { channel: 5, onMs: base + 1000, occupancyMs: 500, state: '' },
+      { channel: 5, onMs: base + 2000, occupancyMs: 400, state: 'green' },
+    ],
+    'hour', 6, 17,
+  );
+  assert.equal(row.byState[UNKNOWN_STATE], 500);
+  assert.equal(row.byState.red, 0, 'unknown is not red');
+  assert.equal(row.byState.green, 400);
+});
+
+test('every event row carries its own colour split and its phase', () => {
+  const rows = bucketOccupancies(
+    [{ channel: 5, phase: 2, onMs: 1000, occupancyMs: 500, state: 'green' }],
+    'event', 6, 17,
+  );
+  assert.equal(rows[0].phase, 2);
+  assert.equal(rows[0].byState.green, 500);
+  assert.equal(rows[0].countByState.green, 1);
+  assert.equal(rows[0].byState.red, 0);
 });

@@ -343,6 +343,40 @@ export function occupancySecondsForSpeed(mph, loopFeet, vehicleFeet) {
   return distance / (speed * (FEET_PER_MILE / SECONDS_PER_HOUR));
 }
 
+/**
+ * A pasted detector-to-phase table, as a lookup.
+ *
+ * Two numbers a line, detector first: the same shape the Detection Channel
+ * Plotter accepts, so a table written for one tool works in the other without
+ * being retyped. Anything else on the line is ignored, so "Det 5   2" and a
+ * header row both behave.
+ *
+ * Zero means deliberately unassigned, and comes back as null rather than
+ * being dropped: the caller can then tell "no phase for this detector" from
+ * "this detector was never mentioned", which are different answers to give a
+ * reader asking why a channel has no colours.
+ */
+export function parseDetectorPhaseMap(text) {
+  const map = new Map();
+  for (const line of String(text || '').split(/\r?\n/)) {
+    const numbers = line.match(/\d+/g);
+    if (!numbers) continue;
+    const detector = Number.parseInt(numbers[0], 10);
+    // A line carrying one number has no second to read, and parseInt of
+    // nothing is NaN, so the finite check below is what rejects it. There is
+    // no separate length test because it could never fire.
+    const phase = Number.parseInt(numbers[1], 10);
+    if (!Number.isFinite(detector) || !Number.isFinite(phase)) continue;
+    // Last one wins: a corrected line pasted under the original should be
+    // the one that counts.
+    map.set(detector, phase === 0 ? null : phase);
+  }
+  return map;
+}
+
+/** Every state a bucket can carry, plus the one for arrivals with no colour. */
+export const UNKNOWN_STATE = 'unknown';
+
 export const TIME_BUCKETS = [
   { value: 'event', title: 'Each event', ms: 0 },
   { value: 'minute', title: 'By minute', ms: 60000 },
@@ -393,21 +427,33 @@ function median(sorted) {
  * mean towards zero hard enough to make an otherwise free-flowing hour look
  * congested.
  */
+const EMPTY_BY_STATE = () => ({ green: 0, yellow: 0, red: 0, [UNKNOWN_STATE]: 0 });
+
 export function bucketOccupancies(occupancies, bucket, loopFeet, vehicleFeet) {
   const list = occupancies || [];
   if (bucket === 'event' || !BUCKET_MS[bucket]) {
-    return list.map((row) => ({
-      key: row.onMs,
-      startMs: row.onMs,
-      bucket: 'event',
-      count: 1,
-      totalMs: row.occupancyMs,
-      medianMs: row.occupancyMs,
-      medianMph: estimateSpeedMph(row.occupancyMs, loopFeet, vehicleFeet),
-      occupiedShare: null,
-      channel: row.channel,
-      state: row.state || '',
-    }));
+    return list.map((row) => {
+      const state = row.state || UNKNOWN_STATE;
+      const byState = EMPTY_BY_STATE();
+      const counts = EMPTY_BY_STATE();
+      byState[state] = row.occupancyMs;
+      counts[state] = 1;
+      return {
+        key: row.onMs,
+        startMs: row.onMs,
+        bucket: 'event',
+        count: 1,
+        totalMs: row.occupancyMs,
+        medianMs: row.occupancyMs,
+        medianMph: estimateSpeedMph(row.occupancyMs, loopFeet, vehicleFeet),
+        occupiedShare: null,
+        channel: row.channel,
+        phase: row.phase ?? null,
+        state: row.state || '',
+        byState,
+        countByState: counts,
+      };
+    });
   }
 
   const span = BUCKET_MS[bucket];
@@ -416,12 +462,22 @@ export function bucketOccupancies(occupancies, bucket, loopFeet, vehicleFeet) {
     const key = bucketStart(row.onMs, bucket);
     let group = groups.get(key);
     if (!group) {
-      group = { key, startMs: key, bucket, count: 0, totalMs: 0, durations: [] };
+      group = {
+        key, startMs: key, bucket, count: 0, totalMs: 0, durations: [],
+        byState: EMPTY_BY_STATE(), countByState: EMPTY_BY_STATE(),
+      };
       groups.set(key, group);
     }
     group.count += 1;
     group.totalMs += row.occupancyMs;
     group.durations.push(row.occupancyMs);
+    // Split by colour as well as totalled, so a bar can show how much of an
+    // hour's occupancy was traffic moving on green and how much was a queue
+    // sitting on the loop at red -- on a stop-bar loop those are the two
+    // things being told apart, and one total hides the difference.
+    const state = row.state || UNKNOWN_STATE;
+    group.byState[state] += row.occupancyMs;
+    group.countByState[state] += 1;
   }
 
   return [...groups.values()]
@@ -441,7 +497,10 @@ export function bucketOccupancies(occupancies, bucket, loopFeet, vehicleFeet) {
         medianMph: estimateSpeedMph(medianMs, loopFeet, vehicleFeet),
         occupiedShare: span ? group.totalMs / span : null,
         channel: null,
+        phase: null,
         state: '',
+        byState: group.byState,
+        countByState: group.countByState,
       };
     });
 }

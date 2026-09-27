@@ -40,6 +40,7 @@ export const HOME_ORDER = [
   "/preemption-plotter",
   "/pattern-calendar",
   "/yolo-image-annotator",
+  "/single-loop-speed-estimator",
   "/preemption-evaluator",
   "/detector-event-heat-map",
   "/pedestrian-investigator",
@@ -90,9 +91,9 @@ export const TOOLS = [
     navTitle: "Single Loop Speed",
     description:
       "Estimate speeds from one loop's occupancy time, filtered by signal colour",
+    image: "/images/single-loop-speed-estimator.webp",
     topics: ["Detectors", "Controller Data", "Speed"],
     group: "data",
-    home: false,
   },
   {
     path: "/yellow-red-running",

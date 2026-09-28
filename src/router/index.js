@@ -17,6 +17,7 @@ import PracticeExam from '../views/PracticeExam'
 import HighResPreemptionPlotter from '../views/HighResPreemptionPlotter'
 import PreemptionEvaluator from '../views/PreemptionEvaluator'
 import SingleLoopSpeedEstimator from '../views/SingleLoopSpeedEstimator'
+import UnusedGreenTime from '../views/UnusedGreenTime'
 import HighResEnumerationMatrix from '../views/HighResEnumerationMatrix'
 import Reference from '../views/Reference'
 import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
@@ -168,6 +169,11 @@ const routes = [
         path: '/preemption-plotter',
         name: 'preemptionPlotter',
         component: HighResPreemptionPlotter,
+    },
+    {
+        path: '/unused-green-time',
+        name: 'unusedGreenTime',
+        component: UnusedGreenTime,
     },
     {
         path: '/single-loop-speed-estimator',

@@ -86,6 +86,16 @@ export const NAV_GROUPS = [
 
 export const TOOLS = [
   {
+    path: "/unused-green-time",
+    title: "Unused Green Time",
+    navTitle: "Unused Green",
+    description:
+      "Find green served to an empty intersection, by phase and by cycle",
+    topics: ["Detectors", "Controller Data", "Phases", "Pedestrians"],
+    group: "data",
+    home: false,
+  },
+  {
     path: "/single-loop-speed-estimator",
     title: "Single Loop Speed Estimator",
     navTitle: "Single Loop Speed",

@@ -6,6 +6,7 @@ import {
   bearingToCompass,
   bearingToOrigin,
   bearingToTravel,
+  buildDetectorDirectory,
   buildPreemptDirectory,
   describeChannel,
 } from '../src/utils/gtss.js';
@@ -288,4 +289,65 @@ test('signalCount is zero for an empty signals.txt', () => {
   });
   // Present but empty is a real answer, and distinct from missing.
   assert.equal(directory.signalCount, 0);
+});
+
+
+/* ------------------------------------------------- detectors.txt -> phases */
+
+const DETECTORS = {
+  'detectors.txt': [
+    'channel,signal_id,phase,description,purpose',
+    '5,11,2,NB stop bar,stop bar',
+    '6,11,2,NB stop bar lane 2,stop bar',
+    '9,11,6,SB stop bar,stop bar',
+    '14,11,6,SB advance,advanced',
+    '20,11,0,mainline count,count',
+    '5,12,4,EB stop bar,stop bar',
+  ].join('\n'),
+};
+
+test('detectors group by signal and phase', () => {
+  const directory = buildDetectorDirectory(DETECTORS);
+  assert.deepEqual(directory.signals, ['11', '12']);
+  assert.deepEqual([...directory.bySignal.get('11').get(2)], [5, 6], 'two lanes on one phase');
+  assert.deepEqual([...directory.bySignal.get('11').get(6)], [9, 14]);
+  assert.deepEqual([...directory.bySignal.get('12').get(4)], [5]);
+});
+
+test('a channel on the same number at two signals stays separate', () => {
+  // Channel 5 exists at both signals and serves different phases. Flattening
+  // them would put one signal's traffic on the other signal's movement.
+  const directory = buildDetectorDirectory(DETECTORS);
+  assert.deepEqual([...directory.bySignal.get('11').get(2)], [5, 6]);
+  assert.equal(directory.bySignal.get('12').has(2), false);
+  assert.deepEqual([...directory.bySignal.get('12').get(4)], [5]);
+});
+
+test('a detector with no phase is counted, not assigned', () => {
+  const directory = buildDetectorDirectory(DETECTORS);
+  assert.equal(directory.unassigned, 1, 'the count station');
+  // Phase 0 means it serves no movement, so it must not land on phase 0.
+  assert.equal(directory.bySignal.get('11').has(0), false);
+});
+
+test('the purpose of each channel is kept', () => {
+  const directory = buildDetectorDirectory(DETECTORS);
+  assert.equal(directory.purposes.get('11\u00005'), 'stop bar');
+  assert.equal(directory.purposes.get('11\u000014'), 'advanced');
+});
+
+test('channels come back in numeric order', () => {
+  const directory = buildDetectorDirectory({
+    'detectors.txt': 'channel,signal_id,phase\n12,1,2\n5,1,2\n9,1,2',
+  });
+  assert.deepEqual([...directory.bySignal.get('1').get(2)], [5, 9, 12], '12 after 9, not before');
+});
+
+test('buildDetectorDirectory says so when it has nothing to work with', () => {
+  const none = buildDetectorDirectory({});
+  assert.equal(none.signals.length, 0);
+  assert.match(none.warnings[0], /no detectors\.txt/);
+  const empty = buildDetectorDirectory({ 'detectors.txt': 'channel,signal_id,phase\n20,1,0' });
+  assert.match(empty.warnings[0], /no channel with a phase/);
+  assert.deepEqual(buildDetectorDirectory(null).signals, [], 'null is not a crash');
 });

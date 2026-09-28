@@ -40,6 +40,7 @@ export const HOME_ORDER = [
   "/preemption-plotter",
   "/pattern-calendar",
   "/yolo-image-annotator",
+  "/unused-green-time",
   "/single-loop-speed-estimator",
   "/preemption-evaluator",
   "/detector-event-heat-map",
@@ -91,9 +92,9 @@ export const TOOLS = [
     navTitle: "Unused Green",
     description:
       "Find green served to an empty intersection, by phase and by cycle",
+    image: "/images/unused-green-time.webp",
     topics: ["Detectors", "Controller Data", "Phases", "Pedestrians"],
     group: "data",
-    home: false,
   },
   {
     path: "/single-loop-speed-estimator",

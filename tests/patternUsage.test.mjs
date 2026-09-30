@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildPatternSegments,
   dailyPatternUse,
   dayKey,
   formatDuration,
@@ -259,4 +260,86 @@ test('dayKey names the local day, not the UTC one', () => {
   assert.equal(dayKey(ms), '2024-03-14');
   assert.equal(dayKey(at(2024, 3, 14, 0, 5)), '2024-03-14');
   assert.equal(dayKey(NaN), '');
+});
+
+/* --------------------------------------------------- segments and cycle length */
+
+/** One controller event, in the shape the calendar's reader produces. */
+const ev = (ms, eventCode, parameter) => ({
+  eventCode, parameter, milliseconds: ms, iso: new Date(ms).toISOString(),
+});
+
+test('a cycle change logged just after a pattern change belongs to the new pattern', () => {
+  // This is how a controller actually writes it: 131 first, then 132 a moment
+  // later. Reading the cycle length in effect at the segment's first
+  // millisecond credits each pattern with the one before it.
+  const events = [
+    ev(at(2024, 3, 14, 6), 131, 1),
+    ev(at(2024, 3, 14, 6) + 1000, 132, 90),
+    ev(at(2024, 3, 14, 9), 131, 2),
+    ev(at(2024, 3, 14, 9) + 1000, 132, 110),
+    ev(at(2024, 3, 14, 15), 131, 3),
+    ev(at(2024, 3, 14, 15) + 1000, 132, 130),
+  ];
+  const segments = buildPatternSegments(events);
+  assert.deepEqual(
+    segments.map((s) => [s.pattern, s.cycleLength]),
+    [[1, 90], [2, 110], [3, 130]],
+  );
+});
+
+test('a pattern that logs no cycle change keeps the length already running', () => {
+  // Two patterns at the same cycle length: the controller logs 132 once.
+  const events = [
+    ev(at(2024, 3, 14, 6), 131, 1),
+    ev(at(2024, 3, 14, 6) + 1000, 132, 90),
+    ev(at(2024, 3, 14, 9), 131, 2),
+  ];
+  const segments = buildPatternSegments(events);
+  assert.deepEqual(segments.map((s) => s.cycleLength), [90, 90]);
+});
+
+test('a cycle change at the same instant as the pattern change still lands', () => {
+  const ms = at(2024, 3, 14, 6);
+  const segments = buildPatternSegments([ev(ms, 132, 90), ev(ms, 131, 1)]);
+  assert.equal(segments[0].cycleLength, 90);
+});
+
+test('a pattern before any cycle change has no cycle length', () => {
+  // Free operation logs no 132 at all, and inventing one for it would be worse
+  // than saying so.
+  const segments = buildPatternSegments([
+    ev(at(2024, 3, 14, 0), 131, 254),
+    ev(at(2024, 3, 14, 6), 131, 1),
+    ev(at(2024, 3, 14, 6) + 1000, 132, 90),
+  ]);
+  assert.equal(segments[0].cycleLength, null);
+  assert.equal(segments[1].cycleLength, 90);
+});
+
+test('a cycle change in the middle of a pattern is the one reported', () => {
+  const segments = buildPatternSegments([
+    ev(at(2024, 3, 14, 6), 131, 1),
+    ev(at(2024, 3, 14, 6) + 1000, 132, 90),
+    ev(at(2024, 3, 14, 7), 132, 100),
+    ev(at(2024, 3, 14, 9), 131, 2),
+  ]);
+  assert.equal(segments[0].cycleLength, 100);
+});
+
+test('each segment runs to the start of the next', () => {
+  const segments = buildPatternSegments([
+    ev(at(2024, 3, 14, 6), 131, 1),
+    ev(at(2024, 3, 14, 9), 131, 2),
+    ev(at(2024, 3, 14, 15), 131, 3),
+  ]);
+  assert.equal(segments[0].endMillis, at(2024, 3, 14, 9));
+  assert.equal(segments[1].endMillis, at(2024, 3, 14, 15));
+  // The last one has nothing after it, so it ends at the last event read.
+  assert.equal(segments[2].endMillis, at(2024, 3, 14, 15));
+});
+
+test('a file with no pattern or cycle events gives no segments', () => {
+  assert.deepEqual(buildPatternSegments([ev(at(2024, 3, 14, 6), 1, 2)]), []);
+  assert.deepEqual(buildPatternSegments([]), []);
 });

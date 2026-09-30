@@ -235,3 +235,76 @@ export function formatDuration(ms) {
   const restHours = hours - days * 24;
   return restHours ? `${days}d ${restHours}h` : `${days}d`;
 }
+
+/**
+ * Pattern segments, each carrying the cycle length that ran during it.
+ *
+ * A controller logs the cycle-length change (132) a moment *after* the
+ * pattern change (131) that caused it, not at the same instant. Stamping a
+ * new segment with whatever cycle length happens to be in effect at its first
+ * millisecond therefore credits it with the *previous* pattern's cycle, and
+ * every pattern in the file ends up one step behind. So a 132 arriving while
+ * a segment is open is written back onto that segment.
+ *
+ * A pattern that reuses the cycle length of the one before it logs no 132 at
+ * all, which is why the value carried in is still the starting point rather
+ * than leaving it unknown.
+ *
+ * Events must carry `eventCode`, `parameter`, `milliseconds` and `iso`.
+ */
+export function buildPatternSegments(rawEvents) {
+  const filtered = (rawEvents || []).filter(
+    (event) => event.eventCode === 131 || event.eventCode === 132,
+  );
+  if (!filtered.length) return [];
+
+  const grouped = new Map();
+  for (const event of filtered) {
+    const key = event.milliseconds;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(event);
+  }
+
+  const sortedKeys = [...grouped.keys()].sort((a, b) => a - b);
+  let currentCycle = null;
+  const segments = [];
+
+  for (const timestamp of sortedKeys) {
+    const events = grouped.get(timestamp) || [];
+
+    let cycleHere = null;
+    for (const event of events) {
+      if (event.eventCode === 132) cycleHere = event.parameter;
+    }
+    if (cycleHere !== null) {
+      currentCycle = cycleHere;
+      const open = segments[segments.length - 1];
+      if (open) open.cycleLength = cycleHere;
+    }
+
+    for (const event of events) {
+      if (event.eventCode !== 131) continue;
+      const previous = segments[segments.length - 1];
+      if (previous) {
+        previous.endIso = event.iso;
+        previous.endMillis = event.milliseconds;
+      }
+      segments.push({
+        pattern: event.parameter,
+        cycleLength: currentCycle,
+        startIso: event.iso,
+        startMillis: event.milliseconds,
+        endIso: event.iso,
+        endMillis: event.milliseconds,
+      });
+    }
+  }
+
+  const lastEvent = (rawEvents || [])[rawEvents.length - 1];
+  if (segments.length && lastEvent) {
+    segments[segments.length - 1].endIso = lastEvent.iso;
+    segments[segments.length - 1].endMillis = lastEvent.milliseconds;
+  }
+
+  return segments.filter((segment) => segment.pattern !== null);
+}

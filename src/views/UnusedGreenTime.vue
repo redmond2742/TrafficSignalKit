@@ -349,7 +349,7 @@
           density="compact"
           variant="outlined"
           hide-details
-          class="setting"
+          class="setting setting--select"
         ></v-select>
       </div>
       <p class="chart-hint">
@@ -396,48 +396,66 @@
         <template #item.greenMs="{ item }">{{ secs(item.greenMs) }}</template>
       </v-data-table>
 
-      <h2 class="section-title">
-        Every cycle
-        <span v-if="shownRows.length < allRows.length" class="muted">
-          (first {{ num(shownRows.length) }} of {{ num(allRows.length) }})
-        </span>
-      </h2>
-      <div class="table-wrapper">
-        <v-table density="compact">
-          <thead>
-            <tr>
-              <th v-if="multiSignal">Signal</th>
-              <th>Phase</th>
-              <th>Cycle</th>
-              <th>Green started</th>
-              <th>Green</th>
-              <th>Unused</th>
-              <th>Share</th>
-              <th>Longest gap</th>
-              <th>After ped</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in shownRows"
-              :key="`${row.signal}-${row.phase}-${row.cycle}`"
-              :class="{ 'row-bad': row.idleShare >= 0.5 }"
-            >
-              <td v-if="multiSignal">{{ row.signal || "—" }}</td>
-              <td>{{ row.phase }}</td>
-              <td>{{ row.cycle }}</td>
-              <td class="nowrap">{{ clock(row.startMs) }}</td>
-              <td class="nowrap">{{ secs(row.greenMs) }}</td>
-              <td class="nowrap">{{ secs(row.idleMs) }}</td>
-              <td class="nowrap">{{ percent(row.idleShare) }}</td>
-              <td class="nowrap">{{ secs(row.longestIdleMs) }}</td>
-              <td class="nowrap">
-                {{ row.pedServed ? secs(row.idleAfterPedMs) : "—" }}
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+      <h2 class="section-title">Every cycle</h2>
+      <p class="chart-hint">
+        {{ num(allRows.length) }} greens across every phase. Sort on any
+        column, or narrow to one phase to read a single movement straight
+        down.
+      </p>
+      <div class="chart-controls mb-2">
+        <v-select
+          v-model="cyclePhaseFilter"
+          :items="cyclePhaseOptions"
+          label="Phase"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="setting setting--select"
+        ></v-select>
+        <v-btn
+          v-if="cyclePhaseFilter !== ALL_PHASES"
+          variant="text"
+          size="small"
+          @click="cyclePhaseFilter = ALL_PHASES"
+        >
+          Show every phase
+        </v-btn>
       </div>
+      <v-data-table
+        :headers="cycleHeaders"
+        :items="cycleTableRows"
+        :items-per-page="25"
+        :sort-by="[{ key: 'idleMs', order: 'desc' }]"
+        density="compact"
+        class="table-wrapper"
+      >
+        <template #item.startMs="{ item }">
+          <span class="nowrap">{{ clock(item.startMs) }}</span>
+        </template>
+        <template #item.greenMs="{ item }">
+          <span class="nowrap">{{ secs(item.greenMs) }}</span>
+        </template>
+        <template #item.idleMs="{ item }">
+          <span class="nowrap">{{ secs(item.idleMs) }}</span>
+        </template>
+        <template #item.idleShare="{ item }">
+          <div class="share-cell">
+            <div
+              class="share-bar"
+              :style="{ width: `${Math.max(item.idleShare * 100, 1)}%` }"
+            ></div>
+            <span class="share-text">{{ percent(item.idleShare) }}</span>
+          </div>
+        </template>
+        <template #item.longestIdleMs="{ item }">
+          <span class="nowrap">{{ secs(item.longestIdleMs) }}</span>
+        </template>
+        <template #item.idleAfterPedMs="{ item }">
+          <span class="nowrap">
+            {{ item.pedServed ? secs(item.idleAfterPedMs) : "—" }}
+          </span>
+        </template>
+      </v-data-table>
     </template>
   </div>
 </template>
@@ -472,7 +490,8 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, LinearScale, CategoryScale)
 const USED_COLOR = "#00695C";
 const IDLE_COLOR = "#F9A825";
 const PED_COLOR = "#C62828";
-const MAX_TABLE_ROWS = 500;
+/** Sentinel for the phase filter, so "every phase" is a real selectable value. */
+const ALL_PHASES = "\u0000all";
 const MAX_CHART_CYCLES = 200;
 
 export default {
@@ -494,6 +513,8 @@ export default {
       skipped: [],
       chartMode: "phase",
       selectedSeries: null,
+      cyclePhaseFilter: ALL_PHASES,
+      ALL_PHASES,
       gtss: null,
       gtssName: "",
       gtssError: "",
@@ -540,8 +561,41 @@ export default {
     allRows() {
       return this.results.flatMap((result) => result.rows);
     },
-    shownRows() {
-      return this.allRows.slice(0, MAX_TABLE_ROWS);
+    /**
+     * Every cycle, filtered to one phase if asked.
+     *
+     * Uncapped: this is a paged data table, so a day of eight phases is
+     * thousands of rows the reader walks a page at a time rather than a wall
+     * of them printed at once. The cap that used to sit here silently cut the
+     * list off at 500, which put the answer out of reach on any real file.
+     */
+    cycleTableRows() {
+      if (this.cyclePhaseFilter === ALL_PHASES) return this.allRows;
+      return this.allRows.filter(
+        (row) => this.seriesKey(row.signal, row.phase) === this.cyclePhaseFilter,
+      );
+    },
+    cyclePhaseOptions() {
+      return [{ title: "Every phase", value: ALL_PHASES }].concat(
+        this.phaseRows.map((row) => ({
+          title: this.multiSignal ? `${row.signal} · phase ${row.phase}` : `Phase ${row.phase}`,
+          value: this.seriesKey(row.signal, row.phase),
+        })),
+      );
+    },
+    cycleHeaders() {
+      const headers = [];
+      if (this.multiSignal) headers.push({ title: "Signal", key: "signal", align: "start" });
+      return headers.concat([
+        { title: "Phase", key: "phase", align: "start" },
+        { title: "Cycle", key: "cycle" },
+        { title: "Green started", key: "startMs" },
+        { title: "Green", key: "greenMs" },
+        { title: "Unused", key: "idleMs" },
+        { title: "Share", key: "idleShare" },
+        { title: "Longest gap", key: "longestIdleMs" },
+        { title: "After ped", key: "idleAfterPedMs" },
+      ]);
     },
     phaseRows() {
       const rows = [];
@@ -592,7 +646,7 @@ export default {
     seriesOptions() {
       return this.phaseRows.map((row) => ({
         title: this.multiSignal ? `${row.signal} · phase ${row.phase}` : `Phase ${row.phase}`,
-        value: `${row.signal}\u0000${row.phase}`,
+        value: this.seriesKey(row.signal, row.phase),
       }));
     },
     activeSeries() {
@@ -744,6 +798,10 @@ export default {
     },
   },
   methods: {
+    /** One signal-and-phase, as a single string the selects can carry. */
+    seriesKey(signal, phase) {
+      return `${signal}\u0000${phase}`;
+    },
     num(value) {
       return Number(value || 0).toLocaleString();
     },
@@ -946,6 +1004,15 @@ export default {
 .setting {
   max-width: 250px;
   flex: 0 0 auto;
+}
+/*
+  A number field has an intrinsic width; a select does not, so `flex: 0 0 auto`
+  shrinks it to a bare caret with neither its label nor its value visible.
+*/
+.setting--select {
+  flex: 0 1 260px;
+  min-width: 220px;
+  max-width: 320px;
 }
 .source-name {
   max-width: 320px;

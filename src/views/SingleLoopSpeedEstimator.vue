@@ -192,6 +192,17 @@
           class="setting"
         ></v-text-field>
         <v-text-field
+          v-model.number="minOccupancySeconds"
+          type="number"
+          label="Ignore occupancies under (s)"
+          min="0"
+          step="0.05"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="setting"
+        ></v-text-field>
+        <v-text-field
           v-model.number="maxOccupancySeconds"
           type="number"
           label="Ignore occupancies over (s)"
@@ -296,10 +307,11 @@
             v-model="phase"
             :items="phaseOptions"
             label="Phase for the colour filter"
+            clearable
             density="compact"
             variant="outlined"
             hide-details
-            class="setting"
+            class="setting setting--wide"
           ></v-select>
           <div v-else-if="phaseSource === 'table'" class="setting-note">
             Colour from <b>phase {{ activePhase }}</b>, per the assignment
@@ -309,7 +321,7 @@
             The assignment table gives channel {{ channel }} no phase, so
             these arrivals have no colour.
           </div>
-          <v-chip-group v-model="states" multiple column>
+          <v-chip-group v-if="hasColours" v-model="states" multiple column>
             <v-chip
               v-for="option in stateOptions"
               :key="option.value"
@@ -326,6 +338,11 @@
         <p v-if="!phases.length" class="setup-card__hint mt-2">
           No phase-colour rows in this data, so the colour of each arrival is
           unknown and the filter is not offered.
+        </p>
+        <p v-else-if="!hasColours" class="setup-card__hint mt-2">
+          Every arrival is shown while no phase is chosen. Pick the phase this
+          loop serves &mdash; or paste an assignment table above, which does it
+          per channel &mdash; to split them by the colour that was showing.
         </p>
         <p v-else-if="unknownStateCount" class="setup-card__hint mt-2">
           {{ unknownStateCount }} arrivals fall outside phase {{ phase }}'s
@@ -447,6 +464,7 @@ import InputBox from "../components/foundational/InputBox.vue";
 import {
   DEFAULT_LOOP_FEET,
   DEFAULT_MAX_OCCUPANCY_SECONDS,
+  DEFAULT_MIN_OCCUPANCY_SECONDS,
   DEFAULT_VEHICLE_FEET,
   SIGNAL_STATES,
   TIME_BUCKETS,
@@ -491,6 +509,7 @@ export default {
       loopFeet: DEFAULT_LOOP_FEET,
       vehicleFeet: DEFAULT_VEHICLE_FEET,
       maxOccupancySeconds: DEFAULT_MAX_OCCUPANCY_SECONDS,
+      minOccupancySeconds: DEFAULT_MIN_OCCUPANCY_SECONDS,
       processing: false,
       ranOnce: false,
       error: "",
@@ -499,7 +518,6 @@ export default {
       channels: [],
       phases: [],
       stats: null,
-      pairing: { unmatchedOn: 0, unmatchedOff: 0, overlong: 0 },
       channel: null,
       phase: null,
       phaseMapInput: "",
@@ -564,11 +582,21 @@ export default {
      * showing when it arrived. Tagged here rather than in the util because the
      * phase to look up is a choice made on this page.
      */
-    occupancies() {
+    /** The pairing itself, so the counts it reports and the rows it keeps agree. */
+    occupancyResult() {
       const onChannel = this.detectorRows.filter((row) => row.channel === this.channel);
-      const { occupancies } = buildOccupancies(onChannel, {
+      return buildOccupancies(onChannel, {
         maxOccupancySeconds: this.maxOccupancySeconds,
+        minOccupancySeconds: this.minOccupancySeconds,
       });
+    },
+    /** What the pairing threw away, for the scan note to own up to. */
+    pairing() {
+      const { unmatchedOn, unmatchedOff, overlong, tooShort } = this.occupancyResult;
+      return { unmatchedOn, unmatchedOff, overlong, tooShort };
+    },
+    occupancies() {
+      const { occupancies } = this.occupancyResult;
       const intervals = this.phaseIntervals;
       const phase = this.activePhase ?? null;
       if (!intervals.length) return occupancies.map((row) => ({ ...row, phase }));
@@ -649,15 +677,21 @@ export default {
       const parts = [
         `Read ${this.num(this.stats.scanned)} rows and kept ${this.num(this.stats.kept)} detector and phase rows (${this.stats.keptPercent.toFixed(2)}%).`,
       ];
-      const { unmatchedOn, unmatchedOff, overlong } = this.pairing;
+      const { unmatchedOn, unmatchedOff, overlong, tooShort } = this.pairing;
       if (unmatchedOn || unmatchedOff) {
+        const orphans = unmatchedOn + unmatchedOff;
         parts.push(
-          `${this.num(unmatchedOn + unmatchedOff)} detector events on this channel had no pair and were dropped.`,
+          `${this.num(orphans)} detector ${orphans === 1 ? "event" : "events"} on this channel had no pair and ${orphans === 1 ? "was" : "were"} dropped.`,
         );
       }
       if (overlong) {
         parts.push(
-          `${this.num(overlong)} were held longer than ${this.maxOccupancySeconds}s and were excluded.`,
+          `${this.num(overlong)} ${overlong === 1 ? "was" : "were"} held longer than ${this.maxOccupancySeconds}s and excluded.`,
+        );
+      }
+      if (tooShort) {
+        parts.push(
+          `${this.num(tooShort)} ${tooShort === 1 ? "was" : "were"} shorter than ${this.minOccupancySeconds}s — too brief for a vehicle — and excluded.`,
         );
       }
       return parts.join(" ");
@@ -844,7 +878,13 @@ export default {
           // Default to the busiest channel rather than the lowest numbered:
           // it is the one most likely to be the through lane being asked about.
           this.channel = this.busiestChannel(result.detector, result.channels);
-          this.phase = result.phases.length ? result.phases[0] : null;
+          // Deliberately left unchosen. The channel picked above is the
+          // busiest one, which serves a busy phase; the lowest phase number in
+          // the file is almost never it. Pairing those two defaults produces a
+          // confidently wrong answer -- every arrival on a phase 6 loop
+          // reported as "red" because phase 1 was red at the time -- and a
+          // wrong colour is worse than an absent one.
+          this.phase = null;
           this.states = [...SIGNAL_STATES];
           this.ranOnce = true;
         } catch (err) {
@@ -926,6 +966,16 @@ export default {
 .setting {
   max-width: 230px;
   flex: 0 0 auto;
+}
+/*
+  A select has no intrinsic width the way a number field does, so `flex: 0 0
+  auto` collapses it to its own chrome and clips the label. Give the ones
+  carrying a long label a basis to sit on.
+*/
+.setting--wide {
+  flex: 0 1 270px;
+  min-width: 240px;
+  max-width: 320px;
 }
 .setting-note {
   font-size: 0.82rem;

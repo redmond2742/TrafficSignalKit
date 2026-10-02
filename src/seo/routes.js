@@ -161,6 +161,12 @@ export const routeMeta = {
       "Plot preemption enumerations (101-119) over time for diagnostics.",
     path: "/preemption-plotter",
   },
+  unusedGreenTime: {
+    title: "Unused Green Time | Find Wasted Green by Phase and Cycle",
+    description:
+      "Find seconds of green served to an empty intersection, cycle by cycle and phase by phase, including green held past a finished pedestrian phase.",
+    path: "/unused-green-time",
+  },
   singleLoopSpeedEstimator: {
     title: "Single Loop Speed Estimator | Speed from Detector Occupancy",
     description:

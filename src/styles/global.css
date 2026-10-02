@@ -179,6 +179,27 @@ select:not(.v-field__input) {
   box-sizing: border-box;
   margin-top: 25px;
 }
+/*
+ * ...and the guard above only half works. Vuetify 3 puts `.v-field__input` on
+ * the <input> itself for a text field or combobox, which is the case the guard
+ * was written for -- but for a <v-select> the class goes on a wrapper <div>
+ * and the <input> inside carries no class at all. `:not()` cannot exclude it,
+ * so every select in the app takes the border, the padding and the 25px top
+ * margin meant for the CSV tables. The field's own box hides it at the widths
+ * most selects happen to be, which is how it survived; give a select room and
+ * an empty value and the input drops out of the field and draws its grey
+ * border as a stray box underneath.
+ *
+ * Matched to the guard's specificity so the later rule wins.
+ */
+.v-field__input input[type="text"],
+.v-field__input select {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
 label {
   display: block;
 }

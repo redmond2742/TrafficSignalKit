@@ -73,6 +73,17 @@ const SECONDS_PER_HOUR = 3600;
 
 /** Beyond this an occupancy is a queued or stopped vehicle, not one at speed. */
 export const DEFAULT_MAX_OCCUPANCY_SECONDS = 30;
+/**
+ * Shorter than this is detector chatter, not a vehicle.
+ *
+ * Speed is the reciprocal of occupancy, so the error blows up at the short
+ * end: a 10 ms contact bounce on a 6 ft loop reads as 1,500 mph and lands in
+ * the same summary as the real arrivals. The shortest a real vehicle can
+ * hold a loop is set by how fast anything actually travels -- 0.1 s over a
+ * 6 ft loop with a 17 ft vehicle is already 157 mph -- so anything under it
+ * is the detector talking, not traffic.
+ */
+export const DEFAULT_MIN_OCCUPANCY_SECONDS = 0.1;
 export const DEFAULT_LOOP_FEET = 6;
 export const DEFAULT_VEHICLE_FEET = 17;
 
@@ -264,13 +275,24 @@ export function buildOccupancies(detectorRows, options = {}) {
   }
 
   unmatchedOn += open.size;
+
   const maxSeconds = Number(options.maxOccupancySeconds);
-  if (Number.isFinite(maxSeconds) && maxSeconds > 0) {
-    const cap = maxSeconds * 1000;
-    const kept = out.filter((row) => row.occupancyMs <= cap);
-    return { occupancies: kept, unmatchedOn, unmatchedOff, overlong: out.length - kept.length };
+  const minSeconds = Number(options.minOccupancySeconds);
+  const cap = Number.isFinite(maxSeconds) && maxSeconds > 0 ? maxSeconds * 1000 : Infinity;
+  const floor = Number.isFinite(minSeconds) && minSeconds > 0 ? minSeconds * 1000 : 0;
+
+  let overlong = 0;
+  let tooShort = 0;
+  const kept = [];
+  for (const row of out) {
+    // Counted separately rather than lumped together: a file full of overlong
+    // holds is a stop bar at red, a file full of short ones is a detector
+    // fault, and those are different problems.
+    if (row.occupancyMs > cap) overlong += 1;
+    else if (row.occupancyMs < floor) tooShort += 1;
+    else kept.push(row);
   }
-  return { occupancies: out, unmatchedOn, unmatchedOff, overlong: 0 };
+  return { occupancies: kept, unmatchedOn, unmatchedOff, overlong, tooShort };
 }
 
 /**

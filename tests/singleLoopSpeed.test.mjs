@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  DEFAULT_MIN_OCCUPANCY_SECONDS,
   DETECTOR_OFF,
   DETECTOR_ON,
   bucketOccupancies,
@@ -458,4 +459,63 @@ test('every event row carries its own colour split and its phase', () => {
   assert.equal(rows[0].byState.green, 500);
   assert.equal(rows[0].countByState.green, 1);
   assert.equal(rows[0].byState.red, 0);
+});
+
+/* ------------------------------------------- the short end of the occupancy */
+
+const det = (tsMs, code, channel) => ({ tsMs, code, channel });
+const ON = 82;
+const OFF = 81;
+
+test('a contact bounce is dropped rather than turned into a speed', () => {
+  // Speed is the reciprocal of occupancy, so a 10 ms blip is not a slightly
+  // wrong reading, it is 1,500-odd mph sitting in the same summary as the
+  // real arrivals.
+  const { occupancies, tooShort } = buildOccupancies(
+    [det(0, ON, 5), det(10, OFF, 5), det(1000, ON, 5), det(1600, OFF, 5)],
+    { minOccupancySeconds: 0.1 },
+  );
+  assert.equal(tooShort, 1);
+  assert.deepEqual(occupancies.map((row) => row.occupancyMs), [600]);
+});
+
+test('an occupancy exactly on the floor is kept', () => {
+  const { occupancies, tooShort } = buildOccupancies(
+    [det(0, ON, 5), det(100, OFF, 5)],
+    { minOccupancySeconds: 0.1 },
+  );
+  assert.equal(tooShort, 0);
+  assert.equal(occupancies.length, 1);
+});
+
+test('the two ends are counted apart', () => {
+  // A stop bar at red and a faulty detector both shrink the kept set, and the
+  // page cannot say which without separate counts.
+  const { occupancies, overlong, tooShort } = buildOccupancies(
+    [
+      det(0, ON, 5), det(10, OFF, 5),                 // chatter
+      det(1000, ON, 5), det(1600, OFF, 5),            // a vehicle
+      det(2000, ON, 5), det(42000, OFF, 5),           // queued at red
+    ],
+    { minOccupancySeconds: 0.1, maxOccupancySeconds: 30 },
+  );
+  assert.equal(tooShort, 1);
+  assert.equal(overlong, 1);
+  assert.equal(occupancies.length, 1);
+});
+
+test('no floor set keeps everything above zero, as before', () => {
+  const { occupancies, tooShort } = buildOccupancies(
+    [det(0, ON, 5), det(10, OFF, 5)],
+    {},
+  );
+  assert.equal(tooShort, 0);
+  assert.equal(occupancies.length, 1);
+});
+
+test('the default floor is below any speed a vehicle reaches', () => {
+  // The floor has to sit under the fastest thing on the road or it starts
+  // deleting real traffic. 0.1s on a 6ft loop behind a 17ft vehicle is 157mph.
+  const mph = estimateSpeedMph(DEFAULT_MIN_OCCUPANCY_SECONDS * 1000, 6, 17);
+  assert.ok(mph > 120, `floor admits up to ${mph.toFixed(0)} mph`);
 });

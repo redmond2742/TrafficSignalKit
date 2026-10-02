@@ -260,3 +260,60 @@ export function describeChannel(entry) {
   if (!entry.compass) return street;
   return `${street} from the ${entry.compass}${entry.travel ? ` (${entry.travel})` : ''}`;
 }
+
+
+/**
+ * detectors.txt -> which channels serve which phase, per signal.
+ *
+ * Returns a Map of signal id to a Map of phase to channel list, plus the
+ * purpose of each channel where the export records one. Purpose matters here:
+ * a stop-bar detector says whether anything is at the line now, while an
+ * advance detector fired seconds ago for a vehicle that may already be gone.
+ * A tool asking "is the intersection being used right now" wants the former,
+ * so it is carried through rather than flattened away.
+ */
+export function buildDetectorDirectory(input) {
+  const files = input || {};
+  const rows = parseTable(files['detectors.txt']);
+  const bySignal = new Map();
+  const purposes = new Map();
+  const warnings = [];
+  let unassigned = 0;
+
+  for (const row of rows) {
+    const signalId = row.signal_id ?? row.signalID;
+    const channel = Number(row.channel);
+    const phase = Number(row.phase);
+    if (!signalId || !Number.isFinite(channel)) continue;
+    if (!Number.isFinite(phase) || phase === 0) {
+      // A detector with no phase is a count or a system station; it tells us
+      // nothing about whether a movement is being used.
+      unassigned += 1;
+      continue;
+    }
+    if (!bySignal.has(signalId)) bySignal.set(signalId, new Map());
+    const byPhase = bySignal.get(signalId);
+    if (!byPhase.has(phase)) byPhase.set(phase, []);
+    if (!byPhase.get(phase).includes(channel)) byPhase.get(phase).push(channel);
+    if (row.purpose) purposes.set(`${signalId}\u0000${channel}`, String(row.purpose).trim());
+  }
+
+  for (const byPhase of bySignal.values()) {
+    for (const channels of byPhase.values()) channels.sort((a, b) => a - b);
+  }
+  if (!rows.length) warnings.push('The export has no detectors.txt, so no channels could be assigned.');
+  else if (!bySignal.size) warnings.push('detectors.txt named no channel with a phase.');
+
+  return {
+    bySignal,
+    purposes,
+    unassigned,
+    signals: [...bySignal.keys()].sort((a, b) => {
+      const na = Number(a);
+      const nb = Number(b);
+      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+      return a < b ? -1 : a > b ? 1 : 0;
+    }),
+    warnings,
+  };
+}

@@ -267,6 +267,7 @@
 import { DateTime } from "luxon";
 import InputBox from "../components/foundational/InputBox.vue";
 import {
+  buildPatternSegments,
   dailyPatternUse,
   formatDuration as formatSpan,
   rankPatterns,
@@ -502,7 +503,7 @@ export default {
         return;
       }
 
-      const segments = this.buildPatternSegments(rawEvents);
+      const segments = buildPatternSegments(rawEvents);
       if (!segments.length) {
         this.warningMessage =
           "No coordination pattern changes (event 131) were found in the data.";
@@ -551,61 +552,6 @@ export default {
         })
         .filter((item) => item)
         .sort((a, b) => a.milliseconds - b.milliseconds);
-    },
-    buildPatternSegments(rawEvents) {
-      const filtered = rawEvents.filter((event) =>
-        [131, 132].includes(event.eventCode)
-      );
-      if (!filtered.length) {
-        return [];
-      }
-
-      const grouped = new Map();
-      filtered.forEach((event) => {
-        const key = event.milliseconds;
-        if (!grouped.has(key)) {
-          grouped.set(key, []);
-        }
-        grouped.get(key).push(event);
-      });
-
-      const sortedKeys = Array.from(grouped.keys()).sort((a, b) => a - b);
-      let currentPattern = null;
-      let currentCycle = null;
-      const segments = [];
-
-      sortedKeys.forEach((timestamp) => {
-        const events = grouped.get(timestamp) || [];
-        const cycleEvents = events.filter((event) => event.eventCode === 132);
-        if (cycleEvents.length) {
-          currentCycle = cycleEvents[cycleEvents.length - 1].parameter;
-        }
-
-        const patternEvents = events.filter((event) => event.eventCode === 131);
-        patternEvents.forEach((event) => {
-          if (segments.length) {
-            segments[segments.length - 1].endIso = event.iso;
-            segments[segments.length - 1].endMillis = event.milliseconds;
-          }
-          currentPattern = event.parameter;
-          segments.push({
-            pattern: currentPattern,
-            cycleLength: currentCycle,
-            startIso: event.iso,
-            startMillis: event.milliseconds,
-            endIso: event.iso,
-            endMillis: event.milliseconds,
-          });
-        });
-      });
-
-      const lastEvent = rawEvents[rawEvents.length - 1];
-      if (segments.length && lastEvent) {
-        segments[segments.length - 1].endIso = lastEvent.iso;
-        segments[segments.length - 1].endMillis = lastEvent.milliseconds;
-      }
-
-      return segments.filter((segment) => segment.pattern !== null);
     },
     buildPhaseIntervals(rawEvents) {
       const relevantEvents = rawEvents

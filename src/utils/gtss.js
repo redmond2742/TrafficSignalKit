@@ -317,3 +317,102 @@ export function buildDetectorDirectory(input) {
     warnings,
   };
 }
+
+/**
+ * approaches.txt + phases.txt -> an intersection per signal, ready to draw.
+ *
+ * Everything a phase diagram needs is already in a GTSS export; it just lives
+ * in two files joined on approach_id. This does the join and nothing else, so
+ * the renderer stays ignorant of where its data came from and a hand-built
+ * intersection in the UI is the same shape as an exported one.
+ *
+ * A phase whose approach_id names no approach is kept, not dropped. It cannot
+ * be drawn -- there is no bearing to draw it on -- but it is real, it is in
+ * the file, and a diagram silently missing phase 4 is worse than one that says
+ * phase 4 could not be placed.
+ */
+export function buildPhaseDirectory(input) {
+  const files = input || {};
+  const warnings = [];
+  const approachRows = parseTable(files['approaches.txt']);
+  const phaseRows = parseTable(files['phases.txt']);
+  const signalRows = parseTable(files['signals.txt']);
+  const agency = parseTable(files['agency.txt'])[0] || null;
+
+  if (!approachRows.length) warnings.push('The export has no approaches.txt, so nothing can be drawn.');
+  if (!phaseRows.length) warnings.push('The export has no phases.txt, so the legs have no movements on them.');
+
+  const bySignal = new Map();
+  const ensure = (signalId) => {
+    if (!bySignal.has(signalId)) {
+      bySignal.set(signalId, { signalId, approaches: [], phases: [], latitude: null, longitude: null });
+    }
+    return bySignal.get(signalId);
+  };
+
+  for (const row of approachRows) {
+    const signalId = row.signal_id ?? row.signalID;
+    if (!signalId || !row.approach_id) continue;
+    const bearing = Number(row.compass_bearing);
+    ensure(signalId).approaches.push({
+      approachId: String(row.approach_id),
+      streetName: String(row.street_name || '').trim(),
+      compassBearing: Number.isFinite(bearing) ? bearing : null,
+      postedSpeed: row.posted_speed === '' ? null : Number(row.posted_speed),
+      freeRight: Number(row.free_right) || 0,
+    });
+  }
+
+  let unplaced = 0;
+  for (const row of phaseRows) {
+    const signalId = row.signal_id ?? row.signalID;
+    const phase = Number(row.phase);
+    if (!signalId || !Number.isFinite(phase)) continue;
+    const entry = ensure(signalId);
+    const approachId = String(row.approach_id || '');
+    if (!entry.approaches.some((a) => a.approachId === approachId)) unplaced += 1;
+    entry.phases.push({
+      phase,
+      approachId,
+      movementType: String(row.movement_type || 'T').trim(),
+      numOfLanes: Number(row.num_of_lanes) || 1,
+      pedX: Number(row.PedX ?? row.pedX) || 0,
+      crosswalkLength: row.crosswalk_length === '' ? null : Number(row.crosswalk_length),
+    });
+  }
+
+  for (const row of signalRows) {
+    const signalId = row.signal_id ?? row.signalID;
+    if (!signalId || !bySignal.has(signalId)) continue;
+    const entry = bySignal.get(signalId);
+    entry.latitude = Number(row.latitude);
+    entry.longitude = Number(row.longitude);
+  }
+
+  for (const entry of bySignal.values()) {
+    entry.phases.sort((a, b) => a.phase - b.phase);
+    entry.name = crossStreetName(entry.approaches.map((a) => a.streetName));
+  }
+
+  if (unplaced) {
+    warnings.push(
+      `${unplaced} ${unplaced === 1 ? 'phase names an approach' : 'phases name approaches'} that approaches.txt does not describe, so ${unplaced === 1 ? 'it has' : 'they have'} no bearing to be drawn on.`,
+    );
+  }
+
+  return {
+    bySignal,
+    agency,
+    // agency.txt carries handedness for the whole agency, and it changes how
+    // every turn in every diagram is drawn, so it is read rather than assumed.
+    isLht: String(agency?.agency_islht ?? '').trim().toLowerCase() === 'true'
+      || String(agency?.agency_islht ?? '').trim() === '1',
+    signals: [...bySignal.keys()].sort((a, b) => {
+      const na = Number(a);
+      const nb = Number(b);
+      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+      return a < b ? -1 : a > b ? 1 : 0;
+    }),
+    warnings,
+  };
+}

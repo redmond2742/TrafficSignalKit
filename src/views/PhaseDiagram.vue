@@ -180,6 +180,18 @@
             </v-btn>
           </div>
 
+          <div class="settings-row mt-2">
+            <v-text-field
+              v-model="manualSignalId"
+              label="Signal ID"
+              placeholder="Optional"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="setting--narrow"
+            ></v-text-field>
+          </div>
+
           <h3 class="sub-title">Approaches</h3>
           <v-table density="compact" class="editor-table">
             <thead>
@@ -377,6 +389,13 @@
           <v-switch
             v-model="options.showCrosswalks"
             label="Crosswalks"
+            density="compact"
+            color="primary"
+            hide-details
+          ></v-switch>
+          <v-switch
+            v-model="showSignalId"
+            label="ID in the middle"
             density="compact"
             color="primary"
             hide-details
@@ -646,6 +665,8 @@ export default {
       cellMode: "signal",
       chosenSignals: [],
       palette: "signal",
+      showSignalId: true,
+      manualSignalId: "",
       options: { ...DEFAULT_OPTIONS },
       sheet: { ...DEFAULT_SHEET, title: "" },
       building: false,
@@ -669,7 +690,7 @@ export default {
       if (this.sourceTab === "manual") {
         if (!this.manualApproaches.length) return [];
         return [{
-          signalId: "manual",
+          signalId: this.manualSignalId.trim() || "manual",
           name: this.manualName,
           approaches: this.manualApproaches,
           phases: [...this.manualPhases].sort((a, b) => a.phase - b.phase),
@@ -726,7 +747,7 @@ export default {
             diagram: buildPhaseDiagram({
               approaches: signal.approaches,
               phases: signal.phases,
-              options: this.drawOptions,
+              options: this.optionsFor(signal),
             }),
           });
           continue;
@@ -741,7 +762,7 @@ export default {
               // belong to or it is an arrow floating in space.
               approaches: signal.approaches,
               phases: [phase],
-              options: this.drawOptions,
+              options: this.optionsFor(signal),
             }),
           });
         }
@@ -791,6 +812,16 @@ export default {
     },
   },
   methods: {
+    /** The diagram options for one signal, including its own ID. */
+    optionsFor(signal) {
+      return {
+        ...this.drawOptions,
+        // "manual" is this page's placeholder, not an ID anyone assigned.
+        centerLabel: this.showSignalId && signal.signalId !== "manual"
+          ? String(signal.signalId)
+          : "",
+      };
+    },
     bearingNote(bearing) {
       const n = Number(bearing);
       if (!Number.isFinite(n)) return "";

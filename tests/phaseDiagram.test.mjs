@@ -306,3 +306,199 @@ test('ped mode 2 draws both of them', () => {
   });
   assert.equal(diagram.ops.filter((op) => op.op === 'line' && op.dash).length, 2);
 });
+
+/* ------------------------------------------------ the crossing box */
+
+/** Every dashed crossing in a diagram, as endpoint pairs. */
+const crossings = (diagram) =>
+  diagram.ops.filter((op) => op.op === 'line' && op.dash && op.width === 2);
+
+test('the four crossings of a scramble meet at their corners', () => {
+  // Offset and half-length have to be the same distance or the box never
+  // shuts, and the diagonals have no corners to run between.
+  const diagram = buildPhaseDiagram({
+    approaches: [approach('A1', 0)], phases: [phase(2, 'A1', 'PED', 7)],
+  });
+  const lines = crossings(diagram);
+  assert.equal(lines.length, 6, 'expected four crossings and two diagonals');
+
+  const ends = [];
+  for (const op of lines.slice(0, 4)) {
+    ends.push([op.x1, op.y1], [op.x2, op.y2]);
+  }
+  // Eight endpoints, four corners: each corner is shared by two crossings.
+  const keyed = new Map();
+  for (const [x, y] of ends) {
+    const key = `${Math.round(x)},${Math.round(y)}`;
+    keyed.set(key, (keyed.get(key) || 0) + 1);
+  }
+  assert.equal(keyed.size, 4, `corners did not meet: ${[...keyed.keys()].join(' ')}`);
+  for (const [corner, count] of keyed) {
+    assert.equal(count, 2, `corner ${corner} is shared by ${count} crossings`);
+  }
+});
+
+test('a scramble diagonal runs corner to corner of that box', () => {
+  for (const bearing of [0, 37, 128, 284]) {
+    const diagram = buildPhaseDiagram({
+      approaches: [approach('A1', bearing)], phases: [phase(2, 'A1', 'PED', 7)],
+    });
+    const lines = crossings(diagram);
+    const corners = new Set();
+    for (const op of lines.slice(0, 4)) {
+      corners.add(`${Math.round(op.x1)},${Math.round(op.y1)}`);
+      corners.add(`${Math.round(op.x2)},${Math.round(op.y2)}`);
+    }
+    for (const diagonal of lines.slice(4)) {
+      const a = `${Math.round(diagonal.x1)},${Math.round(diagonal.y1)}`;
+      const b = `${Math.round(diagonal.x2)},${Math.round(diagonal.y2)}`;
+      assert.ok(corners.has(a), `at ${bearing}° a diagonal started at ${a}, off the box`);
+      assert.ok(corners.has(b), `at ${bearing}° a diagonal ended at ${b}, off the box`);
+    }
+  }
+});
+
+test('a lone diagonal turns with the intersection', () => {
+  // It used to be drawn against the screen's axes, so it was only ever right
+  // on an intersection that happened to be square to north.
+  const north = buildPhaseDiagram({
+    approaches: [approach('A1', 0)], phases: [phase(2, 'A1', 'PED', 4)],
+  });
+  const skewed = buildPhaseDiagram({
+    approaches: [approach('A1', 40)], phases: [phase(2, 'A1', 'PED', 4)],
+  });
+  const angleOf = (d) => {
+    const op = crossings(d)[0];
+    return Math.atan2(op.y2 - op.y1, op.x2 - op.x1);
+  };
+  const turned = Math.abs(angleOf(skewed) - angleOf(north)) * (180 / Math.PI);
+  assert.ok(Math.abs(turned - 40) < 0.5, `the diagonal turned ${turned.toFixed(1)}°, not 40°`);
+});
+
+test('two phase rows describing one scramble draw it once', () => {
+  // phases.txt carries a row per phase and approach, so a scramble arrives as
+  // several rows of the same number. Drawn naively that is every line twice.
+  const once = buildPhaseDiagram({
+    approaches: [approach('A1', 0), approach('A2', 180)],
+    phases: [phase(6, 'A1', 'PED', 7)],
+  });
+  const twice = buildPhaseDiagram({
+    approaches: [approach('A1', 0), approach('A2', 180)],
+    phases: [phase(6, 'A1', 'PED', 7), phase(6, 'A2', 'PED', 7)],
+  });
+  assert.equal(crossings(twice).length, crossings(once).length);
+  const badges = twice.ops.filter((op) => op.op === 'text' && op.text === 'P6');
+  assert.equal(badges.length, 1, 'the same phase planted two badges');
+});
+
+/* ------------------------------------------------------- arrowheads */
+
+test('an arrowhead is longer than it is wide', () => {
+  // It was as broad as it was long, which reads as a blob on the end of a
+  // line rather than as a direction.
+  const diagram = buildPhaseDiagram({
+    approaches: [approach('A1', 0)], phases: [phase(2, 'A1', 'T')],
+  });
+  const head = diagram.ops.find((op) => op.role === 'arrowhead');
+  assert.ok(head);
+  const [tip, left, , right] = head.points;
+  const length = Math.hypot(tip[0] - (left[0] + right[0]) / 2, tip[1] - (left[1] + right[1]) / 2);
+  const width = Math.hypot(left[0] - right[0], left[1] - right[1]);
+  assert.ok(length > width, `head is ${length.toFixed(1)} long and ${width.toFixed(1)} wide`);
+});
+
+test('an arrowhead is notched, so its back is swept not flat', () => {
+  const diagram = buildPhaseDiagram({
+    approaches: [approach('A1', 0)], phases: [phase(2, 'A1', 'T')],
+  });
+  const head = diagram.ops.find((op) => op.role === 'arrowhead');
+  assert.equal(head.points.length, 4);
+  const [tip, left, notch, right] = head.points;
+  // Measured ALONG the arrow, not as straight-line distance to the tip: the
+  // barbs are offset sideways, so a perfectly flat back is already nearer the
+  // tip than they are and a distance test proves nothing.
+  const back = [(left[0] + right[0]) / 2, (left[1] + right[1]) / 2];
+  const axis = [back[0] - tip[0], back[1] - tip[1]];
+  const len = Math.hypot(...axis);
+  const along = (p) => ((p[0] - tip[0]) * axis[0] + (p[1] - tip[1]) * axis[1]) / len;
+  assert.ok(
+    along(notch) < along(left) - 0.5,
+    `the back is flat: notch at ${along(notch).toFixed(2)}, barbs at ${along(left).toFixed(2)}`,
+  );
+  assert.ok(along(notch) > 0, 'the notch is in front of the tip');
+});
+
+test('the shaft stops short of the tip, so no cap spills past the barbs', () => {
+  const diagram = buildPhaseDiagram({
+    approaches: [approach('A1', 0)], phases: [phase(2, 'A1', 'T')],
+  });
+  const shaft = diagram.ops.find((op) => op.op === 'line' && op.width === 3);
+  const head = diagram.ops.find((op) => op.role === 'arrowhead');
+  const [tip] = head.points;
+  const gap = Math.hypot(tip[0] - shaft.x2, tip[1] - shaft.y2);
+  assert.ok(gap > 1, 'the shaft ran all the way to the tip');
+});
+
+/* -------------------------------------------------- the ID in the middle */
+
+test('the signal ID is drawn on a plate of its own', () => {
+  // Over a scramble there are two diagonals through the middle of the box; a
+  // bare number sitting on them cannot be read.
+  const diagram = buildPhaseDiagram({
+    approaches: [approach('A1', 0)],
+    phases: [phase(2, 'A1', 'PED', 7)],
+    options: { centerLabel: '1042' },
+  });
+  const plate = diagram.ops.find((op) => op.role === 'idPlate');
+  const label = diagram.ops.find((op) => op.op === 'text' && op.text === '1042');
+  assert.ok(plate, 'no plate behind the ID');
+  assert.ok(label, 'no ID drawn');
+  assert.equal(Math.round(plate.cx), CENTER);
+  // Both last, so nothing is drawn over them.
+  assert.ok(diagram.ops.indexOf(plate) > diagram.ops.findIndex((op) => op.dash));
+  assert.ok(diagram.ops.indexOf(label) > diagram.ops.indexOf(plate));
+});
+
+test('the plate grows with a longer ID', () => {
+  const widthFor = (id) => buildPhaseDiagram({
+    approaches: [approach('A1', 0)], phases: [], options: { centerLabel: id },
+  }).ops.find((op) => op.role === 'idPlate').r;
+  assert.ok(widthFor('100042') > widthFor('7'));
+});
+
+test('no centre label leaves no plate', () => {
+  const diagram = buildPhaseDiagram({ approaches: [approach('A1', 0)], phases: [] });
+  assert.equal(diagram.ops.filter((op) => op.role === 'idPlate').length, 0);
+});
+
+test('the plate never grows big enough to swallow the diagonals', () => {
+  // Half of a scramble diagonal is about 42 units. A plate past half that
+  // leaves two stubs where a crossing should be.
+  for (const id of ['7', '1042', '100042', 'SIG-00412-A']) {
+    const plate = buildPhaseDiagram({
+      approaches: [approach('A1', 0)], phases: [], options: { centerLabel: id },
+    }).ops.find((op) => op.role === 'idPlate');
+    assert.ok(plate.r <= 21.01, `"${id}" made a plate of ${plate.r.toFixed(1)}`);
+  }
+});
+
+/** The label op that sits on the ID plate, whatever it ended up reading. */
+const plateLabel = (id) => {
+  const ops = buildPhaseDiagram({
+    approaches: [approach('A1', 0)], phases: [], options: { centerLabel: id },
+  }).ops;
+  const plate = ops.findIndex((op) => op.role === 'idPlate');
+  return ops[plate + 1];
+};
+
+test('a long ID is set smaller rather than widening its plate', () => {
+  assert.ok(plateLabel('100042').size < plateLabel('42').size);
+});
+
+test('an ID too long for any readable size is cut, not overflowed', () => {
+  const label = plateLabel('SIG-00412-A');
+  assert.ok(label.text.length <= 8, `kept ${label.text.length} characters`);
+  assert.ok(label.text.endsWith('\u2026'), 'cut without saying so');
+  // ...and a short one is left exactly as it was.
+  assert.equal(plateLabel('1042').text, '1042');
+});

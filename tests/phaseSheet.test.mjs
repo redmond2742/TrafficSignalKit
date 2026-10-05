@@ -161,7 +161,6 @@ function recorder() {
     setFont: log('setFont'),
     line: log('line'),
     circle: log('circle'),
-    triangle: log('triangle'),
     lines: log('lines'),
     rect: log('rect'),
     text: log('text'),
@@ -209,10 +208,13 @@ test('halving the square halves every coordinate', () => {
   assert.ok(Math.abs(a[1] / 2 - b[1]) < 0.001);
 });
 
-test('arrowheads are drawn as triangles', () => {
+test('arrowheads are drawn as closed filled paths', () => {
   const doc = recorder();
   drawDiagram(doc, sampleDiagram(), { size: 300 });
-  assert.ok(doc.find('triangle').length >= 3, 'expected one head per vehicle phase');
+  // Four points, so they go through `lines` with a closed fill rather than
+  // jsPDF's three-point triangle.
+  const filled = doc.find('lines').filter((c) => c.args[4] === 'F' && c.args[5] === true);
+  assert.ok(filled.length >= 3, `expected one head per vehicle phase, got ${filled.length}`);
 });
 
 test('a dash pattern cannot leak from a crosswalk onto the next line', () => {
@@ -226,9 +228,7 @@ test('a dash pattern cannot leak from a crosswalk onto the next line', () => {
   assert.ok(dashedLines.length > 0, 'no crosswalk was drawn, so nothing was proved');
 
   // Every arrow shaft is solid in the source, so every one must be solid here.
-  const solidOps = doc.calls.filter(
-    (c) => (c.name === 'triangle' || c.name === 'lines') && c.dash.length > 0,
-  );
+  const solidOps = doc.calls.filter((c) => c.name === 'lines' && c.dash.length > 0);
   assert.equal(solidOps.length, 0, 'an arrow was drawn while a dash pattern was still set');
 
   const arrowShafts = doc.find('line').filter((c) => c.dash.length === 0);
@@ -316,7 +316,7 @@ test('a polygon drawn straight after a dashed line is still solid', () => {
       { op: 'poly', points: [[0, 0], [5, 5], [10, 0]], fill: '#000', close: true },
     ],
   }, { size: 300 });
-  const head = doc.find('triangle')[0];
+  const head = doc.find('lines')[0];
   assert.ok(head, 'the arrowhead was not drawn');
   assert.deepEqual(head.dash, [], 'the arrowhead inherited the crosswalk dash');
 });

@@ -34,9 +34,23 @@ const ARROW_INNER = 48;
 /** Where a street name sits: mid-leg, and off the centreline. */
 const STREET_RADIUS = 82;
 const STREET_OFFSET = 21;
-/** Crosswalks sit beside the box, spanning its width. */
-const CROSSWALK_OFFSET = 31;
-const CROSSWALK_HALF = 30;
+/**
+ * Crosswalks sit beside the box, spanning its width.
+ *
+ * One number for both how far out a crossing sits and how far along it runs,
+ * because those two are the same distance: four crossings at right angles
+ * then meet at their ends and close a square, and the diagonals of a scramble
+ * have corners to run between. With an offset of 31 and a half-length of 30 --
+ * which is what this was -- every corner stood a unit apart and the box never
+ * quite shut.
+ *
+ * At 30 the corners land at 30*sqrt(2) = 42.4, which is the edge of the
+ * intersection box: the crossings draw the kerb line.
+ */
+const CROSSWALK_REACH = 30;
+/** The ID plate stays inside this, whatever the ID is. */
+const PLATE_MAX_RADIUS = 21;
+const PLATE_MAX_CHARS = 8;
 
 /** Phase colours, matching the GTSS Signal Builder so one reads as the other. */
 export const PHASE_COLORS = {
@@ -198,19 +212,59 @@ const text = (x, y, value, extra = {}) => ({
  * The reference uses SVG `<marker>`, which has no equivalent in a PDF writer.
  * An explicit triangle is the same picture and renders identically in both.
  */
+const HEAD_LEN = 12;
+const HEAD_HALF = 4.1;
+/** How far the trailing edge is swept forward, which is what sharpens it. */
+const HEAD_NOTCH = 3.4;
+
+/**
+ * A swept arrowhead.
+ *
+ * It was an isoceles triangle nine long and nine wide -- as broad as it was
+ * long, sitting on a three-wide shaft, which reads as a blob stuck on the end
+ * rather than as a direction. This is longer than it is wide and notched at
+ * the back, so the two barbs carry the eye along the movement.
+ *
+ * Four points rather than three, so there is no triangle fast path to take in
+ * the PDF writer; `lines` fills a closed path just as well.
+ */
 function arrowHead(tipX, tipY, angle, color, scale = 1) {
-  const len = 9 * scale;
-  const half = 4.5 * scale;
-  const backX = tipX - len * Math.cos(angle);
-  const backY = tipY - len * Math.sin(angle);
-  const px = Math.cos(angle + Math.PI / 2) * half;
-  const py = Math.sin(angle + Math.PI / 2) * half;
+  const len = HEAD_LEN * scale;
+  const half = HEAD_HALF * scale;
+  const notch = HEAD_NOTCH * scale;
+  const ux = Math.cos(angle);
+  const uy = Math.sin(angle);
+  const vx = -uy;
+  const vy = ux;
+  const backX = tipX - len * ux;
+  const backY = tipY - len * uy;
   return poly(
-    [[tipX, tipY], [backX + px, backY + py], [backX - px, backY - py]],
-    // Tagged so a movement's head can be told from any other filled triangle
-    // on the canvas -- the north arrow is one too. Renderers ignore it.
+    [
+      [tipX, tipY],
+      [backX + half * vx, backY + half * vy],
+      [backX + notch * ux, backY + notch * uy],
+      [backX - half * vx, backY - half * vy],
+    ],
+    // Tagged so a movement's head can be told from any other filled shape on
+    // the canvas -- the north arrow is one too. Renderers ignore it.
     { fill: color, close: true, role: 'arrowhead' },
   );
+}
+
+/**
+ * A shaft that stops where its head begins, plus the head.
+ *
+ * Running the shaft all the way to the tip left its round cap spilling past
+ * the barbs at small sizes. Ending it at the notch means the head is the only
+ * thing that draws the point.
+ */
+function arrowTo(x1, y1, x2, y2, color, width, extra = {}, scale = 1) {
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const back = (HEAD_LEN - HEAD_NOTCH) * scale;
+  return [
+    line(x1, y1, x2 - back * Math.cos(angle), y2 - back * Math.sin(angle), color, width, extra),
+    arrowHead(x2, y2, angle, color, scale),
+  ];
 }
 
 /* --------------------------------------------------------------- pieces */
@@ -309,28 +363,41 @@ function streetOps(approaches) {
 }
 
 /** One crosswalk dash across the approach on the given bearing. */
-function crosswalkAt(bearing, color) {
+/**
+ * Screen coordinates from a point in an approach's own frame.
+ *
+ * `along` runs down the approach's axis, `across` at right angles to it.
+ * Every crossing is placed in this frame, including the diagonals -- which
+ * used to be drawn against the screen's axes instead, so on any intersection
+ * not aligned to north they cut across the crossing box at an angle of their
+ * own instead of joining its corners.
+ */
+function inApproachFrame(bearing, along, across) {
   const a = approachAxis(bearing);
-  const perp = a + Math.PI / 2;
-  // Pushed out to the edge of the box rather than through the middle of it.
-  // A crossing drawn across the centre reads as a hatch over the intersection
-  // instead of as a crosswalk at the kerb.
-  const cx = CENTER + CROSSWALK_OFFSET * Math.cos(perp);
-  const cy = CENTER + CROSSWALK_OFFSET * Math.sin(perp);
-  const half = CROSSWALK_HALF;
-  return line(
-    cx + half * Math.cos(a), cy + half * Math.sin(a),
-    cx - half * Math.cos(a), cy - half * Math.sin(a),
-    color, 2, { dash: [4, 3], opacity: 0.75 },
-  );
+  const ux = Math.cos(a);
+  const uy = Math.sin(a);
+  return [
+    CENTER + along * ux - across * uy,
+    CENTER + along * uy + across * ux,
+  ];
 }
 
-function diagonalCrosswalk(dir, color) {
-  const d = BOX_RADIUS / Math.SQRT2;
-  return line(
-    CENTER - d * dir, CENTER - d, CENTER + d * dir, CENTER + d,
-    color, 2, { dash: [5, 4], opacity: 0.75 },
-  );
+const CROSSING_STYLE = { dash: [4, 3], opacity: 0.75 };
+
+/** One crossing, at the kerb line of the approach on this bearing. */
+function crosswalkAt(bearing, color) {
+  const R = CROSSWALK_REACH;
+  const [x1, y1] = inApproachFrame(bearing, R, R);
+  const [x2, y2] = inApproachFrame(bearing, -R, R);
+  return line(x1, y1, x2, y2, color, 2, CROSSING_STYLE);
+}
+
+/** A diagonal, corner to corner of the square the four crossings make. */
+function diagonalCrosswalk(dir, color, bearing) {
+  const R = CROSSWALK_REACH;
+  const [x1, y1] = inApproachFrame(bearing, -R, -R * dir);
+  const [x2, y2] = inApproachFrame(bearing, R, R * dir);
+  return line(x1, y1, x2, y2, color, 2, CROSSING_STYLE);
 }
 
 /**
@@ -345,13 +412,15 @@ function pedOps(phase, bearing, color) {
   if (mode === 1) return [crosswalkAt(bearing, color)];
   if (mode === 2) return [crosswalkAt(bearing, color), crosswalkAt((bearing + 180) % 360, color)];
   if (mode === 3) return [crosswalkAt((bearing + 180) % 360, color)];
-  if (mode === 4) return [diagonalCrosswalk(1, color)];
-  if (mode === 5) return [diagonalCrosswalk(-1, color)];
-  if (mode === 6) return [diagonalCrosswalk(1, color), diagonalCrosswalk(-1, color)];
+  if (mode === 4) return [diagonalCrosswalk(1, color, bearing)];
+  if (mode === 5) return [diagonalCrosswalk(-1, color, bearing)];
+  if (mode === 6) {
+    return [diagonalCrosswalk(1, color, bearing), diagonalCrosswalk(-1, color, bearing)];
+  }
   if (mode === 7) {
     return [
       ...[0, 90, 180, 270].map((d) => crosswalkAt((bearing + d) % 360, color)),
-      diagonalCrosswalk(1, color), diagonalCrosswalk(-1, color),
+      diagonalCrosswalk(1, color, bearing), diagonalCrosswalk(-1, color, bearing),
     ];
   }
   return [];
@@ -385,10 +454,9 @@ function arrowOps(phase, bearing, color, options, lateral) {
     const dashed = kind === 'leftProtPerm' ? [6, 5] : null;
     const headColor = kind === 'fya' ? '#eab308' : color;
     ops.push(line(sx, sy, bx, by, color, width, { dash: dashed, cap: 'round' }));
-    ops.push(line(bx, by, tx, ty, headColor, width, {
+    ops.push(...arrowTo(bx, by, tx, ty, headColor, width, {
       dash: kind === 'fya' ? [4, 4] : dashed, cap: 'round',
     }));
-    ops.push(arrowHead(tx, ty, turnAcross, headColor));
   } else if (kind === 'right') {
     const bx = sx + (ex - sx) * 0.6;
     const by = sy + (ey - sy) * 0.6;
@@ -396,8 +464,7 @@ function arrowOps(phase, bearing, color, options, lateral) {
     const tx = bx + tip * Math.cos(turnNear);
     const ty = by + tip * Math.sin(turnNear);
     ops.push(line(sx, sy, bx, by, color, width, { cap: 'round' }));
-    ops.push(line(bx, by, tx, ty, color, width, { cap: 'round' }));
-    ops.push(arrowHead(tx, ty, turnNear, color));
+    ops.push(...arrowTo(bx, by, tx, ty, color, width, { cap: 'round' }));
   } else if (kind === 'uturn') {
     // In along the approach, round through 180, back out alongside. The loop
     // swings to the side a left turn crosses to, because that is the lane a
@@ -424,29 +491,25 @@ function arrowOps(phase, bearing, color, options, lateral) {
     const [lastX, lastY] = arcPts[arcPts.length - 1];
     const outX = lastX - 30 * inX;
     const outY = lastY - 30 * inY;
-    ops.push(line(lastX, lastY, outX, outY, color, width, { cap: 'round' }));
-    ops.push(arrowHead(outX, outY, Math.atan2(-inY, -inX), color));
+    ops.push(...arrowTo(lastX, lastY, outX, outY, color, width, { cap: 'round' }));
   } else {
     // Through, and the shared movements that read as a through with a stub.
-    ops.push(line(sx, sy, ex, ey, color, width, {
+    ops.push(...arrowTo(sx, sy, ex, ey, color, width, {
       cap: 'round', dash: kind === 'permissive' ? [6, 5] : null,
     }));
-    ops.push(arrowHead(ex, ey, a, color));
     if (kind === 'leftThrough' || kind === 'permissive') {
       const bx = sx + (ex - sx) * 0.45;
       const by = sy + (ey - sy) * 0.45;
       const tx = bx + 16 * Math.cos(turnAcross);
       const ty = by + 16 * Math.sin(turnAcross);
-      ops.push(line(bx, by, tx, ty, color, width - 0.5, { cap: 'round' }));
-      ops.push(arrowHead(tx, ty, turnAcross, color, 0.8));
+      ops.push(...arrowTo(bx, by, tx, ty, color, width - 0.5, { cap: 'round' }, 0.8));
     }
     if (kind === 'throughRight') {
       const bx = sx + (ex - sx) * 0.45;
       const by = sy + (ey - sy) * 0.45;
       const tx = bx + 16 * Math.cos(turnNear);
       const ty = by + 16 * Math.sin(turnNear);
-      ops.push(line(bx, by, tx, ty, color, width - 0.5, { cap: 'round' }));
-      ops.push(arrowHead(tx, ty, turnNear, color, 0.8));
+      ops.push(...arrowTo(bx, by, tx, ty, color, width - 0.5, { cap: 'round' }, 0.8));
     }
   }
 
@@ -526,23 +589,46 @@ export function buildPhaseDiagram({ approaches = [], phases = [], options = {} }
   const crosswalkOps = [];
   const vehicleOps = [];
   const pedBadges = [];
+  // phases.txt carries a row per phase *and approach*, so a scramble that
+  // serves every corner arrives as several rows of the same phase number --
+  // each of which would draw the same four crossings and the same two
+  // diagonals on top of each other, and each of which would plant its own
+  // badge. Both are deduplicated: one line per line, one badge per phase.
+  const drawnCrossings = new Set();
+  const badgedPhases = new Set();
 
   for (const phase of phases) {
     const bearing = bearingFor.get(String(phase.approachId)) ?? null;
     const color = palette.phase(Number(phase.phase));
     if (bearing === null) continue;
 
-    if (opts.showCrosswalks) crosswalkOps.push(...pedOps(phase, bearing, color));
+    if (opts.showCrosswalks) {
+      for (const op of pedOps(phase, bearing, color)) {
+        // Ends sorted before they are compared: the same crossing drawn from
+        // the opposite approach comes out with its endpoints the other way
+        // round, and an order-sensitive key would call that a second line.
+        const ends = [
+          `${Math.round(op.x1)},${Math.round(op.y1)}`,
+          `${Math.round(op.x2)},${Math.round(op.y2)}`,
+        ].sort();
+        const key = `${ends[0]}|${ends[1]}|${op.stroke}`;
+        if (drawnCrossings.has(key)) continue;
+        drawnCrossings.add(key);
+        crosswalkOps.push(op);
+      }
+    }
 
     const kind = movementKind(phase.movementType);
     if (kind === 'pedestrian') {
       // No arrow to hang a number off, so the number rides a badge on the
       // crossing instead -- otherwise a ped-only phase is unlabelled.
-      if (opts.showPhaseNumbers && pedMode(phase)) {
-        const a = approachAxis(bearing);
-        const perp = a + Math.PI / 2;
-        const bx = CENTER + CROSSWALK_OFFSET * Math.cos(perp) + CROSSWALK_HALF * Math.cos(a);
-        const by = CENTER + CROSSWALK_OFFSET * Math.sin(perp) + CROSSWALK_HALF * Math.sin(a);
+      if (opts.showPhaseNumbers && pedMode(phase) && !badgedPhases.has(phase.phase)) {
+        badgedPhases.add(phase.phase);
+        // Pinned just outside a corner of the crossing square, which is the
+        // one place on the box where no crossing is drawn.
+        const [bx, by] = inApproachFrame(
+          bearing, CROSSWALK_REACH + 7, CROSSWALK_REACH + 7,
+        );
         pedBadges.push(circle(bx, by, 8, { fill: '#ffffff', stroke: color, width: 1.5 }));
         pedBadges.push(text(bx, by + 3.5, `P${phase.phase}`, {
           size: 8, fill: color, weight: 'bold',
@@ -560,8 +646,28 @@ export function buildPhaseDiagram({ approaches = [], phases = [], options = {} }
   ops.push(...crosswalkOps, ...vehicleOps, ...pedBadges);
 
   if (opts.centerLabel) {
-    ops.push(text(CENTER, CENTER + 5, String(opts.centerLabel), {
-      size: 14, fill: '#6b7280', weight: 'bold',
+    // Last, and on a disc of its own. A scramble puts two diagonals straight
+    // through the middle of the box, and a bare number sitting on them is not
+    // a number anyone can read.
+    // The type shrinks to fit the plate, rather than the plate growing to fit
+    // the type. A plate much past half the box radius starts covering the
+    // diagonals of a scramble, which then read as four stubs rather than two
+    // crossings -- and the diagram loses more than the label gains.
+    //
+    // Past the length even the smallest readable size can hold, the label is
+    // cut: the caption below the diagram carries the ID in full, so the middle
+    // can afford to lose the tail.
+    const raw = String(opts.centerLabel);
+    const label = raw.length > PLATE_MAX_CHARS
+      ? `${raw.slice(0, PLATE_MAX_CHARS - 1)}\u2026`
+      : raw;
+    const size = Math.max(7, Math.min(13, (PLATE_MAX_RADIUS - 4) * 2 / (0.58 * label.length)));
+    const r = Math.max(10, (0.58 * size * label.length) / 2 + 4);
+    ops.push(circle(CENTER, CENTER, r, {
+      fill: '#ffffff', stroke: '#d1d5db', width: 1.5, role: 'idPlate',
+    }));
+    ops.push(text(CENTER, CENTER + size * 0.35, label, {
+      size, fill: '#374151', weight: 'bold',
     }));
   }
 

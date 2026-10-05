@@ -97,14 +97,6 @@ export function drawDiagram(doc, diagram, { x = 0, y = 0, size = 216 } = {}) {
         doc.setLineWidth(pw(op.width ?? 1));
         doc.setLineCap('round');
       }
-      // Three points and a fill is an arrowhead, which jsPDF draws directly.
-      if (hasFill && points.length === 3 && !op.stroke) {
-        doc.triangle(
-          points[0][0], points[0][1], points[1][0], points[1][1],
-          points[2][0], points[2][1], 'F',
-        );
-        continue;
-      }
       const deltas = points.slice(1).map((p, i) => [p[0] - points[i][0], p[1] - points[i][1]]);
       doc.lines(
         deltas, points[0][0], points[0][1], [1, 1],

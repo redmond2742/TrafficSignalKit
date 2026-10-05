@@ -40,6 +40,7 @@ export const HOME_ORDER = [
   "/preemption-plotter",
   "/pattern-calendar",
   "/yolo-image-annotator",
+  "/phase-diagram",
   "/unused-green-time",
   "/single-loop-speed-estimator",
   "/preemption-evaluator",
@@ -86,6 +87,16 @@ export const NAV_GROUPS = [
 ];
 
 export const TOOLS = [
+  {
+    path: "/phase-diagram",
+    title: "Phase Diagram Maker",
+    navTitle: "Phase Diagram",
+    description:
+      "Draw intersection phase diagrams and tile them onto one big printable sheet",
+    image: "/images/phase-diagram.webp",
+    topics: ["Phases", "GTSS", "Printing", "Diagrams"],
+    group: "data",
+  },
   {
     path: "/unused-green-time",
     title: "Unused Green Time",

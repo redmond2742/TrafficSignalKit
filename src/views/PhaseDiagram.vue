@@ -61,7 +61,44 @@
                 <b>A P-badge</b> marks a pedestrian-only phase, which has
                 crossings but no arrow to hang its number on.
               </li>
+              <li class="mt-1">
+                <b>The street names across the top</b> are coloured by the
+                phase that runs through each one, so the name and the arrows
+                tie together without a legend.
+              </li>
+              <li class="mt-1">
+                <b>A numbered badge on the verge</b> is a preempt channel, with
+                a dashed route in toward the intersection: brown for rail, red
+                for emergency vehicles, teal for transit. It is dashed and thin
+                because a preempt is not a movement &mdash; it is a call that
+                rearranges them.
+              </li>
             </ul>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+
+        <v-expansion-panel title="Changing How It Looks" value="style">
+          <v-expansion-panel-text>
+            <p>
+              The switches under <b>How it looks</b> turn layers on and off;
+              <b>Advanced</b> sets the weights and sizes behind them. All of it
+              is in units on a 300-unit square, so a setting holds its
+              proportions whether the diagram prints at two inches or twelve.
+            </p>
+            <p class="mt-2">
+              The ID in the middle is the one worth knowing about. By default
+              it is set to <b>fit inside the crossings</b> &mdash; a long ID
+              comes out smaller rather than spilling over them, and one past
+              ten characters is shortened, because the caption under each
+              diagram carries it in full anyway. Force a size and the page says
+              whether it still fits.
+            </p>
+            <p class="mt-2">
+              Preempt channels come from <code>preempt.txt</code>. Without
+              that file nothing is lost &mdash; most exports do not carry it
+              &mdash; and an intersection built by hand can have channels added
+              to it below.
+            </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -306,6 +343,74 @@
           >
             Add phase
           </v-btn>
+
+          <h3 class="sub-title mt-4">Preempt channels</h3>
+          <p class="setup-card__hint">
+            Optional. A GTSS export brings these in from
+            <code>preempt.txt</code>; this is for an intersection you are
+            building by hand.
+          </p>
+          <v-table v-if="manualPreempts.length" density="compact" class="editor-table">
+            <thead>
+              <tr>
+                <th>Channel</th>
+                <th>Type</th>
+                <th>Arrives on</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, index) in manualPreempts" :key="row.key">
+                <td>
+                  <input
+                    v-model.number="row.channel"
+                    type="number"
+                    min="1"
+                    max="99"
+                    class="cell-input cell-input--narrow"
+                  />
+                </td>
+                <td>
+                  <v-select
+                    v-model="row.type"
+                    :items="preemptTypeChoices"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    class="cell-select"
+                  ></v-select>
+                </td>
+                <td>
+                  <v-select
+                    v-model="row.approachId"
+                    :items="approachChoices"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    class="cell-select"
+                  ></v-select>
+                </td>
+                <td>
+                  <v-btn
+                    icon="mdi-close"
+                    size="x-small"
+                    variant="text"
+                    :aria-label="`Remove preempt row ${index + 1}`"
+                    @click="manualPreempts.splice(index, 1)"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+          <v-btn
+            size="small"
+            variant="text"
+            prepend-icon="mdi-plus"
+            :disabled="!manualApproaches.length"
+            @click="addPreempt"
+          >
+            Add preempt channel
+          </v-btn>
         </v-window-item>
       </v-window>
     </v-card>
@@ -361,6 +466,11 @@
       <v-card class="setup-card" variant="outlined">
         <div class="setup-card__head">
           <h2 class="setup-card__title">How it looks</h2>
+          <p class="setup-card__hint">
+            Every setting here changes the preview and the PDF together. The
+            two are drawn from one description of the intersection, so what is
+            on screen is what comes off the plotter.
+          </p>
         </div>
         <div class="settings-row">
           <v-select
@@ -372,6 +482,27 @@
             hide-details
             class="setting setting--wide"
           ></v-select>
+          <v-select
+            v-model="options.streetNames"
+            :items="streetNameOptions"
+            label="Street names"
+            :disabled="!options.showStreetNames"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="setting setting--wide"
+          ></v-select>
+          <v-select
+            v-model="options.compass"
+            :items="compassOptions"
+            label="Compass"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="setting setting--wide"
+          ></v-select>
+        </div>
+        <div class="settings-row mt-1">
           <v-switch
             v-model="options.showStreetNames"
             label="Street names"
@@ -394,6 +525,20 @@
             hide-details
           ></v-switch>
           <v-switch
+            v-model="options.showLaneLines"
+            label="Lane lines"
+            density="compact"
+            color="primary"
+            hide-details
+          ></v-switch>
+          <v-switch
+            v-model="options.showCurbReturns"
+            label="Corners"
+            density="compact"
+            color="primary"
+            hide-details
+          ></v-switch>
+          <v-switch
             v-model="showSignalId"
             label="ID in the middle"
             density="compact"
@@ -401,8 +546,9 @@
             hide-details
           ></v-switch>
           <v-switch
-            v-model="options.showCompass"
-            label="Compass"
+            v-model="options.showPreempts"
+            label="Preempt channels"
+            :disabled="!preemptCount"
             density="compact"
             color="primary"
             hide-details
@@ -420,6 +566,75 @@
           out as eight indistinguishable greys. The phase numbers do the work
           the colours were doing.
         </p>
+        <p class="setup-card__hint mt-2">{{ preemptNote }}</p>
+
+        <v-expansion-panels v-model="advanced" multiple class="mt-3">
+          <v-expansion-panel title="Advanced: sizes and weights" value="advanced">
+            <v-expansion-panel-text>
+              <p class="setup-card__hint">
+                These are in canvas units on a 300-unit square, so they hold
+                their proportions at any print size. The defaults suit a
+                diagram two to three inches across; a 1&nbsp;&times;&nbsp;1
+                sheet can carry finer lines, and a 10&nbsp;&times;&nbsp;10 one
+                wants heavier ones.
+              </p>
+              <div class="slider-grid mt-3">
+                <div v-for="s in styleSliders" :key="s.key" class="slider-row">
+                  <label class="slider-label" :for="`slider-${s.key}`">
+                    {{ s.label }}
+                    <span class="slider-value">{{ options[s.key] }}</span>
+                  </label>
+                  <v-slider
+                    :id="`slider-${s.key}`"
+                    v-model="options[s.key]"
+                    :min="s.min"
+                    :max="s.max"
+                    :step="s.step"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                  ></v-slider>
+                </div>
+              </div>
+
+              <h3 class="sub-title mt-2">The ID in the middle</h3>
+              <div class="settings-row">
+                <div class="slider-row slider-row--wide">
+                  <label class="slider-label" for="slider-id">
+                    ID size
+                    <span class="slider-value">
+                      {{ options.centerLabelSize ? options.centerLabelSize : "fit automatically" }}
+                    </span>
+                  </label>
+                  <v-slider
+                    id="slider-id"
+                    v-model="options.centerLabelSize"
+                    :min="0"
+                    :max="44"
+                    :step="1"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                  ></v-slider>
+                </div>
+                <v-select
+                  v-model="options.centerPlate"
+                  :items="plateOptions"
+                  label="Plate behind it"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  class="setting setting--wide"
+                ></v-select>
+              </div>
+              <p v-if="idReport" class="setup-card__hint mt-1">{{ idReport }}</p>
+
+              <v-btn size="small" variant="text" class="mt-3" @click="resetStyle">
+                Reset to defaults
+              </v-btn>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
       </v-card>
 
       <h2 class="section-title">Preview</h2>
@@ -595,6 +810,7 @@ import { buildPhaseDirectory, bearingToCompass, bearingToTravel } from "../utils
 import {
   DEFAULT_OPTIONS,
   PALETTES,
+  PREEMPT_KINDS,
   buildPhaseDiagram,
 } from "../utils/phaseDiagram.js";
 import { diagramToSvg } from "../utils/phaseDiagramSvg.js";
@@ -617,6 +833,20 @@ const MOVEMENTS = [
   { value: "PED", title: "Pedestrian only" },
 ];
 
+/**
+ * The knobs that are a number rather than a switch.
+ *
+ * As data rather than twenty hand-written sliders, so adding one is a line
+ * here and the labels cannot drift from the keys they set.
+ */
+const STYLE_SLIDERS = [
+  { key: "roadWidth", label: "Road width", min: 12, max: 40, step: 1 },
+  { key: "arrowWidth", label: "Arrow weight", min: 2, max: 8, step: 0.2 },
+  { key: "headScale", label: "Arrowhead size", min: 0.8, max: 2.6, step: 0.05 },
+  { key: "phaseNumberSize", label: "Phase number size", min: 8, max: 24, step: 0.5 },
+  { key: "crosswalkWidth", label: "Crosswalk weight", min: 1, max: 5, step: 0.2 },
+];
+
 const PED_MODES = [
   { value: 0, title: "None" },
   { value: 1, title: "This approach" },
@@ -636,6 +866,11 @@ function exampleIntersection() {
     { approachId: "A3", streetName: "Main St", compassBearing: 180 },
     { approachId: "A4", streetName: "1st Ave", compassBearing: 270 },
   ];
+  // One preempt channel, so the feature is visible rather than something to
+  // be found by reading the page.
+  const preempts = [
+    { key: "EX1", channel: 1, type: "Rail", approachId: "A1" },
+  ];
   const phases = [
     { phase: 1, approachId: "A3", movementType: "L", pedX: 0 },
     { phase: 2, approachId: "A1", movementType: "T", pedX: 1 },
@@ -646,7 +881,7 @@ function exampleIntersection() {
     { phase: 7, approachId: "A2", movementType: "L", pedX: 0 },
     { phase: 8, approachId: "A4", movementType: "T", pedX: 1 },
   ];
-  return { approaches, phases };
+  return { approaches, phases, preempts };
 }
 
 export default {
@@ -661,7 +896,9 @@ export default {
       gtssLoading: false,
       manualApproaches: [],
       manualPhases: [],
+      manualPreempts: [],
       manualSeq: 0,
+      advanced: [],
       cellMode: "signal",
       chosenSignals: [],
       palette: "signal",
@@ -673,6 +910,25 @@ export default {
       pdfError: "",
       movementChoices: MOVEMENTS,
       pedChoices: PED_MODES,
+      styleSliders: STYLE_SLIDERS,
+      streetNameOptions: [
+        { value: "title", title: "Across the top" },
+        { value: "legs", title: "Along the legs" },
+      ],
+      compassOptions: [
+        { value: "letters", title: "N E S W on a ring" },
+        { value: "arrow", title: "North arrow in the corner" },
+        { value: "off", title: "None" },
+      ],
+      plateOptions: [
+        { value: "auto", title: "Only when a crossing runs through" },
+        { value: "always", title: "Always" },
+        { value: "never", title: "Never" },
+      ],
+      preemptTypeChoices: [
+        ...PREEMPT_KINDS.map((kind) => ({ value: kind.label, title: kind.label })),
+        { value: "Other", title: "Something else" },
+      ],
     };
   },
   computed: {
@@ -694,6 +950,14 @@ export default {
           name: this.manualName,
           approaches: this.manualApproaches,
           phases: [...this.manualPhases].sort((a, b) => a.phase - b.phase),
+          preempts: this.manualPreempts
+            .filter((row) => row.approachId)
+            .map((row) => ({
+              channel: row.channel,
+              type: row.type,
+              phases: [],
+              approachIds: [row.approachId],
+            })),
         }];
       }
       if (!this.gtss) return [];
@@ -726,6 +990,48 @@ export default {
     drawOptions() {
       return { ...this.options, palette: this.palette };
     },
+    /** How many preempt channels the chosen intersections carry between them. */
+    preemptCount() {
+      return this.activeSignals.reduce((n, s) => n + (s.preempts?.length || 0), 0);
+    },
+    preemptNote() {
+      if (!this.preemptCount) {
+        return this.sourceTab === "gtss"
+          ? "No preempt channels in this export. Include preempt.txt and each channel is drawn as a badge on the leg it arrives down."
+          : "Add a preempt channel below and it is drawn as a badge on the leg it arrives down.";
+      }
+      const unplaced = this.sheetItems.reduce(
+        (n, item) => n + item.diagram.notes.unplacedPreempts, 0,
+      );
+      const head = `${this.preemptCount} preempt ${this.preemptCount === 1 ? "channel" : "channels"}, drawn as a badge and a dashed route on the leg each arrives down.`;
+      if (!unplaced) return head;
+      return `${head} ${unplaced} of them name no approach this export describes, so there is no leg to draw them on.`;
+    },
+    /**
+     * Whether the IDs in the middle actually fit where they are being put.
+     *
+     * A forced size is the caller's to set; what the page must not do is
+     * print an ID across the crossings and say nothing about it.
+     */
+    idReport() {
+      const labels = this.sheetItems
+        .map((item) => item.diagram.notes.centerLabel)
+        .filter((label) => label.text);
+      if (!labels.length) return "";
+      const size = Math.min(...labels.map((label) => label.size));
+      const over = labels.filter((label) => !label.fits).length;
+      const cut = labels.filter((label) => label.truncated).length;
+      const parts = [`Set at ${size.toFixed(1)} pt.`];
+      if (over) {
+        parts.push(`${over} of ${labels.length} ${over === 1 ? "runs" : "run"} past the crossings at this size.`);
+      } else {
+        parts.push("Clear of the crossings.");
+      }
+      if (cut) {
+        parts.push(`${cut} ${cut === 1 ? "was" : "were"} shortened; the caption underneath carries the ID in full.`);
+      }
+      return parts.join(" ");
+    },
     /**
      * Every diagram the sheet will carry, in order.
      *
@@ -747,6 +1053,7 @@ export default {
             diagram: buildPhaseDiagram({
               approaches: signal.approaches,
               phases: signal.phases,
+              preempts: signal.preempts || [],
               options: this.optionsFor(signal),
             }),
           });
@@ -762,6 +1069,7 @@ export default {
               // belong to or it is an arrow floating in space.
               approaches: signal.approaches,
               phases: [phase],
+              preempts: signal.preempts || [],
               options: this.optionsFor(signal),
             }),
           });
@@ -838,8 +1146,31 @@ export default {
     removeApproach(index) {
       const [gone] = this.manualApproaches.splice(index, 1);
       // Phases pointing at a removed approach would silently stop drawing, so
-      // take them with it rather than leaving invisible rows behind.
+      // take them with it rather than leaving invisible rows behind. The same
+      // goes for a preempt channel that arrives down a leg that is gone.
       this.manualPhases = this.manualPhases.filter((p) => p.approachId !== gone.approachId);
+      this.manualPreempts = this.manualPreempts.filter((p) => p.approachId !== gone.approachId);
+    },
+    addPreempt() {
+      this.manualSeq += 1;
+      const used = new Set(this.manualPreempts.map((row) => row.channel));
+      let next = 1;
+      while (used.has(next) && next < 100) next += 1;
+      this.manualPreempts.push({
+        key: `X${this.manualSeq}`,
+        channel: next,
+        type: PREEMPT_KINDS[0].label,
+        approachId: this.manualApproaches[0]?.approachId || "",
+      });
+    },
+    /**
+     * Back to the shipped look, keeping the one setting that is a fact about
+     * the world rather than a taste: which side of the road people drive on.
+     */
+    resetStyle() {
+      this.options = { ...DEFAULT_OPTIONS, isLht: this.options.isLht };
+      this.palette = "signal";
+      this.showSignalId = true;
     },
     addPhase() {
       this.manualSeq += 1;
@@ -858,9 +1189,10 @@ export default {
       this.manualPhases.splice(index, 1);
     },
     loadExample() {
-      const { approaches, phases } = exampleIntersection();
+      const { approaches, phases, preempts } = exampleIntersection();
       this.manualApproaches = approaches.map((a) => ({ ...a }));
       this.manualPhases = phases.map((p, i) => ({ ...p, key: `E${i}` }));
+      this.manualPreempts = preempts.map((p) => ({ ...p }));
       this.manualSeq = 100;
     },
     async loadGtssFiles(event) {
@@ -1077,6 +1409,25 @@ export default {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 16px;
+}
+.slider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 4px 20px;
+}
+.slider-row--wide {
+  flex: 1 1 260px;
+}
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+.slider-value {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
 }
 .metric-tile {
   flex: 1 1 120px;

@@ -164,7 +164,7 @@ export const routeMeta = {
   phaseDiagram: {
     title: "Phase Diagram Maker | Printable Intersection Phasing Sheets",
     description:
-      "Draw NEMA phase diagrams from approach bearings and movements, then tile them 2x2 up to 10x10 on a 30-inch sheet as a print-ready vector PDF.",
+      "Draw NEMA phase diagrams and preempt channels from approach bearings and movements, then tile them 2x2 up to 10x10 on a 30-inch vector PDF.",
     path: "/phase-diagram",
   },
   unusedGreenTime: {

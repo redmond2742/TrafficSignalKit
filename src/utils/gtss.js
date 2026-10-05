@@ -345,7 +345,9 @@ export function buildPhaseDirectory(input) {
   const bySignal = new Map();
   const ensure = (signalId) => {
     if (!bySignal.has(signalId)) {
-      bySignal.set(signalId, { signalId, approaches: [], phases: [], latitude: null, longitude: null });
+      bySignal.set(signalId, {
+        signalId, approaches: [], phases: [], preempts: [], latitude: null, longitude: null,
+      });
     }
     return bySignal.get(signalId);
   };
@@ -389,8 +391,40 @@ export function buildPhaseDirectory(input) {
     entry.longitude = Number(row.longitude);
   }
 
+  // preempt.txt is optional and is left out of plenty of exports, so a signal
+  // with no channels is the normal case rather than a gap worth warning about.
+  // A channel names phases; the approach it arrives on comes from them.
+  const approachOfPhase = new Map(
+    phaseRows.map((row) => [
+      `${row.signal_id ?? row.signalID}\u0000${Number(row.phase)}`, String(row.approach_id || ''),
+    ]),
+  );
+  let preemptCount = 0;
+  for (const row of parseTable(files['preempt.txt'])) {
+    // preempt.txt spells it signalID; every other file spells it signal_id.
+    const signalId = row.signalID ?? row.signal_id;
+    const channel = Number(row.preempt_channel);
+    if (!signalId || !Number.isFinite(channel) || !bySignal.has(signalId)) continue;
+    const entry = bySignal.get(signalId);
+    let found = entry.preempts.find((p) => p.channel === channel);
+    if (!found) {
+      found = { channel, type: String(row.type || '').trim(), maxTime: null, phases: [], approachIds: [] };
+      entry.preempts.push(found);
+      preemptCount += 1;
+    }
+    const maxTime = Number(row.maxTime);
+    if (Number.isFinite(maxTime)) found.maxTime = maxTime;
+    const phase = Number(row.phase);
+    if (!Number.isFinite(phase)) continue;
+    if (!found.phases.includes(phase)) found.phases.push(phase);
+    const approachId = approachOfPhase.get(`${signalId}\u0000${phase}`);
+    if (approachId && !found.approachIds.includes(approachId)) found.approachIds.push(approachId);
+  }
+
   for (const entry of bySignal.values()) {
     entry.phases.sort((a, b) => a.phase - b.phase);
+    entry.preempts.sort((a, b) => a.channel - b.channel);
+    for (const channel of entry.preempts) channel.phases.sort((a, b) => a - b);
     entry.name = crossStreetName(entry.approaches.map((a) => a.streetName));
   }
 
@@ -403,6 +437,7 @@ export function buildPhaseDirectory(input) {
   return {
     bySignal,
     agency,
+    preemptCount,
     // agency.txt carries handedness for the whole agency, and it changes how
     // every turn in every diagram is drawn, so it is read rather than assumed.
     isLht: String(agency?.agency_islht ?? '').trim().toLowerCase() === 'true'

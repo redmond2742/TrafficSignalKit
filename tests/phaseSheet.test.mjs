@@ -187,13 +187,17 @@ test('hex colours convert, including the short form', () => {
 });
 
 test('the diagram scales into the square it is given', () => {
+  const diagram = sampleDiagram();
   const doc = recorder();
-  drawDiagram(doc, sampleDiagram(), { x: 100, y: 200, size: DIAGRAM_SIZE });
-  // At 1:1 the centre circle lands at the offset plus the canvas centre.
-  const centre = doc.find('circle').find((c) => Math.round(c.args[2]) === 42);
-  assert.ok(centre, 'the intersection box was not drawn');
-  assert.equal(Math.round(centre.args[0]), 100 + DIAGRAM_SIZE / 2);
-  assert.equal(Math.round(centre.args[1]), 200 + DIAGRAM_SIZE / 2);
+  drawDiagram(doc, diagram, { x: 100, y: 200, size: DIAGRAM_SIZE });
+  // At 1:1 every op lands where it was authored, plus the offset. Read from
+  // the draw list rather than from a remembered radius, so retuning the
+  // geometry cannot turn this into a test that silently finds nothing.
+  const box = diagram.ops.find((op) => op.role === 'box');
+  const drawn = doc.find('circle').find((c) => Math.abs(c.args[2] - box.r) < 0.001);
+  assert.ok(drawn, 'the intersection box was not drawn');
+  assert.equal(Math.round(drawn.args[0]), Math.round(100 + box.cx));
+  assert.equal(Math.round(drawn.args[1]), Math.round(200 + box.cy));
 });
 
 test('halving the square halves every coordinate', () => {
@@ -227,9 +231,15 @@ test('a dash pattern cannot leak from a crosswalk onto the next line', () => {
   const dashedLines = doc.find('line').filter((c) => c.dash.length > 0);
   assert.ok(dashedLines.length > 0, 'no crosswalk was drawn, so nothing was proved');
 
-  // Every arrow shaft is solid in the source, so every one must be solid here.
-  const solidOps = doc.calls.filter((c) => c.name === 'lines' && c.dash.length > 0);
-  assert.equal(solidOps.length, 0, 'an arrow was drawn while a dash pattern was still set');
+  // An arrowhead is the one shape that is always solid: a filled polygon with
+  // no dash of its own. The lane lines and the corner sweeps are dashed polys
+  // that genuinely want a pattern, so "no poly while a dash is set" would now
+  // be a false alarm; "no *filled* poly" is the invariant that was meant.
+  const heads = doc.find('lines').filter((c) => c.args[4] === 'F');
+  assert.ok(heads.length > 0, 'no arrowhead was drawn, so nothing was proved');
+  for (const head of heads) {
+    assert.deepEqual(head.dash, [], 'an arrowhead was drawn while a dash was still set');
+  }
 
   const arrowShafts = doc.find('line').filter((c) => c.dash.length === 0);
   assert.ok(arrowShafts.length > 0, 'every line came out dashed');
@@ -241,6 +251,9 @@ test('rotated text is flipped, because the two libraries wind opposite ways', ()
   const diagram = buildPhaseDiagram({
     approaches: [{ approachId: 'A1', compassBearing: 35, streetName: 'Main St' }],
     phases: [],
+    // Along the leg rather than across the top, because a title is the one
+    // piece of text on the canvas that is never rotated.
+    options: { streetNames: 'legs' },
   });
   const source = diagram.ops.find((op) => op.op === 'text' && op.text === 'Main St');
   assert.ok(source && source.rotate, 'the street name was not rotated in the draw list');

@@ -7,6 +7,7 @@ import {
   bearingToOrigin,
   bearingToTravel,
   buildDetectorDirectory,
+  buildPhaseDirectory,
   buildPreemptDirectory,
   describeChannel,
 } from '../src/utils/gtss.js';
@@ -350,4 +351,108 @@ test('buildDetectorDirectory says so when it has nothing to work with', () => {
   const empty = buildDetectorDirectory({ 'detectors.txt': 'channel,signal_id,phase\n20,1,0' });
   assert.match(empty.warnings[0], /no channel with a phase/);
   assert.deepEqual(buildDetectorDirectory(null).signals, [], 'null is not a crash');
+});
+
+/* ------------------------------------- approaches + phases -> a drawing */
+
+const SIGNAL = {
+  'agency.txt': 'agency_id,agency_name,agency_islht\nA,Test City,false',
+  'signals.txt': 'signal_id,agency_id,latitude,longitude\n1,A,37.9,-122.06\n2,A,37.91,-122.07',
+  'approaches.txt': [
+    'approach_id,signal_id,street_name,compass_bearing,posted_speed,free_right',
+    '1-1,1,Main St,0,35,0',
+    '1-2,1,1st Ave,90,30,1',
+    '1-3,1,Main St,180,35,0',
+    '2-1,2,River Rd,45,45,0',
+  ].join('\n'),
+  'phases.txt': [
+    'phase,signal_id,movement_type,num_of_lanes,approach_id,PedX,crosswalk_length',
+    '2,1,T,2,1-1,1,60',
+    '5,1,L,1,1-1,0,0',
+    '6,1,T,2,1-3,1,60',
+    '4,1,T,1,1-2,2,55',
+    '8,1,T,1,GONE,0,0',
+    '2,2,T,1,2-1,0,0',
+  ].join('\n'),
+  'preempt.txt': [
+    'preempt_channel,signalID,type,phase,maxTime',
+    '1,1,RAIL,2,180',
+    '1,1,RAIL,6,180',
+    '3,1,EVP,4,120',
+    '2,9,RAIL,2,90',
+  ].join('\n'),
+};
+
+test('a signal comes back with its approaches, its phases and its name', () => {
+  const directory = buildPhaseDirectory(SIGNAL);
+  assert.deepEqual(directory.signals, ['1', '2']);
+  const one = directory.bySignal.get('1');
+  assert.equal(one.name, 'Main St & 1st Ave');
+  assert.equal(one.approaches.length, 3);
+  assert.equal(one.latitude, 37.9);
+  // Phases come back in order whatever order the file listed them in.
+  assert.deepEqual(one.phases.map((p) => p.phase), [2, 4, 5, 6, 8]);
+  assert.equal(one.approaches.find((a) => a.approachId === '1-2').freeRight, 1);
+  assert.equal(one.phases.find((p) => p.phase === 4).pedX, 2);
+});
+
+test('a phase naming an approach the export does not describe is reported', () => {
+  const directory = buildPhaseDirectory(SIGNAL);
+  // It is kept, because it is real and it is in the file. A diagram quietly
+  // missing phase 8 is worse than one that says phase 8 could not be placed.
+  assert.ok(directory.bySignal.get('1').phases.some((p) => p.phase === 8));
+  assert.ok(directory.warnings.some((w) => w.includes('no bearing')), directory.warnings.join(' '));
+});
+
+test('handedness is read from the export rather than assumed', () => {
+  assert.equal(buildPhaseDirectory(SIGNAL).isLht, false);
+  const lht = buildPhaseDirectory({
+    ...SIGNAL,
+    'agency.txt': 'agency_id,agency_name,agency_islht\nA,Test City,true',
+  });
+  assert.equal(lht.isLht, true);
+  // Some exports write it as a flag rather than a word.
+  assert.equal(buildPhaseDirectory({
+    ...SIGNAL, 'agency.txt': 'agency_id,agency_islht\nA,1',
+  }).isLht, true);
+});
+
+test('a preempt channel is joined to the approach its phases run on', () => {
+  const one = buildPhaseDirectory(SIGNAL).bySignal.get('1');
+  assert.deepEqual(one.preempts.map((p) => p.channel), [1, 3]);
+  const rail = one.preempts[0];
+  // Two rows, one channel: the second row adds its phase rather than a
+  // second channel of the same number.
+  assert.deepEqual(rail.phases, [2, 6]);
+  assert.equal(rail.type, 'RAIL');
+  assert.equal(rail.maxTime, 180);
+  // Phases 2 and 6 are on opposite legs of Main Street, so the channel
+  // genuinely serves two approaches and both are kept.
+  assert.deepEqual(rail.approachIds, ['1-1', '1-3']);
+  assert.deepEqual(one.preempts[1].approachIds, ['1-2']);
+});
+
+test('a preempt row for a signal the export does not describe is dropped', () => {
+  const directory = buildPhaseDirectory(SIGNAL);
+  assert.equal(directory.bySignal.has('9'), false);
+  assert.equal(directory.preemptCount, 2, 'the orphan channel was counted');
+  assert.deepEqual(directory.bySignal.get('2').preempts, []);
+});
+
+test('an export with no preempt.txt is not an export with a problem', () => {
+  const { 'preempt.txt': gone, ...rest } = SIGNAL;
+  const directory = buildPhaseDirectory(rest);
+  assert.equal(directory.preemptCount, 0);
+  assert.deepEqual(directory.bySignal.get('1').preempts, []);
+  assert.equal(
+    directory.warnings.some((w) => w.includes('preempt')), false,
+    'a missing preempt.txt was reported as a fault',
+  );
+});
+
+test('buildPhaseDirectory says so when it has nothing to work with', () => {
+  const none = buildPhaseDirectory({});
+  assert.deepEqual(none.signals, []);
+  assert.match(none.warnings.join(' '), /no approaches\.txt/);
+  assert.deepEqual(buildPhaseDirectory(null).signals, [], 'null is not a crash');
 });

@@ -175,6 +175,11 @@ export function datasetStats(images, { warnBelowPx = 8 } = {}) {
     annotated: 0,
     negative: 0,
     pending: 0,
+    // Unreviewed images that nonetheless carry boxes -- drawn, or carried over
+    // from the previous frame, but never confirmed. They are the ones the
+    // export leaves out that the person is most likely to expect in it.
+    pendingBoxed: 0,
+    pendingBoxes: 0,
     boxes: 0,
     tiny: 0,
   };
@@ -185,22 +190,66 @@ export function datasetStats(images, { warnBelowPx = 8 } = {}) {
     for (const box of image.boxes || []) {
       if (box.w < warnBelowPx || box.h < warnBelowPx) stats.tiny += 1;
     }
-    if (!image.reviewed) stats.pending += 1;
-    else if (boxCount > 0) stats.annotated += 1;
+    if (!image.reviewed) {
+      stats.pending += 1;
+      if (boxCount > 0) {
+        stats.pendingBoxed += 1;
+        stats.pendingBoxes += boxCount;
+      }
+    } else if (boxCount > 0) stats.annotated += 1;
     else stats.negative += 1;
   }
   return stats;
 }
 
 /**
- * The images that belong in the dataset.
+ * The images that belong in the dataset: the ones somebody confirmed.
  *
- * Unreviewed images are excluded unless explicitly opted in: exporting them as
- * negatives would teach the detector that traffic signals are background, and
- * the damage is invisible until the model underperforms.
+ * An image is confirmed by marking it reviewed (with boxes) or marking it as
+ * having no signals. Drawing a box does not confirm it. Anything else is left
+ * out, with no way to opt in, because there is no safe way to ship it:
+ *
+ *   - Unreviewed with no boxes would be written as an empty label file, i.e. a
+ *     negative sample. If it actually contains a signal head, that teaches the
+ *     detector signals are background, and the damage is invisible until the
+ *     model underperforms.
+ *   - Unreviewed with boxes would ship labels nobody has checked -- including
+ *     boxes merely copied forward from the previous frame.
+ *
+ * This used to take an `includeUnreviewed` option. It is gone on purpose, and
+ * a caller that still passes it is ignored rather than obeyed.
  */
-export function selectExportImages(images, { includeUnreviewed = false } = {}) {
-  return (images || []).filter((image) => image.reviewed || includeUnreviewed);
+export function selectExportImages(images) {
+  return (images || []).filter((image) => image.reviewed);
+}
+
+/**
+ * What the export panel says about the images it is leaving out.
+ *
+ * `note` is for every unreviewed image; `warning` is only for the ones with
+ * boxes on them. Both are about the same fact -- unreviewed images are not
+ * exported -- but the two kinds are not equally surprising. One with nothing
+ * drawn on it is plainly unfinished. One with boxes on it looks finished, and
+ * is the one a person forgets to confirm and then wonders where it went.
+ *
+ * Counts go in, sentences come out, so the singular cases are testable. The
+ * warning is phrased from `pendingBoxed` alone and never from `pending`:
+ * "1 of it has" is what you get by pluralising against the wrong total.
+ */
+export function describeLeftOut({ pending = 0, pendingBoxed = 0, pendingBoxes = 0 } = {}) {
+  if (!pending) return { note: '', warning: '' };
+  const plural = (n, one, many) => (n === 1 ? one : many);
+
+  const note = `${pending} unreviewed ${plural(pending, 'image is', 'images are')} not in the dataset. `
+    + 'Only images you have confirmed are exported: ones with boxes that you marked reviewed, '
+    + 'and ones you marked as having no signals.';
+  if (!pendingBoxed) return { note, warning: '' };
+
+  const warning = `${pendingBoxed} unreviewed ${plural(pendingBoxed, 'image has', 'images have')} `
+    + `boxes drawn (${pendingBoxes} in all) but ${plural(pendingBoxed, 'was', 'were')} never marked reviewed, `
+    + `so ${plural(pendingBoxed, 'it is', 'they are')} left out, boxes and all. `
+    + `Press Enter or R on ${plural(pendingBoxed, 'it', 'each')} to include ${plural(pendingBoxed, 'it', 'them')}.`;
+  return { note, warning };
 }
 
 export function buildReadme({ className, counts, stats, generatedAt = new Date() }) {

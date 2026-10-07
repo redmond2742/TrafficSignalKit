@@ -45,10 +45,16 @@
             Images you review and find no signals in are worth keeping. They
             export as a <b>negative sample</b> &mdash; an empty label file
             &mdash; which teaches the detector what is <i>not</i> a signal.
-            That is why unreviewed images are excluded from the export by
-            default: shipping them as negatives would quietly teach the model
-            that traffic signals are background, and you would not find out
-            until the model underperformed.
+            That is why unreviewed images are never exported: shipping them as
+            negatives would quietly teach the model that traffic signals are
+            background, and you would not find out until the model
+            underperformed.
+            <br /><br />
+            <b>Drawing a box does not mark an image reviewed.</b> Press
+            <kbd>Enter</kbd> (or <kbd>R</kbd>) to confirm an image, or
+            <kbd>N</kbd> if it has no signals. An image with boxes on it that
+            was never confirmed stays out of the dataset, boxes and all &mdash;
+            the export panel counts them for you before you download.
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -421,11 +427,11 @@
             </span>
           </div>
           <div class="stat-tile">
-            <span class="stat-value">{{ stats.boxes }}</span>
-            <span class="stat-label">Boxes</span>
+            <span class="stat-value">{{ exportStats.boxes }}</span>
+            <span class="stat-label">Boxes in dataset</span>
           </div>
           <div class="stat-tile">
-            <span class="stat-value">{{ stats.negative }}</span>
+            <span class="stat-value">{{ exportStats.negative }}</span>
             <span class="stat-label">Negative samples</span>
           </div>
           <div class="stat-tile">
@@ -434,22 +440,14 @@
           </div>
         </div>
 
-        <v-switch
-          v-model="includeUnreviewed"
-          color="warning"
-          density="compact"
-          hide-details
-          :label="`Include the ${stats.pending} unreviewed image(s) as negative samples`"
-        />
-        <p v-if="includeUnreviewed && stats.pending" class="warning-text">
-          Unreviewed images will be exported with empty label files. If any of
-          them actually contain signal heads, you are teaching the detector that
-          signals are background.
-        </p>
+        <!-- Not a switch. There is no safe way to ship an image nobody
+             confirmed, so the export leaves them out and says so. -->
+        <p v-if="leftOut.note" class="note-text">{{ leftOut.note }}</p>
+        <p v-if="leftOut.warning" class="warning-text">{{ leftOut.warning }}</p>
         <p v-if="ratioWarning" class="warning-text">{{ ratioWarning }}</p>
         <p v-if="emptySplitWarning" class="warning-text">{{ emptySplitWarning }}</p>
-        <p v-if="stats.tiny" class="note-text">
-          {{ stats.tiny }} box(es) are smaller than {{ warnBelowPx }} px. They are still exported
+        <p v-if="exportStats.tiny" class="note-text">
+          {{ exportStats.tiny }} box(es) are smaller than {{ warnBelowPx }} px. They are still exported
           &mdash; this is a prompt to check them, not an error.
         </p>
         <p v-if="exportError" class="error-message">{{ exportError }}</p>
@@ -542,6 +540,7 @@ import {
   assignSplits,
   datasetStats,
   selectExportImages,
+  describeLeftOut,
 } from "../utils/yoloDataset";
 import { crc32, crc32Update, crc32Finish, CRC32_INIT, zipBlob, assertZipLimits } from "../utils/zipWriter";
 import {
@@ -598,7 +597,6 @@ export default {
       splitSeed: "",
       groupSplit: true,
       warnBelowPx: 8,
-      includeUnreviewed: false,
 
       exporting: false,
       exportProgress: 0,
@@ -669,8 +667,22 @@ export default {
           previous.height === current.height,
       );
     },
+    /** What the zip will actually hold -- not what is on screen. */
+    exportStats() {
+      return datasetStats(selectExportImages(this.images), { warnBelowPx: this.warnBelowPx });
+    },
+    /**
+     * What the export leaves out, and the part of it worth a warning.
+     *
+     * Every unreviewed image is left out, but the two kinds are not equally
+     * surprising: one with nothing drawn on it is plainly unfinished, while
+     * one with boxes on it looks finished and is easy to forget to confirm.
+     */
+    leftOut() {
+      return describeLeftOut(this.stats);
+    },
     exportPlan() {
-      const chosen = selectExportImages(this.images, { includeUnreviewed: this.includeUnreviewed });
+      const chosen = selectExportImages(this.images);
       const bases = dedupeBasenames(chosen.map((image) => image.name));
       const { counts } = assignSplits(bases, {
         valRatio: this.valRatio,
@@ -1732,7 +1744,7 @@ export default {
       this.exportStatus = "";
     },
     async exportDataset() {
-      const chosen = selectExportImages(this.images, { includeUnreviewed: this.includeUnreviewed });
+      const chosen = selectExportImages(this.images);
       if (!chosen.length) return;
 
       this.exportError = "";

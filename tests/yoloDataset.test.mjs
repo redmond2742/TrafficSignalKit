@@ -13,6 +13,7 @@ import {
   assignSplits,
   datasetStats,
   selectExportImages,
+  describeLeftOut,
 } from '../src/utils/yoloDataset.js';
 
 test('toYoloLine normalizes to the image size', () => {
@@ -183,10 +184,50 @@ test('datasetStats separates annotated, negative and pending', () => {
   assert.equal(stats.tiny, 1, 'the 4 px box is flagged, not deleted');
 });
 
-test('unreviewed images are excluded from export unless asked for', () => {
+// Unreviewed images with boxes on them. They look finished, which is exactly
+// why they are the ones that get forgotten.
+const withPendingBoxes = [
+  ...images,
+  { name: 'e.jpg', reviewed: false, boxes: [{ x: 0, y: 0, w: 30, h: 30 }, { x: 40, y: 0, w: 30, h: 30 }] },
+  { name: 'f.jpg', reviewed: false, boxes: [{ x: 0, y: 0, w: 30, h: 30 }] },
+];
+
+test('datasetStats counts unreviewed images that have boxes drawn on them', () => {
+  const stats = datasetStats(withPendingBoxes, { warnBelowPx: 8 });
+  assert.equal(stats.pending, 3, 'c, e and f were never confirmed');
+  assert.equal(stats.pendingBoxed, 2, 'e and f have boxes; c does not');
+  assert.equal(stats.pendingBoxes, 3, 'two on e, one on f');
+  // The reviewed ones are not pending, whatever they carry.
+  const plain = datasetStats(images, { warnBelowPx: 8 });
+  assert.equal(plain.pendingBoxed, 0);
+  assert.equal(plain.pendingBoxes, 0);
+});
+
+test('unreviewed images are never exported', () => {
   assert.equal(selectExportImages(images).length, 3);
   assert.ok(!selectExportImages(images).some((i) => i.name === 'c.jpg'));
-  assert.equal(selectExportImages(images, { includeUnreviewed: true }).length, 4);
+});
+
+test('an unreviewed image is left out even when it has boxes on it', () => {
+  // Drawing a box does not confirm an image. Shipping its labels would be
+  // shipping boxes nobody checked -- possibly just copied from the last frame.
+  const chosen = selectExportImages(withPendingBoxes).map((i) => i.name);
+  assert.deepEqual(chosen, ['a.jpg', 'b.jpg', 'd.jpg']);
+});
+
+test('a negative sample is exported, and an image with boxes marked reviewed is too', () => {
+  // The two ways to confirm an image. Without this the filter could be
+  // tightened to "has boxes" and the negatives would silently vanish.
+  const chosen = selectExportImages(withPendingBoxes).map((i) => i.name);
+  assert.ok(chosen.includes('b.jpg'), 'reviewed with no boxes is a negative sample');
+  assert.ok(chosen.includes('a.jpg'), 'reviewed with boxes is annotated');
+});
+
+test('the old includeUnreviewed option is ignored, not obeyed', () => {
+  // It used to opt unreviewed images in. It must not come back by way of a
+  // caller that still passes it.
+  const chosen = selectExportImages(withPendingBoxes, { includeUnreviewed: true });
+  assert.deepEqual(chosen.map((i) => i.name), ['a.jpg', 'b.jpg', 'd.jpg']);
 });
 
 // --- Three-way train / val / test split -------------------------------------
@@ -273,4 +314,42 @@ test('data.yaml only declares a test path when there is a test split', () => {
   assert.match(withTest, /^nc: 1$/m);
   // Order matters to some readers: paths before the class block.
   assert.ok(withTest.indexOf('test: images/test') < withTest.indexOf('nc: 1'));
+});
+
+// --- What the export panel says about what it leaves out ----------------------
+test('nothing unreviewed means nothing to say', () => {
+  const allConfirmed = images.filter((image) => image.reviewed);
+  assert.equal(allConfirmed.length, 3, 'the fixture lost its reviewed images');
+  assert.deepEqual(describeLeftOut(datasetStats(allConfirmed)), { note: '', warning: '' });
+  assert.deepEqual(describeLeftOut(), { note: '', warning: '' }, 'no stats at all is not a crash');
+});
+
+test('unreviewed images with no boxes get a note and no warning', () => {
+  const said = describeLeftOut({ pending: 4, pendingBoxed: 0, pendingBoxes: 0 });
+  assert.match(said.note, /^4 unreviewed images are not in the dataset/);
+  assert.equal(said.warning, '', 'an untouched image is plainly unfinished, not a surprise');
+});
+
+test('unreviewed images with boxes get the warning, with both counts in it', () => {
+  const said = describeLeftOut({ pending: 3, pendingBoxed: 2, pendingBoxes: 5 });
+  assert.match(said.warning, /^2 unreviewed images have boxes drawn \(5 in all\)/);
+  assert.match(said.warning, /left out, boxes and all/);
+  assert.match(said.warning, /Press Enter or R on each to include them/);
+});
+
+test('one image reads as one image, in the note and in the warning', () => {
+  // The case that went wrong first: pluralising the warning against the wrong
+  // total produced "1 of it has".
+  const said = describeLeftOut({ pending: 1, pendingBoxed: 1, pendingBoxes: 1 });
+  assert.match(said.note, /^1 unreviewed image is not in the dataset/);
+  assert.match(said.warning, /^1 unreviewed image has boxes drawn \(1 in all\) but was never marked reviewed/);
+  assert.match(said.warning, /so it is left out/);
+  assert.match(said.warning, /Press Enter or R on it to include it\./);
+  assert.ok(!/of it|of them/.test(said.warning), `pluralised against the wrong total: ${said.warning}`);
+});
+
+test('the warning is about the boxed images, however many others are unreviewed', () => {
+  const few = describeLeftOut({ pending: 1, pendingBoxed: 1, pendingBoxes: 1 }).warning;
+  const many = describeLeftOut({ pending: 40, pendingBoxed: 1, pendingBoxes: 1 }).warning;
+  assert.equal(few, many);
 });

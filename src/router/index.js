@@ -19,6 +19,7 @@ import PreemptionEvaluator from '../views/PreemptionEvaluator'
 import SingleLoopSpeedEstimator from '../views/SingleLoopSpeedEstimator'
 import UnusedGreenTime from '../views/UnusedGreenTime'
 import PhaseDiagram from '../views/PhaseDiagram'
+import TspTimingCalculator from '../views/TspTimingCalculator'
 import HighResEnumerationMatrix from '../views/HighResEnumerationMatrix'
 import Reference from '../views/Reference'
 import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
@@ -180,6 +181,11 @@ const routes = [
         path: '/phase-diagram',
         name: 'phaseDiagram',
         component: PhaseDiagram,
+    },
+    {
+        path: '/tsp-timing-calculator',
+        name: 'tspTimingCalculator',
+        component: TspTimingCalculator,
     },
     {
         path: '/single-loop-speed-estimator',

@@ -167,6 +167,12 @@ export const routeMeta = {
       "Draw NEMA phase diagrams and preempt channels from approach bearings and movements, then tile them 2x2 up to 10x10 on a 30-inch vector PDF.",
     path: "/phase-diagram",
   },
+  tspTimingCalculator: {
+    title: "TSP Timing Calculator | TSD & TED for Transit Priority",
+    description:
+      "Work out Time of Service Desired and Time of Estimated Departure for transit signal priority, for emitter, cloud or video detection.",
+    path: "/tsp-timing-calculator",
+  },
   unusedGreenTime: {
     title: "Unused Green Time | Find Wasted Green by Phase and Cycle",
     description:

@@ -42,7 +42,9 @@ export default defineConfig({
     ],
   },
   server: {
-    port: 3000,
+    // 3000 unless a launcher assigns a port, as the desktop app's preview does
+    // when 3000 is taken by another project's dev server.
+    port: Number(process.env.PORT) || 3000,
     watch:{
       usePolling: true,
     },

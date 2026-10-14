@@ -113,9 +113,9 @@ export const TOOLS = [
     title: "Unused Green Time",
     navTitle: "Unused Green",
     description:
-      "Find green served to an empty intersection, by phase and by cycle",
+      "Wasted green under heavy volume and the wait for green under light volume, cycle by cycle",
     image: "/images/unused-green-time.webp",
-    topics: ["Detectors", "Controller Data", "Phases", "Pedestrians"],
+    topics: ["Detectors", "Controller Data", "Phases", "Pedestrians", "Delay"],
     group: "data",
   },
   {

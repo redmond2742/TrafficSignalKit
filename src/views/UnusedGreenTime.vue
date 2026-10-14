@@ -8,32 +8,78 @@
         <v-expansion-panel title="About: Unused Green Time" value="about">
           <v-expansion-panel-text>
             <p>
-              A phase is green and nothing is over its detectors. Nothing is
-              crossing, nothing is waiting, and every second of it is time
-              some other movement could have had. This finds those seconds,
-              cycle by cycle and phase by phase, so the ones worth changing
-              are easy to pick out.
+              Green time is only useful while somebody is using it. This looks
+              at every green of every phase two ways, one for each end of the
+              day, and draws each cycle as a single bar with every phase
+              stacked in it, so a bad cycle, a bad phase and a bad hour are all
+              easy to pick out.
             </p>
-            <p class="mt-2">
-              Two shapes of it are counted, and the second usually goes
-              unnoticed:
-            </p>
-            <ul>
+            <ul class="mt-2">
               <li>
-                <b>Quiet green</b> &mdash; a gap in the platoon, an over-long
-                minimum, a phase served with no demand behind it.
+                <b>Heavy volume &mdash; wasted green.</b> With traffic waiting
+                everywhere, a phase should end as soon as it has nothing left to
+                serve. Green that runs on past its last vehicle and past its
+                pedestrian phase is green some other movement was queued for.
               </li>
               <li>
-                <b>Green held past a finished pedestrian phase</b> &mdash; the
-                walk and clearance are over, the don't-walk is solid, and the
-                green runs on with nothing on the detectors until yellow.
-                Those seconds have a cause and usually a fix.
+                <b>Light volume &mdash; the wait for green.</b> With the roads
+                nearly empty, a lone vehicle should get green almost as soon as
+                it arrives. This times how long the first vehicle to arrive on
+                red waited for it.
               </li>
             </ul>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+
+        <v-expansion-panel title="Heavy Volume: Wasted Green" value="heavy">
+          <v-expansion-panel-text>
+            <p>
+              For each green, the tool finds when it was last used: the later
+              of the last detector going off (plus the clearance allowance, for
+              the vehicle still crossing) and the end of the pedestrian phase
+              (solid don't walk). Everything from there to yellow is counted as
+              wasted.
+            </p>
             <p class="mt-2">
-              The second is part of the first, not a separate total: it is the
-              share of the same idle time that fell after the ped phase
-              finished.
+              Gaps in the middle of a green are not counted &mdash; only the
+              tail, after the last use. A tail shorter than the
+              <i>shortest tail worth counting</i> is how an actuated phase gaps
+              out after its last vehicle, and is left out.
+            </p>
+            <p class="mt-2">
+              Where the controller logged it, each green also says how it
+              ended: gap out, max out or force off. A long wasted tail ending in
+              a force off usually means coordination holding the phase; one
+              ending in a max out usually means a detector still calling.
+            </p>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+
+        <v-expansion-panel title="Light Volume: The Wait for Green" value="light">
+          <v-expansion-panel-text>
+            <p>
+              A phase's red starts when its yellow ends (event 9, or the start
+              of the yellow if 9 is not logged). The first detector to come on
+              after that is the first vehicle to arrive and stop. Its wait runs
+              from then until the phase goes green again.
+            </p>
+            <p class="mt-2">
+              If a detector is already occupied when red begins, the wait is
+              counted from the start of red and marked
+              <i>already waiting</i>: a vehicle that stopped on yellow, or a
+              detector stuck on. A phase marked like that every cycle is worth
+              a look.
+            </p>
+            <p class="mt-2">
+              A green with no call during the red before it has no wait. Those
+              greens are counted separately as <i>no call on red</i>: the phase
+              came back on a recall, a pedestrian call or coordination, which
+              at low volume is usually green nobody needed.
+            </p>
+            <p class="mt-2">
+              The wait should be short. Coordination holding the main street,
+              long minimum greens elsewhere, or a stuck detector calling a
+              phase nobody is waiting at all make it long.
             </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -44,37 +90,28 @@
               This estimates. A quiet detector means no vehicle was
               <i>detected</i>, which is not quite the same as no vehicle being
               there: a failed loop, a camera zone that does not reach, or a
-              movement with no detection at all will all read as idle when
+              movement with no detection at all will all read as unused when
               they are not.
             </p>
             <p class="mt-2">
               A phase with <b>no channels assigned is left out entirely</b>
-              rather than reported as wholly idle. A phase nothing is known
-              about is not a phase with no traffic.
+              rather than reported as wholly unused. A phase nothing is known
+              about is not a phase with no traffic. Its greens still mark where
+              each cycle begins.
             </p>
             <p class="mt-2">
-              The two settings are the assumptions, and they are on the page
-              rather than buried in the code:
+              A cycle begins with a green, and the next one begins when a phase
+              already served in it goes green again &mdash; the same rule as the
+              <router-link to="/delay-estimator">Delay &amp; Count Estimator</router-link>.
+              It needs no coordination plan, so free-running signals work too.
             </p>
-            <ul>
-              <li>
-                <b>Clearance allowance</b> &mdash; a detector releases as the
-                rear bumper leaves the loop, and the vehicle is still in the
-                intersection for a second or two after. Without this every
-                platoon reads as a string of tiny idle gaps.
-              </li>
-              <li>
-                <b>Shortest gap worth counting</b> &mdash; the spacing inside
-                a platoon is idle in the arithmetic but is not time anyone can
-                reclaim. Raising this counts only gaps long enough to matter.
-              </li>
-            </ul>
             <p class="mt-2">
-              Stop-bar detection answers this question best. An advance
+              Stop-bar detection answers both questions best. An advance
               detector fired seconds ago for a vehicle that may already be
-              through, so a phase detected only in advance will read as idler
-              than it is. A GTSS export records each channel's purpose, and
-              the tool says when it is relying on advance detection.
+              through, so a phase detected only in advance will show more
+              wasted green than it really had. A GTSS export records each
+              channel's purpose, and the tool says when it is relying on
+              advance detection.
             </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -87,7 +124,11 @@
               </thead>
               <tbody>
                 <tr><td>1</td><td>Begin green</td><td>phase</td></tr>
+                <tr><td>4</td><td>Gap out</td><td>phase</td></tr>
+                <tr><td>5</td><td>Max out</td><td>phase</td></tr>
+                <tr><td>6</td><td>Force off</td><td>phase</td></tr>
                 <tr><td>8</td><td>Begin yellow clearance</td><td>phase</td></tr>
+                <tr><td>9</td><td>End yellow clearance</td><td>phase</td></tr>
                 <tr><td>21</td><td>Ped begin walk</td><td>phase</td></tr>
                 <tr><td>22</td><td>Ped begin clearance</td><td>phase</td></tr>
                 <tr><td>23</td><td>Ped begin solid don't walk</td><td>phase</td></tr>
@@ -96,9 +137,9 @@
               </tbody>
             </v-table>
             <p class="mt-2">
-              A green runs from 1 to the 8 that ends it. The pedestrian phase
-              is over at 23. Everything else in the file is discarded as it is
-              read.
+              A green runs from 1 to the 8 that ends it, and red from the 9
+              after that. The pedestrian phase is over at 23. Everything else
+              in the file is discarded as it is read.
             </p>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -111,11 +152,16 @@
 3/14/2024 07:15:00.0, 1, 2      phase 2 goes green
 3/14/2024 07:15:02.0, 82, 5     a vehicle arrives
 3/14/2024 07:15:03.0, 81, 5     and leaves
-3/14/2024 07:15:04.0, 23, 2     the ped phase finishes
-3/14/2024 07:15:40.0, 8, 2      yellow, 33 seconds later
+3/14/2024 07:15:20.0, 23, 2     the ped phase finishes
+3/14/2024 07:15:40.0, 8, 2      yellow
+3/14/2024 07:15:44.0, 9, 2      red
+3/14/2024 07:16:10.0, 82, 5     a vehicle arrives on red
+3/14/2024 07:16:30.0, 1, 2      phase 2 goes green again
             </pre>
-            With channel 5 on phase 2, that cycle reports roughly 33 seconds
-            of unused green, nearly all of it after the ped phase ended.
+            With channel 5 on phase 2: under <b>heavy volume</b> the first
+            green wasted 20 seconds, from the end of the ped phase to yellow.
+            Under <b>light volume</b> the second green kept its first arrival
+            waiting 20 seconds.
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
@@ -205,7 +251,9 @@
       <div class="setup-card__head">
         <h2 class="setup-card__title">Settings</h2>
         <p class="setup-card__hint">
-          These are the assumptions. Both apply to every signal below.
+          These are the assumptions, and they apply to every signal below.
+          Both shape the heavy-volume count; the light-volume wait is timed
+          straight from the detectors and uses neither.
         </p>
       </div>
       <div class="settings-row">
@@ -223,7 +271,7 @@
         <v-text-field
           v-model.number="minGapSeconds"
           type="number"
-          label="Shortest gap worth counting (s)"
+          label="Shortest tail worth counting (s)"
           min="0"
           step="0.5"
           density="compact"
@@ -304,7 +352,7 @@
         Add another signal
       </v-btn>
       <v-btn color="primary" :loading="processing" :disabled="!hasInput" @click="evaluate">
-        Find Unused Green
+        Analyze
       </v-btn>
       <v-btn v-if="allRows.length" variant="tonal" @click="downloadCsv">
         Download CSV
@@ -321,6 +369,41 @@
         {{ scanNote }}
       </v-alert>
 
+      <div class="mode-row">
+        <v-btn-toggle
+          v-model="mode"
+          mandatory
+          divided
+          variant="outlined"
+          color="primary"
+          class="mode-toggle"
+        >
+          <v-btn value="heavy">Heavy volume<span class="mode-sub">&nbsp;&middot; wasted green</span></v-btn>
+          <v-btn value="light">Light volume<span class="mode-sub">&nbsp;&middot; wait for green</span></v-btn>
+        </v-btn-toggle>
+        <v-select
+          v-if="multiSignal"
+          v-model="selectedSignal"
+          :items="signalOptions"
+          label="Signal"
+          density="compact"
+          variant="outlined"
+          hide-details
+          class="setting setting--select"
+        ></v-select>
+      </div>
+      <p class="chart-hint">
+        <template v-if="heavy">
+          Green left over after the last vehicle and the pedestrian phase were
+          done with it. When everyone is queued, this is time another movement
+          could have had.
+        </template>
+        <template v-else>
+          How long the first vehicle to arrive on red waited for green. On an
+          empty road this should be short.
+        </template>
+      </p>
+
       <div class="metric-row">
         <div v-for="metric in metrics" :key="metric.label" class="metric-tile">
           <div class="metric-value">{{ metric.value }}</div>
@@ -328,49 +411,42 @@
         </div>
       </div>
 
-      <h2 class="section-title">Where the green goes</h2>
-      <div class="chart-controls">
-        <v-btn-toggle
-          v-model="chartMode"
-          mandatory
-          divided
-          density="compact"
-          variant="outlined"
-          color="primary"
-        >
-          <v-btn value="phase" size="small">By phase</v-btn>
-          <v-btn value="cycle" size="small">Cycle by cycle</v-btn>
-        </v-btn-toggle>
-        <v-select
-          v-if="chartMode === 'cycle' && seriesOptions.length > 1"
-          v-model="selectedSeries"
-          :items="seriesOptions"
-          label="Signal and phase"
-          density="compact"
-          variant="outlined"
-          hide-details
-          class="setting setting--select"
-        ></v-select>
-      </div>
+      <h2 class="section-title">
+        {{ heavy ? "Wasted green, cycle by cycle" : "Wait for green, cycle by cycle" }}
+      </h2>
       <p class="chart-hint">
-        <template v-if="chartMode === 'phase'">
-          Each bar is one phase at one signal, split into the green that was
-          used and the green that was not. The darker part of the unused
-          share is the time that ran on after a pedestrian phase had already
-          finished.
+        One bar per cycle, read top to bottom through the day. Each phase is
+        its own colour, with its seconds written on it when there is room, and
+        the cycle's total is at the end of the bar. Phases that run together,
+        like 2 and 6, each add their own seconds, so a total can be longer
+        than the cycle. Click a phase below to hide or show it.
+        <template v-if="!heavy">
+          An outlined segment had a call already waiting when its red began: a
+          vehicle that stopped on yellow, or, every cycle, a detector stuck on.
         </template>
-        <template v-else>
-          One bar per cycle, so a phase that wastes a little every cycle is
-          told apart from one that wastes a lot occasionally. The two are
-          different problems with different fixes.
-          <span v-if="cycleRows.length < seriesCycleCount">
-            Showing the first {{ num(cycleRows.length) }} of
-            {{ num(seriesCycleCount) }} cycles; the table below has them all.
-          </span>
-        </template>
+        <span v-if="chartCycles.length < activeCycles.length">
+          Showing the first {{ num(chartCycles.length) }} of
+          {{ num(activeCycles.length) }} cycles; the tables have them all.
+        </span>
       </p>
-      <div class="chart-wrapper" :style="{ height: chartHeight + 'px' }">
-        <Bar ref="chart" :data="chartData" :options="chartOptions" />
+      <div class="phase-legend" role="group" aria-label="Phases in the chart">
+        <button
+          v-for="phase in activePhases"
+          :key="phase"
+          type="button"
+          class="phase-chip"
+          :class="{ 'phase-chip--off': hiddenPhases.includes(phase) }"
+          :aria-pressed="!hiddenPhases.includes(phase)"
+          @click="togglePhase(phase)"
+        >
+          <i class="phase-swatch" :style="{ background: phaseColor(phase) }"></i>
+          Phase {{ phase }}
+        </button>
+      </div>
+      <div class="cycle-scroll">
+        <div class="chart-wrapper" :style="{ height: chartHeight + 'px' }">
+          <Bar :data="chartData" :options="chartOptions" :plugins="chartPlugins" />
+        </div>
       </div>
 
       <h2 class="section-title">Phase summary</h2>
@@ -378,83 +454,55 @@
       <v-data-table
         :headers="phaseHeaders"
         :items="phaseRows"
-        :items-per-page="15"
+        :items-per-page="16"
+        :sort-by="[{ key: heavy ? 'wasteMs' : 'p85DelayMs', order: 'desc' }]"
         density="compact"
       >
-        <template #item.idleMs="{ item }">{{ secs(item.idleMs) }}</template>
-        <template #item.idleShare="{ item }">
+        <template #item.greenMs="{ item }">{{ secs(item.greenMs) }}</template>
+        <template #item.wasteMs="{ item }">{{ secs(item.wasteMs) }}</template>
+        <template #item.wasteShare="{ item }">
           <div class="share-cell">
-            <div class="share-bar" :style="{ width: `${Math.max(item.idleShare * 100, 1)}%` }"></div>
-            <span class="share-text">{{ percent(item.idleShare) }}</span>
+            <div class="share-bar" :style="{ width: `${Math.max(item.wasteShare * 100, 1)}%` }"></div>
+            <span class="share-text">{{ percent(item.wasteShare) }}</span>
           </div>
         </template>
-        <template #item.perCycleMs="{ item }">{{ secs(item.perCycleMs) }}</template>
-        <template #item.idleAfterPedMs="{ item }">
-          {{ item.idleAfterPedMs ? secs(item.idleAfterPedMs) : "—" }}
-        </template>
-        <template #item.worstIdleMs="{ item }">{{ secs(item.worstIdleMs) }}</template>
-        <template #item.greenMs="{ item }">{{ secs(item.greenMs) }}</template>
+        <template #item.wastePerGreenMs="{ item }">{{ secs(item.wastePerGreenMs) }}</template>
+        <template #item.worstWasteMs="{ item }">{{ secs(item.worstWasteMs) }}</template>
+        <template #item.meanDelayMs="{ item }">{{ secs(item.meanDelayMs) }}</template>
+        <template #item.p85DelayMs="{ item }">{{ secs(item.p85DelayMs) }}</template>
+        <template #item.worstDelayMs="{ item }">{{ secs(item.worstDelayMs) }}</template>
       </v-data-table>
 
-      <h2 class="section-title">Every cycle</h2>
+      <h2 class="section-title">Every green</h2>
       <p class="chart-hint">
-        {{ num(allRows.length) }} greens across every phase. Sort on any
-        column, or narrow to one phase to read a single movement straight
-        down.
+        {{ num(greenTableRows.length) }} greens. Sort on any column, or narrow
+        to one phase to read a single movement straight down.
       </p>
       <div class="chart-controls mb-2">
         <v-select
-          v-model="cyclePhaseFilter"
-          :items="cyclePhaseOptions"
+          v-model="phaseFilter"
+          :items="phaseFilterOptions"
           label="Phase"
           density="compact"
           variant="outlined"
           hide-details
           class="setting setting--select"
         ></v-select>
-        <v-btn
-          v-if="cyclePhaseFilter !== ALL_PHASES"
-          variant="text"
-          size="small"
-          @click="cyclePhaseFilter = ALL_PHASES"
-        >
-          Show every phase
-        </v-btn>
       </div>
       <v-data-table
-        :headers="cycleHeaders"
-        :items="cycleTableRows"
+        :headers="greenHeaders"
+        :items="greenTableRows"
         :items-per-page="25"
-        :sort-by="[{ key: 'idleMs', order: 'desc' }]"
+        :sort-by="[{ key: heavy ? 'wasteMs' : 'delayMs', order: 'desc' }]"
         density="compact"
         class="table-wrapper"
       >
-        <template #item.startMs="{ item }">
-          <span class="nowrap">{{ clock(item.startMs) }}</span>
-        </template>
-        <template #item.greenMs="{ item }">
-          <span class="nowrap">{{ secs(item.greenMs) }}</span>
-        </template>
-        <template #item.idleMs="{ item }">
-          <span class="nowrap">{{ secs(item.idleMs) }}</span>
-        </template>
-        <template #item.idleShare="{ item }">
-          <div class="share-cell">
-            <div
-              class="share-bar"
-              :style="{ width: `${Math.max(item.idleShare * 100, 1)}%` }"
-            ></div>
-            <span class="share-text">{{ percent(item.idleShare) }}</span>
-          </div>
-        </template>
-        <template #item.longestIdleMs="{ item }">
-          <span class="nowrap">{{ secs(item.longestIdleMs) }}</span>
-        </template>
-        <template #item.idleAfterPedMs="{ item }">
-          <span class="nowrap">
-            {{ item.pedServed ? secs(item.idleAfterPedMs) : "—" }}
-          </span>
-        </template>
+        <template #item.startMs="{ item }"><span class="nowrap">{{ clock(item.startMs) }}</span></template>
+        <template #item.redFromMs="{ item }"><span class="nowrap">{{ clock(item.redFromMs) || "—" }}</span></template>
+        <template #item.callMs="{ item }"><span class="nowrap">{{ clock(item.callMs) || "—" }}</span></template>
+        <template #item.greenMs="{ item }"><span class="nowrap">{{ secs(item.greenMs) }}</span></template>
+        <template #item.wasteMs="{ item }"><b class="nowrap">{{ secs(item.wasteMs) }}</b></template>
+        <template #item.delayMs="{ item }"><b class="nowrap">{{ item.delayMs === null ? "—" : secs(item.delayMs) }}</b></template>
       </v-data-table>
     </template>
   </div>
@@ -466,7 +514,6 @@ import {
   Chart as ChartJS,
   Title,
   Tooltip,
-  Legend,
   BarElement,
   LinearScale,
   CategoryScale,
@@ -476,23 +523,67 @@ import InputBox from "../components/foundational/InputBox.vue";
 import { readZipText } from "../utils/zipReader.js";
 import { buildDetectorDirectory } from "../utils/gtss.js";
 import { parseDetectorPhaseMap } from "../utils/singleLoopSpeed.js";
+import { PHASE_COLORS } from "../utils/phaseDiagram.js";
 import {
   DEFAULT_CLEARANCE_SECONDS,
   DEFAULT_MIN_GAP_SECONDS,
+  TERMINATIONS,
   analyzeSignal,
   detectLayout,
   scanGreenRows,
-  summarizePhase,
 } from "../utils/unusedGreen.js";
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, LinearScale, CategoryScale);
+ChartJS.register(Title, Tooltip, BarElement, LinearScale, CategoryScale);
 
-const USED_COLOR = "#00695C";
-const IDLE_COLOR = "#F9A825";
-const PED_COLOR = "#C62828";
 /** Sentinel for the phase filter, so "every phase" is a real selectable value. */
-const ALL_PHASES = "\u0000all";
-const MAX_CHART_CYCLES = 200;
+const ALL_PHASES = "all";
+/**
+ * Pixels per cycle. A day of 90-second cycles is about 960 bars; at this
+ * height that is a long scroll, but every bar keeps room for its numbers.
+ */
+const ROW_PX = 18;
+/**
+ * Browsers will not draw a canvas much taller than 32,767 device pixels, and
+ * a phone at 3x hits that at about 10,000 CSS pixels. Past this many cycles
+ * the chart stops, and the tables carry the rest.
+ */
+const MAX_CHART_CYCLES = 1600;
+const MAX_CANVAS_PX = 30000;
+
+const LAST_USE = { vehicle: "Vehicle", ped: "Ped", nothing: "Nothing" };
+
+/**
+ * Seconds written on the chart: on each phase's segment when it is wide
+ * enough to hold them, and the cycle's total just past the end of its bar.
+ */
+const cycleLabelsPlugin = {
+  id: "cycleLabels",
+  afterDatasetsDraw(chart, args, options) {
+    const totals = options && options.totals;
+    if (!totals) return;
+    const { ctx, scales } = chart;
+    ctx.save();
+    ctx.textBaseline = "middle";
+    ctx.font = "600 10px Helvetica, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffffff";
+    for (const meta of chart.getSortedVisibleDatasetMetas()) {
+      meta.data.forEach((bar, i) => {
+        const value = chart.data.datasets[meta.index].data[i];
+        if (!value || Math.abs(bar.x - bar.base) < 24) return;
+        ctx.fillText(value >= 10 ? value.toFixed(0) : value.toFixed(1), (bar.x + bar.base) / 2, bar.y);
+      });
+    }
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#1f2937";
+    ctx.font = "700 11px Helvetica, Arial, sans-serif";
+    totals.forEach((total, i) => {
+      if (!(total > 0)) return;
+      ctx.fillText(`${total.toFixed(1)} s`, scales.x.getPixelForValue(total) + 4, scales.y.getPixelForValue(i));
+    });
+    ctx.restore();
+  },
+};
 
 export default {
   name: "UnusedGreenTime",
@@ -511,10 +602,11 @@ export default {
       results: [],
       stats: null,
       skipped: [],
-      chartMode: "phase",
-      selectedSeries: null,
-      cyclePhaseFilter: ALL_PHASES,
-      ALL_PHASES,
+      mode: "heavy",
+      selectedSignal: null,
+      hiddenPhases: [],
+      phaseFilter: ALL_PHASES,
+      chartPlugins: [cycleLabelsPlugin],
       gtss: null,
       gtssName: "",
       gtssError: "",
@@ -522,6 +614,9 @@ export default {
     };
   },
   computed: {
+    heavy() {
+      return this.mode === "heavy";
+    },
     hasInput() {
       return this.sources.some((source) => (source.text || "").trim());
     },
@@ -539,7 +634,7 @@ export default {
         : "";
       return `${channels} assigned channels across ${signals} ${signals === 1 ? "signal" : "signals"}${extra}`;
     },
-    /** Phases detected only by advance loops, which read idler than they are. */
+    /** Phases detected only by advance loops, which read as more wasted than they are. */
     advanceOnlyPhases() {
       if (!this.gtss) return [];
       const out = [];
@@ -561,222 +656,225 @@ export default {
     allRows() {
       return this.results.flatMap((result) => result.rows);
     },
-    /**
-     * Every cycle, filtered to one phase if asked.
-     *
-     * Uncapped: this is a paged data table, so a day of eight phases is
-     * thousands of rows the reader walks a page at a time rather than a wall
-     * of them printed at once. The cap that used to sit here silently cut the
-     * list off at 500, which put the answer out of reach on any real file.
-     */
-    cycleTableRows() {
-      if (this.cyclePhaseFilter === ALL_PHASES) return this.allRows;
-      return this.allRows.filter(
-        (row) => this.seriesKey(row.signal, row.phase) === this.cyclePhaseFilter,
-      );
+    signalOptions() {
+      return this.results.map((result) => ({ title: `Signal ${result.label}`, value: result.label }));
     },
-    cyclePhaseOptions() {
-      return [{ title: "Every phase", value: ALL_PHASES }].concat(
-        this.phaseRows.map((row) => ({
-          title: this.multiSignal ? `${row.signal} · phase ${row.phase}` : `Phase ${row.phase}`,
-          value: this.seriesKey(row.signal, row.phase),
-        })),
-      );
+    /** The signal being looked at: cycles belong to one controller, so it is one at a time. */
+    activeResult() {
+      return this.results.find((result) => result.label === this.selectedSignal) || this.results[0] || null;
     },
-    cycleHeaders() {
-      const headers = [];
-      if (this.multiSignal) headers.push({ title: "Signal", key: "signal", align: "start" });
-      return headers.concat([
-        { title: "Phase", key: "phase", align: "start" },
-        { title: "Cycle", key: "cycle" },
-        { title: "Green started", key: "startMs" },
-        { title: "Green", key: "greenMs" },
-        { title: "Unused", key: "idleMs" },
-        { title: "Share", key: "idleShare" },
-        { title: "Longest gap", key: "longestIdleMs" },
-        { title: "After ped", key: "idleAfterPedMs" },
-      ]);
+    activePhases() {
+      return this.activeResult ? this.activeResult.phases.map((entry) => entry.phase) : [];
     },
-    phaseRows() {
-      const rows = [];
-      for (const result of this.results) {
-        for (const entry of result.phases) {
-          rows.push({
-            signal: result.label,
-            phase: entry.phase,
-            cycles: entry.summary.cycles,
-            greenMs: entry.summary.greenMs,
-            idleMs: entry.summary.idleMs,
-            idleShare: entry.summary.idleShare,
-            perCycleMs: entry.summary.cycles ? entry.summary.idleMs / entry.summary.cycles : 0,
-            idleAfterPedMs: entry.summary.idleAfterPedMs,
-            worstIdleMs: entry.summary.worstIdleMs,
-            pedCycles: entry.summary.pedCycles,
-          });
+    visiblePhases() {
+      return this.activePhases.filter((phase) => !this.hiddenPhases.includes(phase));
+    },
+    activeCycles() {
+      return this.activeResult ? this.activeResult.cycles : [];
+    },
+    chartCycles() {
+      return this.activeCycles.slice(0, MAX_CHART_CYCLES);
+    },
+    /** Seconds per phase per cycle, for whichever measure is showing. */
+    cycleValues() {
+      const key = this.heavy ? "waste" : "delay";
+      return this.chartCycles.map((cycle) => {
+        const values = {};
+        for (const phase of this.activePhases) {
+          const ms = cycle[key][phase];
+          values[phase] = ms === undefined ? null : ms / 1000;
         }
-      }
-      return rows.sort((a, b) => b.idleMs - a.idleMs);
+        return values;
+      });
     },
-    phaseHeaders() {
-      const headers = [];
-      if (this.multiSignal) headers.push({ title: "Signal", key: "signal", align: "start" });
-      return headers.concat([
-        { title: "Phase", key: "phase", align: "start" },
-        { title: "Cycles", key: "cycles" },
-        { title: "Green", key: "greenMs", value: (row) => row.greenMs },
-        { title: "Unused", key: "idleMs", value: (row) => row.idleMs },
-        { title: "Share", key: "idleShare" },
-        { title: "Per cycle", key: "perCycleMs", value: (row) => row.perCycleMs },
-        { title: "After ped", key: "idleAfterPedMs", value: (row) => row.idleAfterPedMs },
-        { title: "Worst cycle", key: "worstIdleMs", value: (row) => row.worstIdleMs },
-      ]);
-    },
-    totals() {
-      return summarizePhase(this.allRows);
-    },
-    metrics() {
-      const t = this.totals;
-      return [
-        { label: "Cycles examined", value: this.num(t.cycles) },
-        { label: "Unused green", value: this.secs(t.idleMs) },
-        { label: "Of all green", value: this.percent(t.idleShare) },
-        { label: "After a ped phase", value: this.secs(t.idleAfterPedMs) },
-      ];
-    },
-    seriesOptions() {
-      return this.phaseRows.map((row) => ({
-        title: this.multiSignal ? `${row.signal} · phase ${row.phase}` : `Phase ${row.phase}`,
-        value: this.seriesKey(row.signal, row.phase),
-      }));
-    },
-    activeSeries() {
-      const available = this.seriesOptions.map((option) => option.value);
-      if (this.selectedSeries && available.includes(this.selectedSeries)) return this.selectedSeries;
-      return available[0] ?? null;
-    },
-    /** Every cycle of the selected series, before the chart cap. */
-    seriesCycles() {
-      if (!this.activeSeries) return [];
-      const [signal, phase] = this.activeSeries.split("\u0000");
-      return this.allRows.filter(
-        (row) => row.signal === signal && String(row.phase) === phase,
+    cycleTotals() {
+      return this.cycleValues.map((values) =>
+        this.visiblePhases.reduce((sum, phase) => sum + (values[phase] || 0), 0),
       );
-    },
-    seriesCycleCount() {
-      return this.seriesCycles.length;
-    },
-    cycleRows() {
-      // Capped: a day of 100-second cycles is 800-odd bars, which stops being
-      // a chart and becomes a texture. The count it was cut from is printed
-      // above rather than left for the reader to notice.
-      return this.seriesCycles.slice(0, MAX_CHART_CYCLES);
     },
     chartHeight() {
-      const count = this.chartMode === "phase" ? this.phaseRows.length : this.cycleRows.length;
-      return Math.max(280, Math.min(count, 40) * 26 + 150);
+      return Math.max(160, this.chartCycles.length * ROW_PX + 56);
     },
     chartData() {
-      if (this.chartMode === "phase") {
-        const rows = this.phaseRows;
-        const labels = rows.map((row) =>
-          this.multiSignal ? `${row.signal} · P${row.phase}` : `Phase ${row.phase}`,
-        );
-        return {
-          labels,
-          datasets: [
-            {
-              label: "Green used",
-              data: rows.map((row) => (row.greenMs - row.idleMs) / 1000),
-              backgroundColor: USED_COLOR,
-              stack: "green",
-            },
-            {
-              label: "Unused",
-              data: rows.map((row) => (row.idleMs - row.idleAfterPedMs) / 1000),
-              backgroundColor: IDLE_COLOR,
-              stack: "green",
-            },
-            {
-              label: "Unused after a ped phase",
-              data: rows.map((row) => row.idleAfterPedMs / 1000),
-              backgroundColor: PED_COLOR,
-              stack: "green",
-            },
-          ],
-        };
-      }
-      const rows = this.cycleRows;
       return {
-        labels: rows.map((row) => `${row.cycle}`),
-        datasets: [
-          {
-            label: "Green used",
-            data: rows.map((row) => (row.greenMs - row.idleMs) / 1000),
-            backgroundColor: USED_COLOR,
-            stack: "green",
-          },
-          {
-            label: "Unused",
-            data: rows.map((row) => (row.idleMs - row.idleAfterPedMs) / 1000),
-            backgroundColor: IDLE_COLOR,
-            stack: "green",
-          },
-          {
-            label: "Unused after a ped phase",
-            data: rows.map((row) => row.idleAfterPedMs / 1000),
-            backgroundColor: PED_COLOR,
-            stack: "green",
-          },
-        ],
+        labels: this.chartCycles.map((cycle) => `#${cycle.index}  ${this.time(cycle.startMs)}`),
+        datasets: this.activePhases.map((phase) => ({
+          label: `Phase ${phase}`,
+          phase,
+          data: this.cycleValues.map((values) => values[phase]),
+          backgroundColor: this.phaseColor(phase),
+          // Outlined: the call was already there when red began.
+          borderColor: "#111827",
+          borderWidth: this.chartCycles.map((cycle) =>
+            !this.heavy && cycle.greens[phase] && cycle.greens[phase].standingCall ? 2 : 0,
+          ),
+          stack: "cycle",
+          hidden: this.hiddenPhases.includes(phase),
+          barPercentage: 0.9,
+          categoryPercentage: 0.92,
+        })),
       };
     },
     chartOptions() {
-      const byPhase = this.chartMode === "phase";
-      const rows = byPhase ? this.phaseRows : this.cycleRows;
+      const heavy = this.heavy;
+      const cycles = this.chartCycles;
+      const totals = this.cycleTotals;
       const secs = this.secs;
-      const percent = this.percent;
       const clock = this.clock;
+      const maxTotal = Math.max(1, ...totals);
+      const ratio = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
       return {
         indexAxis: "y",
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
+        devicePixelRatio: Math.min(ratio, MAX_CANVAS_PX / this.chartHeight),
+        layout: { padding: { right: 8 } },
+        interaction: { mode: "index", axis: "y", intersect: false },
         scales: {
           x: {
             stacked: true,
+            position: "top",
             beginAtZero: true,
-            title: { display: true, text: "Seconds of green" },
+            // Room past the longest bar for its total.
+            suggestedMax: maxTotal * 1.15,
+            title: { display: true, text: heavy ? "Seconds of wasted green" : "Seconds waiting for green" },
           },
           y: {
             stacked: true,
-            ticks: { autoSkip: true, maxTicksLimit: 40 },
-            title: { display: true, text: byPhase ? "Phase" : "Cycle" },
+            ticks: { autoSkip: false, font: { size: 10 } },
+            grid: { display: false },
           },
         },
         plugins: {
-          legend: { position: "bottom" },
+          legend: { display: false },
+          cycleLabels: { totals },
           tooltip: {
+            filter: (item) => item.raw !== null && item.raw !== undefined && (item.raw > 0 || !heavy),
             callbacks: {
-              afterBody: (items) => {
-                const row = rows[items[0].dataIndex];
-                if (!row) return [];
-                const lines = [
-                  `Green: ${secs(row.greenMs)}`,
-                  `Unused: ${secs(row.idleMs)} (${percent(row.idleShare)})`,
-                ];
-                if (byPhase) {
-                  lines.push(`Over ${row.cycles} ${row.cycles === 1 ? "cycle" : "cycles"}`);
-                  if (row.pedCycles) lines.push(`${row.pedCycles} served a ped phase`);
-                } else {
-                  lines.push(`Green began ${clock(row.startMs)}`);
-                  lines.push(`Longest single gap: ${secs(row.longestIdleMs)}`);
+              title: (items) => {
+                const cycle = cycles[items[0].dataIndex];
+                if (!cycle) return "";
+                return `Cycle ${cycle.index} · ${clock(cycle.startMs)} · ${secs(cycle.endMs - cycle.startMs)} long`;
+              },
+              label: (item) => {
+                const cycle = cycles[item.dataIndex];
+                const phase = item.dataset.phase;
+                const green = cycle && cycle.greens[phase];
+                const value = `${item.raw.toFixed(1)} s`;
+                if (!green) return `Phase ${phase}: ${value}`;
+                if (heavy) {
+                  const ended = TERMINATIONS[green.termination];
+                  const notes = [`after ${LAST_USE[green.endedBy].toLowerCase()}`];
+                  if (ended) notes.push(ended.toLowerCase());
+                  return `Phase ${phase}: ${value} wasted (${notes.join(", ")})`;
                 }
-                return lines;
+                return `Phase ${phase}: waited ${value}${green.standingCall ? " (already waiting when red began)" : ""}`;
+              },
+              footer: (items) => {
+                const total = totals[items[0].dataIndex];
+                return total ? `Cycle total: ${total.toFixed(1)} s` : "";
               },
             },
           },
         },
       };
+    },
+    activeRows() {
+      return this.activeResult ? this.activeResult.rows : [];
+    },
+    metrics() {
+      const t = this.activeResult ? this.activeResult.totals : null;
+      if (!t) return [];
+      const cycles = this.activeCycles.length;
+      if (this.heavy) {
+        const cycleTotals = this.activeCycles.map((cycle) => cycle.wasteMs);
+        return [
+          { label: "Cycles", value: this.num(cycles) },
+          { label: "Wasted green", value: this.secs(t.wasteMs) },
+          { label: "Per cycle", value: this.secs(cycles ? t.wasteMs / cycles : 0) },
+          { label: "Worst cycle", value: this.secs(Math.max(0, ...cycleTotals)) },
+          { label: "Of all green", value: this.percent(t.wasteShare) },
+        ];
+      }
+      return [
+        { label: "Calls on red", value: this.num(t.calls) },
+        { label: "Average wait", value: this.secs(t.meanDelayMs) },
+        { label: "85th percentile", value: this.secs(t.p85DelayMs) },
+        { label: "Longest wait", value: this.secs(t.worstDelayMs) },
+        { label: "Already waiting at red", value: this.num(t.standingCalls) },
+        { label: "No call on red", value: this.num(t.noCalls) },
+      ];
+    },
+    phaseRows() {
+      if (!this.activeResult) return [];
+      return this.activeResult.phases.map((entry) => {
+        const s = entry.summary;
+        const ended = Object.entries(TERMINATIONS)
+          .filter(([code]) => s.terminations[code])
+          .map(([code, name]) => `${s.terminations[code]} ${name.toLowerCase()}`)
+          .join(", ");
+        return { phase: entry.phase, ...s, ended: ended || "—" };
+      });
+    },
+    phaseHeaders() {
+      const phase = [{ title: "Phase", key: "phase", align: "start" }, { title: "Greens", key: "greens" }];
+      if (this.heavy) {
+        return phase.concat([
+          { title: "Green", key: "greenMs" },
+          { title: "Wasted", key: "wasteMs" },
+          { title: "Share", key: "wasteShare" },
+          { title: "Per green", key: "wastePerGreenMs" },
+          { title: "Worst green", key: "worstWasteMs" },
+          { title: "Ended by", key: "ended", sortable: false },
+        ]);
+      }
+      return phase.concat([
+        { title: "Calls on red", key: "calls" },
+        { title: "Average wait", key: "meanDelayMs" },
+        { title: "85th percentile", key: "p85DelayMs" },
+        { title: "Longest", key: "worstDelayMs" },
+        { title: "Already waiting", key: "standingCalls" },
+        { title: "No call on red", key: "noCalls" },
+      ]);
+    },
+    phaseFilterOptions() {
+      return [{ title: "Every phase", value: ALL_PHASES }].concat(
+        this.activePhases.map((phase) => ({ title: `Phase ${phase}`, value: phase })),
+      );
+    },
+    greenTableRows() {
+      const rows = this.phaseFilter === ALL_PHASES
+        ? this.activeRows
+        : this.activeRows.filter((row) => row.phase === this.phaseFilter);
+      return rows.map((row) => ({
+        ...row,
+        ended: TERMINATIONS[row.termination] || "—",
+        lastUse: LAST_USE[row.endedBy],
+        note: row.standingCall ? "Already waiting at red" : row.noCall ? "No call on red" : "",
+      }));
+    },
+    greenHeaders() {
+      const lead = [
+        { title: "Phase", key: "phase", align: "start" },
+        { title: "Cycle", key: "cycle" },
+      ];
+      if (this.heavy) {
+        return lead.concat([
+          { title: "Green started", key: "startMs" },
+          { title: "Green", key: "greenMs" },
+          { title: "Ended by", key: "ended" },
+          { title: "Last used by", key: "lastUse" },
+          { title: "Wasted", key: "wasteMs" },
+        ]);
+      }
+      return lead.concat([
+        { title: "Red began", key: "redFromMs" },
+        { title: "First call", key: "callMs" },
+        { title: "Green started", key: "startMs" },
+        { title: "Waited", key: "delayMs" },
+        { title: "Note", key: "note", sortable: false },
+      ]);
     },
     scanNote() {
       if (!this.stats) return "";
@@ -785,7 +883,7 @@ export default {
       ];
       if (this.skipped.length) {
         parts.push(
-          `No channels assigned for ${this.skipped.join(", ")}, so ${this.skipped.length === 1 ? "it was" : "they were"} left out rather than counted as idle.`,
+          `No channels assigned for ${this.skipped.join(", ")}, so ${this.skipped.length === 1 ? "it was" : "they were"} left out rather than counted as unused.`,
         );
       }
       return parts.join(" ");
@@ -797,16 +895,19 @@ export default {
       return "No complete greens found. Expecting codes 1 and 8 for the phases, and 82/81 for the detectors.";
     },
   },
-  methods: {
-    /** One signal-and-phase, as a single string the selects can carry. */
-    seriesKey(signal, phase) {
-      return `${signal}\u0000${phase}`;
+  watch: {
+    activeResult() {
+      // A new signal or a new run: start with every phase showing.
+      this.hiddenPhases = [];
+      this.phaseFilter = ALL_PHASES;
     },
+  },
+  methods: {
     num(value) {
       return Number(value || 0).toLocaleString();
     },
     secs(ms) {
-      if (!Number.isFinite(ms)) return "—";
+      if (ms === null || ms === undefined || !Number.isFinite(ms)) return "—";
       const seconds = ms / 1000;
       if (seconds < 90) return `${seconds.toFixed(1)}s`;
       const minutes = Math.floor(seconds / 60);
@@ -819,6 +920,17 @@ export default {
     },
     clock(ms) {
       return Number.isFinite(ms) ? DateTime.fromMillis(ms).toFormat("LL/dd HH:mm:ss") : "";
+    },
+    time(ms) {
+      return Number.isFinite(ms) ? DateTime.fromMillis(ms).toFormat("HH:mm:ss") : "";
+    },
+    phaseColor(phase) {
+      return PHASE_COLORS[phase] || "#6b7280";
+    },
+    togglePhase(phase) {
+      this.hiddenPhases = this.hiddenPhases.includes(phase)
+        ? this.hiddenPhases.filter((p) => p !== phase)
+        : [...this.hiddenPhases, phase];
     },
     /**
      * Where a signal's channel assignments come from. The tab decides, so a
@@ -892,7 +1004,7 @@ export default {
           this.results = results;
           this.skipped = skipped;
           this.stats = { scanned, kept, keptPercent: scanned ? (kept / scanned) * 100 : 0 };
-          this.selectedSeries = null;
+          this.selectedSignal = results.length ? results[0].label : null;
           this.ranOnce = true;
         } catch (err) {
           this.error = `Could not process this data: ${err.message}`;
@@ -939,9 +1051,11 @@ export default {
       this.gtssError = "";
     },
     downloadCsv() {
+      const stamp = (ms) => (Number.isFinite(ms) ? DateTime.fromMillis(ms).toFormat("yyyy-LL-dd HH:mm:ss.SSS") : "");
+      const s = (ms) => (Number.isFinite(ms) ? (ms / 1000).toFixed(1) : "");
       const header = [
-        "signal", "phase", "cycle", "green_start", "green_s", "unused_s",
-        "unused_share", "longest_gap_s", "ped_served", "unused_after_ped_s",
+        "signal", "phase", "cycle", "green_start", "green_s", "ended_by",
+        "last_used_by", "wasted_s", "red_began", "first_call", "waited_s", "call_note",
       ];
       const lines = [header.join(",")];
       for (const row of this.allRows) {
@@ -949,13 +1063,15 @@ export default {
           row.signal,
           row.phase,
           row.cycle,
-          DateTime.fromMillis(row.startMs).toFormat("yyyy-LL-dd HH:mm:ss"),
-          (row.greenMs / 1000).toFixed(1),
-          (row.idleMs / 1000).toFixed(1),
-          (row.idleShare * 100).toFixed(1),
-          (row.longestIdleMs / 1000).toFixed(1),
-          row.pedServed ? "yes" : "no",
-          (row.idleAfterPedMs / 1000).toFixed(1),
+          stamp(row.startMs),
+          s(row.greenMs),
+          TERMINATIONS[row.termination] || "",
+          row.endedBy,
+          s(row.wasteMs),
+          stamp(row.redFromMs),
+          stamp(row.callMs),
+          s(row.delayMs),
+          row.standingCall ? "already waiting at red" : row.noCall ? "no call on red" : "",
         ].join(","));
       }
       const blob = new Blob([lines.join("\n")], { type: "text/csv" });
@@ -1094,7 +1210,58 @@ export default {
 }
 .chart-wrapper {
   position: relative;
+}
+/*
+  A day of cycles is far taller than a screen. The chart scrolls inside its
+  own box, so the summary and tables below stay a short scroll away.
+*/
+.cycle-scroll {
+  max-height: 70vh;
+  overflow-y: auto;
   margin-top: 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 10px;
+  padding: 4px 8px 4px 0;
+}
+.mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+/* On a phone the halves after the dot go; the line under the switch says it. */
+@media (max-width: 600px) {
+  .mode-sub {
+    display: none;
+  }
+}
+.phase-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.phase-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: transparent;
+  cursor: pointer;
+}
+.phase-chip--off {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.phase-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
 }
 .table-wrapper {
   overflow-x: auto;
@@ -1123,8 +1290,5 @@ export default {
 }
 .share-text {
   position: relative;
-}
-.row-bad td {
-  background: rgba(198, 40, 40, 0.07);
 }
 </style>

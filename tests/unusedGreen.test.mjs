@@ -3,15 +3,20 @@ import assert from 'node:assert/strict';
 import {
   DETECTOR_OFF,
   DETECTOR_ON,
+  PHASE_MAX_OUT,
   analyzeGreens,
   analyzeSignal,
   buildBusyIntervals,
+  buildCycles,
   buildGreenIntervals,
+  buildPedIntervals,
+  coveredUntil,
   detectLayout,
+  firstCall,
+  greenTail,
   mergeIntervals,
   scanGreenRows,
-  subtractIntervals,
-  summarizePhase,
+  summarizeGreens,
 } from '../src/utils/unusedGreen.js';
 
 const T0 = 1710432000;
@@ -26,17 +31,17 @@ const ms = (s) => (T0 + s) * 1000;
 
 /* ---------------------------------------------------------------- the scan */
 
-test('the scan keeps the seven codes it needs and drops the rest', () => {
+test('the scan keeps the eleven codes it needs and drops the rest', () => {
   const result = scan([
-    row(0, 1, 2), row(40, 8, 2),
+    row(0, 1, 2), row(39, 4, 2), row(40, 8, 2), row(44, 9, 2),
     row(2, 21, 2), row(12, 22, 2), row(20, 23, 2),
     row(5, 82, 5), row(6, 81, 5),
     row(7, 0, 2), row(8, 10, 2), row(9, 43, 1), row(10, 131, 3),
   ]);
-  assert.equal(result.signal.length, 5, 'green, yellow and three ped codes');
+  assert.equal(result.signal.length, 7, 'green, gap out, yellow, end of yellow and three ped codes');
   assert.equal(result.detector.length, 2);
-  assert.equal(result.stats.scanned, 11);
-  assert.equal(result.stats.kept, 7);
+  assert.equal(result.stats.scanned, 13);
+  assert.equal(result.stats.kept, 9);
   assert.deepEqual(result.channels, [5]);
   assert.deepEqual(result.phases, [2]);
 });
@@ -89,6 +94,34 @@ test('a second green with no yellow between takes the later start', () => {
   assert.equal(greens[0].endMs - greens[0].startMs, 30 * S);
 });
 
+test('a green says how it ended, when the controller logged it', () => {
+  const { signal } = scan([row(0, 1, 2), row(39, 5, 2), row(40, 8, 2), row(100, 1, 2), row(130, 8, 2)]);
+  const greens = buildGreenIntervals(signal, 2);
+  assert.equal(greens[0].termination, PHASE_MAX_OUT);
+  assert.equal(greens[1].termination, null, 'one green\'s ending does not carry into the next');
+});
+
+test('a green knows when its red began: the end of the yellow before it', () => {
+  const { signal } = scan([row(0, 1, 2), row(40, 8, 2), row(44, 9, 2), row(100, 1, 2), row(130, 8, 2)]);
+  const greens = buildGreenIntervals(signal, 2);
+  assert.equal(greens[0].redFromMs, null, 'the first green\'s red began before the file did');
+  assert.equal(greens[1].redFromMs, ms(44));
+  // Without code 9 the yellow's start stands in for its end.
+  const bare = scan([row(0, 1, 2), row(40, 8, 2), row(100, 1, 2), row(130, 8, 2)]);
+  assert.equal(buildGreenIntervals(bare.signal, 2)[1].redFromMs, ms(40));
+  // An end of yellow with no yellow before it belongs to nothing.
+  const stray = scan([row(-5, 9, 2), row(0, 1, 2), row(40, 8, 2)]);
+  assert.equal(buildGreenIntervals(stray.signal, 2)[0].redFromMs, null);
+  // A yellow whose end went unlogged falls back to its own start, not to the
+  // end of some earlier yellow.
+  const gap = scan([
+    row(0, 1, 2), row(40, 8, 2), row(44, 9, 2),
+    row(100, 1, 2), row(130, 8, 2),
+    row(200, 1, 2), row(230, 8, 2),
+  ]);
+  assert.equal(buildGreenIntervals(gap.signal, 2)[2].redFromMs, ms(130));
+});
+
 /* --------------------------------------------------------------- intervals */
 
 test('mergeIntervals folds overlaps and touching spans', () => {
@@ -109,40 +142,6 @@ test('mergeIntervals drops what is not a span and sorts what is', () => {
     { startMs: 0, endMs: 5 },
   ]);
   assert.deepEqual(merged, [{ startMs: 0, endMs: 5 }, { startMs: 30, endMs: 40 }]);
-});
-
-test('subtractIntervals returns what the busy timeline leaves', () => {
-  const span = { startMs: 0, endMs: 100 };
-  assert.deepEqual(subtractIntervals(span, []), [{ startMs: 0, endMs: 100 }]);
-  assert.deepEqual(
-    subtractIntervals(span, [{ startMs: 20, endMs: 30 }, { startMs: 60, endMs: 70 }]),
-    [{ startMs: 0, endMs: 20 }, { startMs: 30, endMs: 60 }, { startMs: 70, endMs: 100 }],
-  );
-  assert.deepEqual(subtractIntervals(span, [{ startMs: 0, endMs: 100 }]), []);
-});
-
-test('subtractIntervals ignores busy time entirely after the span', () => {
-  // The busy timeline covers the whole file, so most of it lies outside any
-  // one green. An interval starting past the end must stop the walk, not
-  // open a gap that runs from inside the span out to wherever it begins.
-  assert.deepEqual(
-    subtractIntervals({ startMs: 0, endMs: 100 }, [
-      { startMs: 20, endMs: 30 },
-      { startMs: 150, endMs: 200 },
-      { startMs: 400, endMs: 500 },
-    ]),
-    [{ startMs: 0, endMs: 20 }, { startMs: 30, endMs: 100 }],
-  );
-});
-
-test('subtractIntervals clips busy time that runs past either end', () => {
-  const span = { startMs: 50, endMs: 100 };
-  // Busy either side must not create gaps outside the span or negative ones.
-  assert.deepEqual(
-    subtractIntervals(span, [{ startMs: 0, endMs: 60 }, { startMs: 90, endMs: 200 }]),
-    [{ startMs: 60, endMs: 90 }],
-  );
-  assert.deepEqual(subtractIntervals(span, [{ startMs: 0, endMs: 200 }]), []);
 });
 
 /* ----------------------------------------------------------- busy timeline */
@@ -195,178 +194,288 @@ test('a detector still down when the file ends stays down', () => {
   assert.equal(busy[0].endMs, Infinity);
 });
 
-/* ------------------------------------------------------------- the finding */
+/* ------------------------------------------------------------- pedestrians */
 
-const PHASE_CHANNELS = new Map([[2, [5]]]);
+test('a ped service runs from walk to solid don\'t walk', () => {
+  const { signal } = scan([row(2, 21, 2), row(12, 22, 2), row(20, 23, 2), row(5, 21, 4), row(9, 23, 4)]);
+  assert.deepEqual(buildPedIntervals(signal, 2), [{ startMs: ms(2), endMs: ms(20) }]);
+});
 
-test('a green with nothing on the detectors is idle end to end', () => {
-  const { signal, detector } = scan([row(0, 1, 2), row(30, 8, 2)]);
-  const [cycle] = analyzeGreens({
-    signalRows: signal, detectorRows: detector, phase: 2, channels: [5],
-    clearanceSeconds: 0, minGapSeconds: 0,
+test('a walk shown twice is one service, from the first walk', () => {
+  const { signal } = scan([row(2, 21, 2), row(10, 21, 2), row(20, 23, 2)]);
+  assert.deepEqual(buildPedIntervals(signal, 2), [{ startMs: ms(2), endMs: ms(20) }]);
+});
+
+test('a ped service cut off by either end of the file still counts', () => {
+  const early = scan([row(20, 23, 2)]);
+  assert.equal(buildPedIntervals(early.signal, 2)[0].endMs, ms(20), 'the file began mid-walk');
+  const late = scan([row(2, 21, 2)]);
+  assert.equal(buildPedIntervals(late.signal, 2)[0].endMs, Infinity, 'still walking when it ended');
+});
+
+/* ------------------------------------------------------------- coverage */
+
+test('coveredUntil finds where a timeline last covers a span', () => {
+  const timeline = [{ startMs: 0, endMs: 10 }, { startMs: 20, endMs: 30 }];
+  assert.equal(coveredUntil(timeline, 15, 40), 30);
+  assert.equal(coveredUntil(timeline, 5, 25), 25, 'capped at the span\'s end');
+  assert.equal(coveredUntil(timeline, 12, 18), null, 'between the two');
+  assert.equal(coveredUntil(timeline, 30, 40), null, 'ending as the span starts is not covering it');
+  assert.equal(coveredUntil(timeline, -20, -10), null);
+  assert.equal(coveredUntil([], 0, 10), null);
+  // Something starting exactly as the span ends did not cover it; what came
+  // before it still did.
+  assert.equal(coveredUntil(timeline, 0, 20), 10);
+});
+
+/* ----------------------------------------------------- heavy: wasted green */
+
+const green = (start, end) => ({ startMs: start * S, endMs: end * S });
+const spans = (...pairs) => pairs.map(([a, b]) => ({ startMs: a * S, endMs: b * S }));
+
+test('a green nobody used is wasted end to end', () => {
+  const tail = greenTail(green(0, 40), [], []);
+  assert.equal(tail.wasteMs, 40 * S);
+  assert.equal(tail.endedBy, 'nothing');
+});
+
+test('wasted green starts after the last vehicle, not the first gap', () => {
+  const tail = greenTail(green(0, 40), spans([5, 8], [20, 25]), []);
+  assert.equal(tail.wasteMs, 15 * S);
+  assert.equal(tail.endedBy, 'vehicle');
+  assert.equal(tail.usedUntilMs, 25 * S);
+});
+
+test('a ped phase finishing later than the last vehicle holds the green legitimately', () => {
+  const tail = greenTail(green(0, 40), spans([5, 15]), spans([2, 20]));
+  assert.equal(tail.wasteMs, 20 * S);
+  assert.equal(tail.endedBy, 'ped');
+  const vehicleLast = greenTail(green(0, 40), spans([5, 30]), spans([2, 20]));
+  assert.equal(vehicleLast.wasteMs, 10 * S);
+  assert.equal(vehicleLast.endedBy, 'vehicle');
+  // Finishing together, the vehicle gets the credit: the ped did not hold it any longer.
+  assert.equal(greenTail(green(0, 40), spans([5, 20]), spans([2, 20])).endedBy, 'vehicle');
+});
+
+test('a vehicle arriving as the yellow starts did not use the green', () => {
+  const tail = greenTail(green(0, 40), spans([5, 10], [40, 45]), []);
+  assert.equal(tail.wasteMs, 30 * S);
+});
+
+test('a green used right up to yellow wastes nothing', () => {
+  assert.equal(greenTail(green(0, 40), spans([30, 50]), []).wasteMs, 0, 'a vehicle still crossing');
+  assert.equal(greenTail(green(0, 40), [], [{ startMs: 2 * S, endMs: Infinity }]).wasteMs, 0, 'ped still running');
+});
+
+test('a vehicle that arrived before the green and left during it counts', () => {
+  const tail = greenTail(green(10, 40), spans([0, 18]), []);
+  assert.equal(tail.wasteMs, 22 * S);
+  assert.equal(tail.endedBy, 'vehicle');
+});
+
+test('a tail shorter than the floor is how a phase gaps out, not waste', () => {
+  const tail = greenTail(green(0, 40), spans([5, 38]), [], 3 * S);
+  assert.equal(tail.wasteMs, 0);
+  assert.equal(tail.endedBy, 'vehicle', 'it still says who used the green last');
+  assert.equal(greenTail(green(0, 40), spans([5, 37]), [], 3 * S).wasteMs, 3 * S, 'at the floor it counts');
+});
+
+/* ------------------------------------------------- light: the wait for green */
+
+test('the wait runs from the first vehicle to arrive on red to the green', () => {
+  const call = firstCall(spans([50, 52], [60, 61]), 44 * S, 100 * S);
+  assert.equal(call.callMs, 50 * S);
+  assert.equal(call.standing, false);
+});
+
+test('a detector already occupied when red began calls from then', () => {
+  const call = firstCall(spans([40, 60]), 44 * S, 100 * S);
+  assert.equal(call.callMs, 44 * S);
+  assert.equal(call.standing, true);
+  // One that let go exactly as red began was not still there.
+  const gone = firstCall(spans([30, 44], [70, 71]), 44 * S, 100 * S);
+  assert.equal(gone.callMs, 70 * S);
+  assert.equal(gone.standing, false);
+});
+
+test('no call on red means the green came back for some other reason', () => {
+  assert.equal(firstCall(spans([10, 12]), 44 * S, 100 * S), null, 'an arrival before red');
+  assert.equal(firstCall(spans([100, 102]), 44 * S, 100 * S), null, 'an arrival on green waits for nothing');
+  assert.equal(firstCall(spans([50, 52]), null, 100 * S), null, 'no known red');
+  assert.equal(firstCall(spans([50, 52]), 100 * S, 100 * S), null, 'no red at all');
+  assert.equal(firstCall(spans([90, 110]), 100 * S, 100 * S), null, 'no red, even with a vehicle there');
+});
+
+/* ----------------------------------------------------------------- cycles */
+
+test('a cycle ends when a phase already served in it comes round again', () => {
+  const { signal } = scan([
+    row(0, 1, 2), row(0, 1, 6), row(30, 8, 2), row(30, 8, 6),
+    row(40, 1, 4), row(40, 1, 8), row(70, 8, 4), row(70, 8, 8),
+    row(80, 1, 2), row(80, 1, 6), row(110, 8, 2), row(110, 8, 6),
+  ]);
+  const cycles = buildCycles(signal);
+  assert.deepEqual(cycles.map((c) => [c.index, c.startMs, c.endMs]), [
+    [1, ms(0), ms(80)],
+    [2, ms(80), ms(110)],
+  ]);
+});
+
+test('a skipped phase does not split a cycle, and a duplicate start does not make an empty one', () => {
+  const { signal } = scan([
+    row(0, 1, 2), row(0, 1, 2), row(30, 8, 2),
+    row(40, 1, 8), row(60, 8, 8),
+    row(70, 1, 2), row(90, 8, 2),
+  ]);
+  const cycles = buildCycles(signal);
+  assert.equal(cycles.length, 2);
+  assert.equal(cycles[0].endMs - cycles[0].startMs, 70 * S);
+  assert.deepEqual(buildCycles([]), []);
+});
+
+/* ------------------------------------------------------------- one phase */
+
+test('each green carries both measures and the cycle it ran in', () => {
+  const { signal, detector } = scan([
+    // Cycle 1: phase 2 green 0-40, one vehicle 5-8, ped to 20.
+    row(0, 1, 2), row(2, 21, 2), row(5, 82, 5), row(8, 81, 5), row(20, 23, 2),
+    row(39, 5, 2), row(40, 8, 2), row(44, 9, 2),
+    row(50, 1, 4), row(70, 8, 4),
+    // A vehicle arrives on red at 60 and waits for phase 2.
+    row(60, 82, 5), row(61, 81, 5),
+    // Cycle 2: phase 2 green 80-110, the waiting vehicle went at 80.
+    row(80, 1, 2), row(83, 82, 5), row(84, 81, 5), row(110, 8, 2),
+  ]);
+  const cycles = buildCycles(signal);
+  const rows = analyzeGreens({ signalRows: signal, detectorRows: detector, phase: 2, channels: [5], cycles });
+  assert.equal(rows.length, 2);
+  const [first, second] = rows;
+  assert.equal(first.cycle, 1);
+  assert.equal(first.wasteMs, 20 * S, 'ped finished at 20, yellow at 40');
+  assert.equal(first.endedBy, 'ped');
+  assert.equal(first.termination, PHASE_MAX_OUT);
+  assert.equal(first.delayMs, null, 'no red known before the first green');
+  assert.equal(second.cycle, 2);
+  assert.equal(second.delayMs, 20 * S, 'arrived at 60, green at 80');
+  assert.equal(second.callMs, ms(60));
+  assert.equal(second.wasteMs, 23 * S, 'last vehicle 84 + 3s clearance, yellow 110');
+
+  // The floor reaches the per-green rows.
+  const strict = analyzeGreens({
+    signalRows: signal, detectorRows: detector, phase: 2, channels: [5], cycles, minGapSeconds: 25,
   });
-  assert.equal(cycle.greenMs, 30 * S);
-  assert.equal(cycle.idleMs, 30 * S);
-  assert.equal(cycle.idleShare, 1);
-  assert.equal(cycle.pedServed, false);
+  assert.deepEqual(strict.map((r) => r.wasteMs), [0, 0]);
 });
 
-test('a green fully occupied has no idle in it', () => {
+test('the wait uses bare occupancy: a vehicle that left before red began is not waiting', () => {
+  // Off at 43, red at 44. With the 3s clearance allowance it would look like
+  // a car still on the loop when red began, and the wait would date from 44.
   const { signal, detector } = scan([
-    row(0, 1, 2), row(30, 8, 2), row(0, 82, 5), row(30, 81, 5),
+    row(0, 1, 2), row(42, 82, 5), row(43, 81, 5), row(40, 8, 2), row(44, 9, 2),
+    row(60, 82, 5), row(61, 81, 5),
+    row(80, 1, 2), row(110, 8, 2),
   ]);
-  const [cycle] = analyzeGreens({
-    signalRows: signal, detectorRows: detector, phase: 2, channels: [5],
-    clearanceSeconds: 0, minGapSeconds: 0,
-  });
-  assert.equal(cycle.idleMs, 0);
-  assert.equal(cycle.gapCount, 0);
+  const rows = analyzeGreens({ signalRows: signal, detectorRows: detector, phase: 2, channels: [5], cycles: buildCycles(signal) });
+  assert.equal(rows[1].callMs, ms(60));
+  assert.equal(rows[1].standingCall, false);
 });
 
-test('idle is the part of the green the detectors left quiet', () => {
+test('a green with no call on red is marked, and has no wait', () => {
   const { signal, detector } = scan([
-    row(0, 1, 2), row(60, 8, 2),
-    row(0, 82, 5), row(10, 81, 5),   // busy 0-10
-    row(40, 82, 5), row(50, 81, 5),  // busy 40-50
+    row(0, 1, 2), row(30, 8, 2), row(34, 9, 2),
+    row(40, 1, 4), row(60, 8, 4),
+    row(70, 1, 2), row(90, 8, 2),
   ]);
-  const [cycle] = analyzeGreens({
-    signalRows: signal, detectorRows: detector, phase: 2, channels: [5],
-    clearanceSeconds: 0, minGapSeconds: 0,
-  });
-  // Quiet from 10 to 40 and from 50 to 60.
-  assert.equal(cycle.idleMs, 40 * S);
-  assert.equal(cycle.gapCount, 2);
-  assert.equal(cycle.longestIdleMs, 30 * S);
-  assert.ok(Math.abs(cycle.idleShare - 40 / 60) < 1e-9);
+  const rows = analyzeGreens({ signalRows: signal, detectorRows: detector, phase: 2, channels: [5], cycles: buildCycles(signal) });
+  assert.equal(rows[1].noCall, true);
+  assert.equal(rows[1].delayMs, null);
+  assert.equal(rows[0].noCall, false, 'the first green had no known red to call during');
 });
 
-test('a gap shorter than the floor is platoon spacing, not reclaimable time', () => {
-  const { signal, detector } = scan([
-    row(0, 1, 2), row(30, 8, 2),
-    row(0, 82, 5), row(10, 81, 5),
-    row(12, 82, 5), row(30, 81, 5),  // a 2s gap at 10-12
-  ]);
-  const counted = analyzeGreens({
-    signalRows: signal, detectorRows: detector, phase: 2, channels: [5],
-    clearanceSeconds: 0, minGapSeconds: 0,
-  })[0];
-  assert.equal(counted.idleMs, 2 * S, 'with no floor the 2s gap counts');
-  const floored = analyzeGreens({
-    signalRows: signal, detectorRows: detector, phase: 2, channels: [5],
-    clearanceSeconds: 0, minGapSeconds: 3,
-  })[0];
-  assert.equal(floored.idleMs, 0, 'with a 3s floor it does not');
+/* ------------------------------------------------------------- summaries */
+
+const fakeRow = (overrides) => ({
+  greenMs: 30 * S, wasteMs: 0, delayMs: null, termination: null, standingCall: false, noCall: false, ...overrides,
 });
 
-test('the ped share is the idle that fell after the ped phase finished', () => {
-  const { signal, detector } = scan([
-    row(0, 1, 2), row(60, 8, 2),
-    row(0, 21, 2), row(7, 22, 2), row(25, 23, 2),  // walk, clearance, solid DW
-    row(0, 82, 5), row(10, 81, 5),                 // one vehicle early on
+test('summaries total the waste and spread the waits', () => {
+  const summary = summarizeGreens([
+    fakeRow({ wasteMs: 10 * S, delayMs: 4 * S, termination: 5 }),
+    fakeRow({ wasteMs: 0, delayMs: 8 * S, termination: 4 }),
+    fakeRow({ wasteMs: 5 * S, delayMs: 12 * S, standingCall: true, termination: 5 }),
+    fakeRow({ wasteMs: 0, noCall: true }),
   ]);
-  const [cycle] = analyzeGreens({
-    signalRows: signal, detectorRows: detector, phase: 2, channels: [5],
-    clearanceSeconds: 0, minGapSeconds: 0,
-  });
-  assert.equal(cycle.pedServed, true);
-  assert.equal(cycle.pedEndMs, ms(25));
-  assert.equal(cycle.idleMs, 50 * S, 'quiet from 10 to 60');
-  // The green was held for a ped who finished at 25, and ran on to 60 with
-  // nothing on the detectors: 35 seconds with a cause and a fix.
-  assert.equal(cycle.idleAfterPedMs, 35 * S);
-  assert.ok(cycle.idleAfterPedMs < cycle.idleMs, 'the ped share is part of the idle');
+  assert.equal(summary.greens, 4);
+  assert.equal(summary.wasteMs, 15 * S);
+  assert.equal(summary.wasteShare, 15 / 120);
+  assert.equal(summary.wastedGreens, 2);
+  assert.equal(summary.worstWasteMs, 10 * S);
+  assert.deepEqual(summary.terminations, { 4: 1, 5: 2 });
+  assert.equal(summary.calls, 3);
+  assert.equal(summary.meanDelayMs, 8 * S);
+  assert.equal(summary.medianDelayMs, 8 * S);
+  assert.equal(summary.p85DelayMs, 10.8 * S);
+  assert.equal(summary.worstDelayMs, 12 * S);
+  assert.equal(summary.standingCalls, 1);
+  assert.equal(summary.noCalls, 1);
 });
 
-test('a ped phase that ended before the green does not claim it', () => {
-  const { signal, detector } = scan([
-    row(0, 23, 2),                    // a ped service from the previous cycle
-    row(10, 1, 2), row(40, 8, 2),
-  ]);
-  const [cycle] = analyzeGreens({
-    signalRows: signal, detectorRows: detector, phase: 2, channels: [5],
-    clearanceSeconds: 0, minGapSeconds: 0,
-  });
-  assert.equal(cycle.pedServed, false);
-  assert.equal(cycle.idleAfterPedMs, 0);
-  assert.equal(cycle.idleMs, 30 * S, 'the idle itself is still counted');
+test('an empty summary is zeros and blanks, not NaN', () => {
+  const summary = summarizeGreens([]);
+  assert.equal(summary.wasteShare, 0);
+  assert.equal(summary.wastePerGreenMs, 0);
+  assert.equal(summary.meanDelayMs, null);
+  assert.equal(summary.worstDelayMs, null);
+  assert.equal(summarizeGreens(undefined).greens, 0);
 });
 
-test('the last ped service inside a green is the one holding it', () => {
-  const { signal, detector } = scan([
-    row(0, 1, 2), row(60, 8, 2),
-    row(10, 23, 2), row(30, 23, 2),
-  ]);
-  const [cycle] = analyzeGreens({
-    signalRows: signal, detectorRows: detector, phase: 2, channels: [5],
-    clearanceSeconds: 0, minGapSeconds: 0,
-  });
-  assert.equal(cycle.pedEndMs, ms(30));
-  assert.equal(cycle.idleAfterPedMs, 30 * S);
-});
+/* ------------------------------------------------------------- the signal */
 
-test('cycles are numbered in the order they ran', () => {
-  const { signal, detector } = scan([
-    row(0, 1, 2), row(30, 8, 2),
-    row(90, 1, 2), row(120, 8, 2),
-    row(180, 1, 2), row(210, 8, 2),
-  ]);
-  const rows = analyzeGreens({
-    signalRows: signal, detectorRows: detector, phase: 2, channels: [5],
-    clearanceSeconds: 0, minGapSeconds: 0,
-  });
-  assert.deepEqual(rows.map((r) => r.cycle), [1, 2, 3]);
-  assert.deepEqual(rows.map((r) => r.startMs), [ms(0), ms(90), ms(180)]);
-});
+const twoPhaseDay = () => scan([
+  // Cycle 1
+  row(0, 1, 2), row(5, 82, 5), row(6, 81, 5), row(30, 8, 2), row(34, 9, 2),
+  row(40, 1, 4), row(42, 82, 7), row(43, 81, 7), row(60, 8, 4), row(64, 9, 4),
+  // Calls on red: phase 2 at 50, phase 4 at 75
+  row(50, 82, 5), row(51, 81, 5), row(75, 82, 7), row(76, 81, 7),
+  // Cycle 2
+  row(70, 1, 2), row(100, 8, 2), row(104, 9, 2),
+  row(110, 1, 4), row(130, 8, 4),
+  row(140, 1, 2), row(150, 8, 2),
+]);
 
-/* -------------------------------------------------------------- summaries */
-
-test('summarizePhase totals the cycles', () => {
-  const summary = summarizePhase([
-    { greenMs: 30 * S, idleMs: 10 * S, idleAfterPedMs: 0, pedServed: false },
-    { greenMs: 30 * S, idleMs: 20 * S, idleAfterPedMs: 15 * S, pedServed: true },
-    { greenMs: 40 * S, idleMs: 0, idleAfterPedMs: 0, pedServed: false },
-  ]);
-  assert.equal(summary.cycles, 3);
-  assert.equal(summary.greenMs, 100 * S);
-  assert.equal(summary.idleMs, 30 * S);
-  assert.equal(summary.idleAfterPedMs, 15 * S);
-  assert.equal(summary.medianIdleMs, 10 * S);
-  assert.equal(summary.worstIdleMs, 20 * S);
-  assert.equal(summary.pedCycles, 1);
-  assert.ok(Math.abs(summary.idleShare - 0.3) < 1e-9);
-});
-
-test('summarizePhase survives an empty set', () => {
-  const summary = summarizePhase([]);
-  assert.equal(summary.cycles, 0);
-  assert.equal(summary.medianIdleMs, null);
-});
-
-test('analyzeSignal ranks the phases by the time they waste', () => {
-  const { signal, detector } = scan([
-    // Phase 2 is busy for most of its green; phase 6 is quiet through all of it.
-    row(0, 1, 2), row(30, 8, 2), row(0, 82, 5), row(28, 81, 5),
-    row(0, 1, 6), row(40, 8, 6),
-  ]);
+test('each cycle stacks every phase\'s share of both measures', () => {
+  const { signal, detector } = twoPhaseDay();
   const result = analyzeSignal({
     signalRows: signal, detectorRows: detector,
-    phaseChannels: new Map([[2, [5]], [6, [9]]]),
-    clearanceSeconds: 0, minGapSeconds: 0, label: 'Signal 1',
+    phaseChannels: new Map([[2, [5]], [4, [7]]]),
+    clearanceSeconds: 3, minGapSeconds: 3, label: 'A',
   });
-  assert.deepEqual(result.phases.map((p) => p.phase), [6, 2], 'worst first');
-  assert.equal(result.phases[0].summary.idleMs, 40 * S);
-  assert.equal(result.phases[1].summary.idleMs, 2 * S);
-  assert.equal(result.totals.idleMs, 42 * S);
-  assert.equal(result.rows.every((r) => r.signal === 'Signal 1'), true);
+  assert.equal(result.cycles.length, 3);
+  const [one, two] = result.cycles;
+  // Cycle 1: phase 2 used to 6+3=9, yellow 30 -> 21; phase 4 used to 43+3=46, yellow 60 -> 14.
+  assert.equal(one.waste[2], 21 * S);
+  assert.equal(one.waste[4], 14 * S);
+  assert.equal(one.wasteMs, 35 * S);
+  // Cycle 2: phase 2 called at 50, green at 70 -> 20; phase 4 called at 75, green at 110 -> 35.
+  assert.equal(two.delay[2], 20 * S);
+  assert.equal(two.delay[4], 35 * S);
+  assert.equal(two.delayMs, 55 * S);
+  // Cycle 1's greens had no known red, so no wait -- blank, not zero.
+  assert.deepEqual(one.delay, {});
+  assert.equal(one.delayMs, 0);
+  assert.equal(two.signal, 'A');
+  assert.equal(result.rows.every((row) => row.signal === 'A'), true);
+  assert.deepEqual(result.phases.map((p) => p.phase), [2, 4]);
+  assert.equal(result.totals.greens, result.rows.length);
 });
 
-test('analyzeSignal with no assignments finds nothing rather than everything', () => {
-  const { signal, detector } = scan([row(0, 1, 2), row(30, 8, 2)]);
-  const result = analyzeSignal({
-    signalRows: signal, detectorRows: detector, phaseChannels: new Map(),
-  });
-  // A phase with no detectors assigned is not a phase with no traffic; it is
-  // a phase nothing is known about, and it must not be reported as idle.
-  assert.deepEqual(result.phases, []);
-  assert.equal(result.totals.cycles, 0);
+test('a phase with no channels still marks the cycles but is not measured', () => {
+  const { signal, detector } = twoPhaseDay();
+  const result = analyzeSignal({ signalRows: signal, detectorRows: detector, phaseChannels: new Map([[2, [5]]]) });
+  assert.equal(result.cycles.length, 3, 'phase 4 still ran, so the cycles are the same');
+  assert.equal(result.rows.every((row) => row.phase === 2), true);
+  assert.equal(result.cycles[0].waste[4], undefined);
+  const nothing = analyzeSignal({ signalRows: signal, detectorRows: detector, phaseChannels: new Map() });
+  assert.deepEqual(nothing.rows, []);
+  assert.equal(nothing.totals.wasteMs, 0);
 });

@@ -174,9 +174,9 @@ export const routeMeta = {
     path: "/tsp-timing-calculator",
   },
   unusedGreenTime: {
-    title: "Unused Green Time | Find Wasted Green by Phase and Cycle",
+    title: "Unused Green Time | Wasted Green and Wait for Green",
     description:
-      "Find seconds of green served to an empty intersection, cycle by cycle and phase by phase, including green held past a finished pedestrian phase.",
+      "Wasted green under heavy volume and the wait for green under light volume, from high-resolution data, one stacked bar per cycle.",
     path: "/unused-green-time",
   },
   singleLoopSpeedEstimator: {

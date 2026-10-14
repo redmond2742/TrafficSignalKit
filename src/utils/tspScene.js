@@ -38,8 +38,12 @@ export const MIN_BUS_PX = 26;
 export const APPROACH_Y = (SCENE.centerLine + SCENE.laneBottom) / 2;
 export const OPPOSING_Y = (SCENE.laneTop + SCENE.centerLine) / 2;
 
-/** Rough label width: there is no font metrics API outside a browser. */
-const labelWidth = (text, size = 11) => String(text).length * size * 0.56;
+/**
+ * Rough label width, for when nothing better is passed in. On the generous
+ * side -- Helvetica averages nearer 0.45 em a character -- so a label judged
+ * to fit does. The page measures real text instead.
+ */
+export const labelWidth = (text, size = 11) => String(text).length * size * 0.56;
 
 const ftLabel = (feet) => `${Math.round(feet).toLocaleString('en-US')} ft`;
 
@@ -63,22 +67,36 @@ export function tickStep(span, count = 8) {
  *
  * In the order given, which is the order of importance: the first dimension
  * gets the top row.
+ *
+ * A dimension may carry a `short` label too, used only when the full one fits
+ * nowhere -- on a phone, "250 ft" beside a line beats "Request starts 250 ft
+ * out" printed across it. `measure` gives a label's width in pixels.
  */
-export function packDimensions(list, width) {
+export function packDimensions(list, width, measure = labelWidth) {
   const overlap = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0) > 0.5;
   const clash = (p, q) => overlap(p.x0, p.x1, q.x0, q.x1)
     || overlap(p.labL - 6, p.labR + 6, q.labL, q.labR)
     || overlap(p.labL, p.labR, q.x0, q.x1)
     || overlap(q.labL, q.labR, p.x0, p.x1);
-  const options = (dim) => {
-    const w = labelWidth(dim.label);
+  const placements = (dim, text) => {
+    const w = measure(text);
     const mid = (dim.x0 + dim.x1) / 2;
-    const centred = { anchor: 'middle', tx: mid, labL: mid - w / 2, labR: mid + w / 2 };
     const out = [];
-    if (dim.x1 - dim.x0 >= w + 8) out.push(centred);
+    if (dim.x1 - dim.x0 >= w + 8) out.push({ anchor: 'middle', tx: mid, labL: mid - w / 2, labR: mid + w / 2 });
     if (dim.x1 + 4 + w <= width - 2) out.push({ anchor: 'start', tx: dim.x1 + 4, labL: dim.x1 + 4, labR: dim.x1 + 4 + w });
     if (dim.x0 - 4 - w >= 2) out.push({ anchor: 'end', tx: dim.x0 - 4, labL: dim.x0 - 4 - w, labR: dim.x0 - 4 });
-    return out.length ? out : [centred];
+    return out.map((p) => ({ ...p, text }));
+  };
+  const options = (dim) => {
+    const full = placements(dim, dim.label);
+    if (full.length) return full;
+    const short = dim.short ? placements(dim, dim.short) : [];
+    if (short.length) return short;
+    // Room nowhere: centred on its line, in the shortest form there is.
+    const text = dim.short || dim.label;
+    const w = measure(text);
+    const mid = (dim.x0 + dim.x1) / 2;
+    return [{ anchor: 'middle', tx: mid, labL: mid - w / 2, labR: mid + w / 2, text }];
   };
 
   const rows = [];
@@ -109,7 +127,7 @@ export function packDimensions(list, width) {
  * `motion` (from busMotion) is optional; with it, the extents also cover
  * where the bus starts and ends its trip, so it never drives off the page.
  */
-export function sceneGeometry(approach, timing, { width = 1000, motion = null } = {}) {
+export function sceneGeometry(approach, timing, { width = 1000, motion = null, measure = labelWidth } = {}) {
   const a = approach || {};
   const tech = technologyOf(a);
   const d = timing?.d > 0 ? timing.d : null;
@@ -164,7 +182,7 @@ export function sceneGeometry(approach, timing, { width = 1000, motion = null } 
 
   const dims = [];
   if (d !== null) {
-    dims.push({ key: 'request', x0: X(-d), x1: X(0), label: `Request starts ${ftLabel(d)} out` });
+    dims.push({ key: 'request', x0: X(-d), x1: X(0), label: `Request starts ${ftLabel(d)} out`, short: ftLabel(d) });
   }
   // What the bus covers between TSD and TED. The emitter's range is labelled
   // on its detection cone instead: as a dimension it only restates the
@@ -176,6 +194,7 @@ export function sceneGeometry(approach, timing, { width = 1000, motion = null } 
     label: clear > intersection
       ? `${ftLabel(clear)} to clear (${ftLabel(intersection)} + ${ftLabel(clear - intersection)} bus)`
       : `${ftLabel(intersection)} intersection`,
+    short: ftLabel(clear),
   });
   if (detector && detector.ft !== 0) {
     dims.push({
@@ -183,13 +202,14 @@ export function sceneGeometry(approach, timing, { width = 1000, motion = null } 
       x0: X(Math.min(0, detector.ft)),
       x1: X(Math.max(0, detector.ft)),
       label: `Detector ${ftLabel(Math.abs(detector.ft))} ${detector.ft > 0 ? 'past' : 'before'}`,
+      short: ftLabel(Math.abs(detector.ft)),
     });
   }
   if (stop !== null) {
-    dims.push({ key: 'stop', x0: X(-stop), x1: X(0), label: `Stop ${ftLabel(stop)} out` });
+    dims.push({ key: 'stop', x0: X(-stop), x1: X(0), label: `Stop ${ftLabel(stop)} out`, short: ftLabel(stop) });
   }
 
-  const packed = packDimensions(dims, width);
+  const packed = packDimensions(dims, width, measure);
   // The distance axis goes under the last row of dimensions.
   const axis = Math.max(SCENE.axis, SCENE.dimTop + packed.rows * SCENE.dimRow + 10);
 
@@ -211,14 +231,72 @@ export function sceneGeometry(approach, timing, { width = 1000, motion = null } 
       ? { x: X(detector.ft), rangeEnd: X(detector.rangeEndFt), label: `Emitter range ${ftLabel(detector.ft - detector.rangeEndFt)}` }
       : null,
     checkIn: tech === 'cloud' && d !== null ? { x: X(-d) } : null,
-    cloud: tech === 'cloud' && d !== null ? { x: (X(-d) + X(0)) / 2, y: 26 } : null,
+    cloud: tech === 'cloud' && d !== null ? { x: (X(-d) + X(0)) / 2, y: 20 } : null,
     zone: zone ? { x0: X(zone.ft0), x1: X(zone.ft1) } : null,
     camera: tech === 'video' ? { x: X(mastFt) } : null,
     stop: stop !== null ? { x: X(-stop) } : null,
-    cabinet: { x: X(0) - 18, y: SCENE.curb + 4 },
+    // On the far-side corner, clear of a near-side stop. `x` is its left edge.
+    cabinet: { x: X(intersection) + 10, y: SCENE.curb + 3 },
     busPx,
     busToScale: busPx === busLength * scale,
     ticks,
     dims: packed.dims,
+  };
+}
+
+/** Pixel rows of the timeline under the drawing. */
+export const TIMELINE = {
+  height: 78,
+  pad: 16,
+  latencyTop: 8,
+  latencyHeight: 8,
+  barTop: 20,
+  barHeight: 14,
+  labelY: 48,
+  axisY: 58,
+};
+
+/** The roundest tick spacing in seconds giving no more than about `count` ticks. */
+export function secondsStep(span, count = 10) {
+  for (const step of [1, 2, 5, 10, 15, 30, 60, 120]) {
+    if (step >= span / count) return step;
+  }
+  return 300;
+}
+
+/**
+ * The timeline: the bus's trip as coloured spans on a seconds axis, with the
+ * latency above it and markers where the request arrives and at TSD and TED.
+ *
+ * TSD and TED each get two marks: the exact time, and the whole second sent
+ * to the controller. The labels go outward from the programmed marks -- TSD's
+ * to the left, TED's to the right -- so they never overlap each other.
+ */
+export function timelineGeometry(motion, timing, { width = 1000 } = {}) {
+  if (!motion || !timing || timing.tsd === null) return null;
+  const span = motion.end - motion.start;
+  const T = (t) => TIMELINE.pad + ((t - motion.start) / span) * (width - 2 * TIMELINE.pad);
+  const step = secondsStep(span);
+  const ticks = [];
+  for (let s = Math.ceil(motion.start / step) * step; s <= motion.end; s += step) {
+    ticks.push({ x: T(s), label: `${s} s` });
+  }
+  // Labels point outward from their marks, but stay on the timeline: near an
+  // end, one is pulled back in.
+  const tsdLabel = `TSD ${timing.tsd} s`;
+  const tedLabel = `TED ${timing.ted} s`;
+  const bold = (text) => labelWidth(text) * 1.1;
+  const tsdX = Math.max(T(timing.tsd) - 3, 2 + bold(tsdLabel));
+  const tedX = Math.min(T(timing.ted) + 3, width - 2 - bold(tedLabel));
+  return {
+    width,
+    height: TIMELINE.height,
+    T,
+    spans: motion.segments.map((s) => ({ kind: s.kind, x0: T(s.t0), x1: T(s.t1) })),
+    latency: motion.latency > 0 ? { x0: T(-motion.latency), x1: T(0) } : null,
+    received: T(0),
+    tsd: { exact: T(timing.tsdExact), programmed: T(timing.tsd), label: tsdLabel, tx: tsdX },
+    ted: { exact: T(timing.tedExact), programmed: T(timing.ted), label: tedLabel, tx: tedX },
+    ticks,
   };
 }

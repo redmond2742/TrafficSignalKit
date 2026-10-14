@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { busAt, busMotion, computeTiming, defaultApproach } from '../src/utils/tspTiming.js';
-import { MIN_BUS_PX, SCENE, packDimensions, sceneGeometry, tickStep } from '../src/utils/tspScene.js';
+import {
+  MIN_BUS_PX, SCENE, TIMELINE, labelWidth, packDimensions, sceneGeometry, secondsStep, tickStep, timelineGeometry,
+} from '../src/utils/tspScene.js';
 
 const sceneFor = (overrides = {}, width = 1000) => {
   const a = defaultApproach({ lostTime: 4, ...overrides });
@@ -183,6 +185,45 @@ test('a label with no room anywhere is centred rather than lost', () => {
   const [a] = pack([{ x0: 40, x1: 60, label: 'X'.repeat(40) }], 100);
   assert.equal(a.anchor, 'middle');
   assert.equal(a.tx, 50);
+  assert.equal(a.text, a.label);
+});
+
+test('a label that fits nowhere falls back to its short form', () => {
+  const [a] = pack([{ x0: 100, x1: 160, label: 'Request starts 250 ft out', short: '250 ft' }], 220);
+  assert.equal(a.text, '250 ft');
+  assert.equal(a.anchor, 'middle', 'and the short form fits over the line');
+  const [b] = pack([{ x0: 100, x1: 160, label: 'Request', short: '250 ft' }], 220);
+  assert.equal(b.text, 'Request', 'a full label that fits is kept');
+  const [c] = pack([{ x0: 100, x1: 104, label: 'X'.repeat(40), short: 'Y'.repeat(30) }], 120);
+  assert.equal(c.text, c.short, 'nothing fits: the shorter of the two, centred');
+  // The short form goes beside its line, like any label, when it will not fit over it.
+  const [d] = pack([{ x0: 100, x1: 104, label: 'X'.repeat(40), short: '250 ft' }], 220);
+  assert.equal(d.text, '250 ft');
+  assert.equal(d.anchor, 'start');
+});
+
+test('the packer measures with what it is given', () => {
+  // Measured narrow, the label fits over its 90 px line; estimated, it does not.
+  const dim = { key: 'r', x0: 75, x1: 165, label: 'Request starts 250 ft out', short: '250 ft' };
+  assert.equal(packDimensions([dim], 300).dims[0].text, '250 ft');
+  const [measured] = packDimensions([dim], 300, (text) => text.length * 3).dims;
+  assert.equal(measured.text, dim.label);
+  assert.equal(measured.anchor, 'middle');
+});
+
+test('the drawing packs with the measure it is given', () => {
+  const a = defaultApproach({ technology: 'video', zoneSetback: 250, lostTime: 3 });
+  const t = computeTiming(a);
+  const estimated = sceneGeometry(a, t, { width: 260 }).dims.find((d) => d.key === 'request');
+  const measured = sceneGeometry(a, t, { width: 260, measure: (text) => text.length * 3 }).dims.find((d) => d.key === 'request');
+  assert.equal(estimated.text, '250 ft');
+  assert.equal(measured.text, 'Request starts 250 ft out');
+});
+
+test('on a phone the dimensions fall back to short labels, and still never overlap', () => {
+  const { g } = sceneFor({ technology: 'video', zoneSetback: 250, lostTime: 3 }, 260);
+  assert.ok(g.dims.some((d) => d.text !== d.label), 'something had to shorten');
+  for (const d of g.dims) assert.ok(d.labL >= 0 && d.labR <= 260, `"${d.text}" is off the drawing`);
 });
 
 test('a short dimension puts its label beside the line, not across it', () => {
@@ -223,4 +264,65 @@ test('with no valid request, the drawing still has a road', () => {
   assert.equal(g.request, null);
   assert.ok(g.stopBar < g.farSide);
   assert.ok(g.dims.some((d) => d.key === 'crossing'));
+});
+
+/* --------------------------------------------------------------- timeline */
+
+test('the timeline runs the whole trip, with the trip\'s parts in order', () => {
+  const { t, m } = sceneFor({ technology: 'cloud', nearSideStop: true, stopDistance: 120, lostTime: 15 });
+  const line = timelineGeometry(m, t, { width: 800 });
+  assert.equal(line.spans[0].x0, TIMELINE.pad);
+  assert.equal(line.spans[line.spans.length - 1].x1, 800 - TIMELINE.pad);
+  assert.deepEqual(line.spans.map((s) => s.kind), ['lead', 'travel', 'hold', 'travel', 'crossing', 'trail']);
+  for (let i = 1; i < line.spans.length; i += 1) assert.equal(line.spans[i].x0, line.spans[i - 1].x1);
+  // Latency ends where the request is received.
+  assert.equal(line.latency.x1, line.received);
+  assert.ok(line.latency.x0 < line.received);
+});
+
+test('TSD and TED each mark the exact time and the second sent, labelled outward', () => {
+  const { t, m } = sceneFor();
+  const line = timelineGeometry(m, t);
+  assert.ok(line.tsd.programmed <= line.tsd.exact, 'TSD rounds down');
+  assert.ok(line.ted.programmed >= line.ted.exact, 'TED rounds up');
+  assert.equal(line.tsd.label, 'TSD 21 s');
+  assert.equal(line.ted.label, 'TED 24 s');
+  assert.ok(Math.abs(line.T(21) - line.tsd.programmed) < 1e-9);
+});
+
+test('the TSD and TED labels stay on the timeline', () => {
+  const bold = (text) => labelWidth(text) * 1.1;
+  for (const width of [320, 600, 1000]) {
+    for (const overrides of [
+      {},
+      { emitterDistance: 150, detectorToStopBar: 0 },
+      // A short approach and a long crossing put TSD hard against the left.
+      { emitterDistance: 30, detectorToStopBar: 0, speed: 5, intersectionLength: 1000, lostTime: 0 },
+    ]) {
+      const { t, m } = sceneFor(overrides);
+      const line = timelineGeometry(m, t, { width });
+      // TSD's label ends at its x, TED's starts there.
+      assert.ok(line.tsd.tx - bold(line.tsd.label) >= 0, `${width}px: TSD label off the left`);
+      assert.ok(line.ted.tx + bold(line.ted.label) <= width, `${width}px: TED label off the right`);
+    }
+  }
+  // With room, each sits just outside its own mark.
+  const { t, m } = sceneFor();
+  const line = timelineGeometry(m, t, { width: 1000 });
+  assert.equal(line.tsd.tx, line.tsd.programmed - 3);
+});
+
+test('no latency, no latency band', () => {
+  const { t, m } = sceneFor();
+  assert.equal(timelineGeometry(m, t).latency, null);
+  assert.equal(timelineGeometry(null, t), null);
+});
+
+test('time ticks are round seconds', () => {
+  assert.equal(secondsStep(25), 5);
+  assert.equal(secondsStep(9), 1);
+  assert.equal(secondsStep(200), 30);
+  const { t, m } = sceneFor();
+  const line = timelineGeometry(m, t);
+  assert.ok(line.ticks.some((k) => k.label === '0 s' && Math.abs(k.x - line.received) < 1e-9));
 });

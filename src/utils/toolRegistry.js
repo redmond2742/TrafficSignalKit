@@ -41,6 +41,7 @@ export const HOME_ORDER = [
   "/pattern-calendar",
   "/yolo-image-annotator",
   "/phase-diagram",
+  "/tsp-timing-calculator",
   "/unused-green-time",
   "/single-loop-speed-estimator",
   "/preemption-evaluator",
@@ -87,6 +88,16 @@ export const NAV_GROUPS = [
 ];
 
 export const TOOLS = [
+  {
+    path: "/tsp-timing-calculator",
+    title: "TSP Timing Calculator",
+    navTitle: "TSP Timing (TSD & TED)",
+    description:
+      "Work out TSD and TED for transit signal priority, approach by approach, and watch the bus make the trip",
+    image: "/images/tsp-timing-calculator.webp",
+    topics: ["TSP", "Transit", "Timing", "Visualization"],
+    group: "data",
+  },
   {
     path: "/phase-diagram",
     title: "Phase Diagram Maker",

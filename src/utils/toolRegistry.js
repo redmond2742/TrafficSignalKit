@@ -582,6 +582,38 @@ export function matchTools(tools, query) {
   });
 }
 
+/**
+ * Tools that share words with a URL that went nowhere, best match first --
+ * for the not-found page, so a mistyped or retired link still leads
+ * somewhere.
+ *
+ * Unlike matchTools, any one word is enough, since a broken URL is rarely a
+ * careful query. A word in a tool's name or path counts most, one in its
+ * description or topics less, and a word whose first four letters start a
+ * name ("histroy" for history) least.
+ */
+export function suggestForPath(tools, path, limit = 5) {
+  const words = String(path == null ? "" : path)
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((word) => word.length >= 3);
+  if (!words.length) return [];
+  const scored = [];
+  for (const tool of tools || []) {
+    const name = [tool.title, tool.navTitle, tool.path].filter(Boolean).join(" ").toLowerCase();
+    const rest = [tool.description, ...(tool.topics || [])].filter(Boolean).join(" ").toLowerCase();
+    let score = 0;
+    for (const word of words) {
+      if (name.includes(word)) score += 3;
+      else if (rest.includes(word)) score += 1;
+      else if (word.length >= 5 && name.includes(word.slice(0, 4))) score += 1;
+    }
+    if (score > 0) scored.push({ tool, score });
+  }
+  scored.sort((a, b) => b.score - a.score || a.tool.title.localeCompare(b.tool.title));
+  return scored.slice(0, limit).map((entry) => entry.tool);
+}
+
 /** Every topic with how many tools carry it, busiest first. */
 export function topicCounts(tools) {
   const counts = new Map();

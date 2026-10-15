@@ -14,6 +14,7 @@ import {
   topicCounts,
   toolsInGroup,
   homeTools,
+  suggestForPath,
 } from '../src/utils/toolRegistry.js';
 
 test('every entry is complete and uniquely addressed', () => {
@@ -166,4 +167,37 @@ test('every featured card has art, since they are the largest on the page', () =
   for (const tool of featuredTools(TOOLS)) {
     assert.ok(tool.image, `${tool.path} is featured but has no image`);
   }
+});
+
+/* ----------------------------------------------------------- not found */
+
+const fake = [
+  { path: '/split-history', title: 'High Resolution Split History', description: 'Phase durations by cycle', topics: ['Split'] },
+  { path: '/split-calculator', title: 'Split Calculator', description: 'Check splits add up', topics: ['Coordination'] },
+  { path: '/gpx', title: 'Time Space Diagram Visualizer', description: 'Plot GPX traces', topics: ['GPX'] },
+  { path: '/delay', title: 'Delay Estimator', description: 'Call delay by phase, from history', topics: ['Detection'] },
+];
+
+test('a broken URL suggests tools that share its words, name matches first', () => {
+  const titles = suggestForPath(fake, '/split-history-old').map((t) => t.title);
+  assert.deepEqual(titles.slice(0, 2), ['High Resolution Split History', 'Split Calculator']);
+  // "history" in a description counts, but less than in a name.
+  assert.ok(titles.indexOf('Delay Estimator') > titles.indexOf('High Resolution Split History'));
+});
+
+test('a misspelt word still finds its tool by its first letters', () => {
+  assert.deepEqual(suggestForPath(fake, '/split-histroy').map((t) => t.path)[0], '/split-history');
+  assert.deepEqual(suggestForPath(fake, '/visualzer').map((t) => t.path), ['/gpx']);
+});
+
+test('nothing to go on, nothing suggested', () => {
+  assert.deepEqual(suggestForPath(fake, '/'), []);
+  assert.deepEqual(suggestForPath(fake, '/a/b/12'), [], 'short words and numbers are not words');
+  assert.deepEqual(suggestForPath(fake, '/zebra'), []);
+  assert.deepEqual(suggestForPath(fake, null), []);
+});
+
+test('suggestions are capped, and come from the real registry too', () => {
+  assert.equal(suggestForPath(TOOLS, '/phase-split-detector-gpx-delay', 3).length, 3);
+  assert.ok(suggestForPath(TOOLS, '/preemption').some((t) => t.path === '/preemption-evaluator'));
 });

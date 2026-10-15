@@ -1,17 +1,13 @@
 <template>
   <div class="home-page">
     <!--
-      The visible title was redundant with the app bar, but the page still
-      needs exactly one h1, so it lives here unseen rather than disappearing.
-    -->
-    <h1 class="sr-only">
-      Traffic Signal Kit &mdash; traffic engineering tools and simulators
-    </h1>
-    <!--
-      A tagline and two shortcuts. The six featured tools below are the hero.
-      The old intro card was 259px on a desktop and 577px on a phone.
+      A title, a tagline and two shortcuts. The six featured tools below are
+      the hero. The title is short on purpose: the old intro card was 259px on
+      a desktop and 577px on a phone, and a hidden title left visitors landing
+      on a tagline with nothing to say what site this was.
     -->
     <header class="hero">
+      <h1 class="hero__title">Traffic Signal Kit</h1>
       <p class="hero__tagline">
         Free &amp; open source tools for traffic engineers &mdash; rapid-fire,
         proof-of-concept, and built to find what actually makes an impact.
@@ -183,6 +179,13 @@ export default {
 .hero {
   text-align: center;
   padding: 8px 12px 0;
+}
+.hero__title {
+  margin: 4px 0 4px;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 .hero__tagline {
   /* the global `p { text-align: left }` would otherwise win here */

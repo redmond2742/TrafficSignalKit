@@ -78,7 +78,6 @@ export default {
       this.activePhasesInCycle = [];
       this.cycleCount = 1;
       this.countCycles = 1;
-      this.currentCycleLength = 0;
       this.rowData = [];
       this.processedData = [];
       this.eventStates = {};

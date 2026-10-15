@@ -15,7 +15,7 @@
         </v-expansion-panel>
 
         <v-expansion-panel
-          title="Detailed Explination About This Tool"
+          title="Detailed Explanation About This Tool"
           value="detailed-explain"
         >
           <v-expansion-panel-text>

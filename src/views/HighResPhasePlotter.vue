@@ -34,10 +34,10 @@
               signal. Enumerations numbers clearly state an event description
               and assigns a parameter number such as a Phase or Channel number
               to each event. Each event includes a timestamp of when this
-              occured. Six Traffic controller vendors (in no particular order:
+              occurred. Six Traffic controller vendors (in no particular order:
               Econolite, Siemens, Peek, McCain, Intelight and Trafficware) have
               incorporated standardized data logging enumerations. These can be
-              transfered from the controller and converted to a Comma Seperated
+              transferred from the controller and converted to a Comma Separated
               Value (CSV) file through a vendor defined process. That CSV file
               can be copied into this tool to see a split report.
             </p>
@@ -45,7 +45,7 @@
         </v-expansion-panel>
 
         <v-expansion-panel
-          title="Detailed Explination About This Tool"
+          title="Detailed Explanation About This Tool"
           value="detailed-explain"
         >
           <v-expansion-panel-text>

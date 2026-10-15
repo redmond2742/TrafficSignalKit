@@ -161,11 +161,33 @@ export default {
   margin-bottom: 8px;
 }
 
+/*
+  The textarea had no border at all, so in 34 tools the place to paste data
+  read as a line of grey placeholder text floating on the page.
+*/
 .input-box {
+  box-sizing: border-box;
   overflow-y: auto;
   width: 100%;
   max-height: 220px;
   min-height: 140px;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.28);
+  border-radius: 6px;
+  background: rgb(var(--v-theme-surface));
+  /* CSV columns line up in a monospace face */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+.input-box:hover {
+  border-color: rgba(var(--v-theme-on-surface), 0.5);
+}
+.input-box:focus {
+  outline: none;
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: 0 0 0 1px rgb(var(--v-theme-primary));
 }
 
 .input-box-upload {

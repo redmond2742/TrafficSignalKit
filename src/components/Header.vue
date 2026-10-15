@@ -2,6 +2,10 @@
   <v-app-bar :elevation="12" color="primary">
     <v-app-bar-nav-icon
       v-if="mobileView"
+      ref="menuButton"
+      :aria-label="drawer ? 'Close menu' : 'Open menu'"
+      :aria-expanded="drawer ? 'true' : 'false'"
+      aria-controls="site-menu"
       @click="drawer = !drawer"
     ></v-app-bar-nav-icon>
     <div class="title-justify">
@@ -46,7 +50,13 @@
     <HeaderSearch />
 
     <template v-slot:append>
-      <v-dialog v-model="dialog" width="auto">
+      <!--
+        The form used to sit in a fixed 640px frame with its only close button
+        below 1,009px of form, so on a phone it ran off the right edge and the
+        way out was a long scroll away. It now fits the screen, scrolls inside
+        itself, and closes from the top (or with Escape).
+      -->
+      <v-dialog v-model="dialog" max-width="700">
         <template v-slot:activator="{ props }">
           <v-btn
             v-bind="props"
@@ -58,27 +68,27 @@
           </v-btn>
         </template>
         <v-card>
-          <v-card-text>
-            <iframe
-              src="https://docs.google.com/forms/d/e/1FAIpQLSeVlfAjK6kn8hbWJ4YOzcekYtFDH9VLGGuNRMEJhp1HiYRT_A/viewform?embedded=true"
-              width="640"
-              height="1009"
-              frameborder="0"
-              marginheight="0"
-              marginwidth="0"
-              >Loading…</iframe
-            >
-          </v-card-text>
-          <v-card-actions>
-            <v-btn color="primary" block @click="dialog = false"
-              >Close Dialog</v-btn
-            >
-          </v-card-actions>
+          <div class="feedback-head">
+            <span class="feedback-title">Send feedback</span>
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              size="small"
+              aria-label="Close feedback"
+              @click="dialog = false"
+            ></v-btn>
+          </div>
+          <iframe
+            class="feedback-frame"
+            title="Feedback form"
+            src="https://docs.google.com/forms/d/e/1FAIpQLSeVlfAjK6kn8hbWJ4YOzcekYtFDH9VLGGuNRMEJhp1HiYRT_A/viewform?embedded=true"
+            >Loading…</iframe
+          >
         </v-card>
       </v-dialog>
     </template>
   </v-app-bar>
-  <v-navigation-drawer v-model="drawer" app temporary>
+  <v-navigation-drawer id="site-menu" v-model="drawer" app temporary>
     <v-list>
       <v-list-item
         v-for="item in drawerItems"
@@ -112,6 +122,33 @@ export default {
       drawer: false, // Controls the drawer visibility
     };
   },
+  watch: {
+    /**
+     * A temporary drawer does not close on Escape by itself, and nothing moved
+     * focus into it, so a keyboard user who opened it was stuck behind it.
+     */
+    drawer(open) {
+      if (open) {
+        window.addEventListener("keydown", this.onDrawerKey);
+        this.$nextTick(() => {
+          const first = document.querySelector("#site-menu a, #site-menu button");
+          if (first) first.focus();
+        });
+      } else {
+        window.removeEventListener("keydown", this.onDrawerKey);
+      }
+    },
+  },
+  beforeUnmount() {
+    window.removeEventListener("keydown", this.onDrawerKey);
+  },
+  methods: {
+    onDrawerKey(event) {
+      if (event.key !== "Escape") return;
+      this.drawer = false;
+      this.$nextTick(() => this.$refs.menuButton?.$el?.focus());
+    },
+  },
   computed: {
     /** The desktop menus, each already sorted, straight from the registry. */
     navGroups() {
@@ -144,6 +181,23 @@ export default {
 <style scoped>
 .heart-icon {
   color: rgb(235, 8, 8);
+}
+.feedback-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 8px 20px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+.feedback-title {
+  font-weight: 600;
+}
+.feedback-frame {
+  display: block;
+  width: 100%;
+  /* the form scrolls inside its own frame */
+  height: min(1009px, 75vh);
+  border: 0;
 }
 a {
   text-decoration: none;

@@ -20,6 +20,7 @@ import SingleLoopSpeedEstimator from '../views/SingleLoopSpeedEstimator'
 import UnusedGreenTime from '../views/UnusedGreenTime'
 import PhaseDiagram from '../views/PhaseDiagram'
 import TspTimingCalculator from '../views/TspTimingCalculator'
+import NotFound from '../views/NotFound'
 import HighResEnumerationMatrix from '../views/HighResEnumerationMatrix'
 import Reference from '../views/Reference'
 import HighResDetectionPlotter from '../views/HighResDetectionPlotter'
@@ -359,7 +360,7 @@ const routes = [
     {
         path: '/:pathMatch(.*)*',
         name: "not-found",
-        component: About,
+        component: NotFound,
     },
     
      

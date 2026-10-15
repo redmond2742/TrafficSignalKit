@@ -1,6 +1,7 @@
 import enumerationObj from "../data/enumerations.json";
 import convertTime from "./convertTime.js";
 import { DateTime } from "luxon";
+import { createCycleClock } from "../utils/cycleClock.js";
 
 export default {
     mixins: [convertTime],
@@ -11,7 +12,6 @@ export default {
             activePhasesInCycle: [],
             cycleCount: 1,
             countCycles: 1,
-            currentCycleLength: 0,
             maxOutPercents: [],
             rowData: [],
             allB1Phases: [1, 2, 5, 6],
@@ -751,6 +751,8 @@ export default {
           
           const customFormat = "ccc, MMM d yyyy h:mm:ss.S a";
           let allPhaseData = [];
+          // Sets each row's cycle length; see utils/cycleClock.js.
+          const cycleClock = createCycleClock();
           
           dataObj.forEach((obj) => {
          
@@ -795,15 +797,13 @@ export default {
                     phaseNum
                   );
            
-                  if (this.activePhasesInCycle.includes(phaseNum)) {
+                  // A phase served again means the next cycle has begun.
+                  const newCycle = this.activePhasesInCycle.includes(phaseNum);
+                  if (newCycle) {
                     this.cycleCount++;
-                    this.currentCycleLength = 0;
-                    this.activePhasesInCycle = [];
-                    this.activePhasesInCycle.push(phaseNum);
-                    this.currentCycleLength += phaseSplitDuration;
+                    this.activePhasesInCycle = [phaseNum];
                   } else {
                     this.activePhasesInCycle.push(phaseNum);
-                    this.currentCycleLength += phaseSplitDuration;
                   }
     
                   this.incrementTerminationResults(
@@ -836,7 +836,8 @@ export default {
                     allRedTime: this.calcAllRedTime(this.phaseArray, phaseNum),
                     termReason: this.phaseArray[phaseNum].phaseTerminationReason,
                     cycleCount: this.cycleCount,
-                    cycleLength: this.currentCycleLength,
+                    // Filled in by the cycle clock below.
+                    cycleLength: null,
                     maxOutPercents: this.maxOutPercents,
                     gapOutPercents: this.gapOutPercents,
                     forceOffPercents: this.forceOffPercents,
@@ -852,6 +853,12 @@ export default {
     
                   this.rowData.push(phaseSplit);
                   allPhaseData.push(phaseSplit);
+                  // The row as the table sees it, so later corrections show.
+                  cycleClock.add(this.rowData[this.rowData.length - 1], {
+                    greenStartMs: DateTime.fromISO(this.phaseArray[phaseNum].greenTimeStart).toMillis(),
+                    durationSeconds: phaseSplitDuration,
+                    newCycle,
+                  });
     
                   //emit phase durations to parent to display in table
                   this.$emit("phaseDurations", this.rowData);

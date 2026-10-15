@@ -31,7 +31,7 @@
         </v-expansion-panel>
 
         <v-expansion-panel
-          title="Detailed Explination: CSV Formatted Data"
+          title="Detailed Explanation: CSV Formatted Data"
           value="detailed-explain"
         >
           <v-expansion-panel-text>
@@ -39,11 +39,11 @@
             can log the state of over 150 different aspects of the traffic
             signal. Enumerations numbers clearly state an event description and
             assigns a parameter number such as a Phase or Channel number to each
-            event. Each event includes a timestamp of when this occured. Six
+            event. Each event includes a timestamp of when this occurred. Six
             Traffic controller vendors (in no particular order: Econolite,
             Siemens, Peek, McCain, Intelight and Trafficware) have incorporated
-            standardized data logging enumerations. These can be transfered from
-            the controller and converted to a Comma Seperated Value (CSV) file
+            standardized data logging enumerations. These can be transferred from
+            the controller and converted to a Comma Separated Value (CSV) file
             through a vendor defined process. That CSV file can be copied into
             this tool for the data to be clearly explained.
             <br />

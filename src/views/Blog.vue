@@ -9,8 +9,8 @@
           as they ship.
         </p>
         <p>
-          Have a topic you want covered? Tap the heart button in the header and
-          let me know what you want to see next.
+          Have a topic you want covered? Tap Feedback in the header and let me
+          know what you want to see next.
         </p>
       </v-card-text>
     </v-card>

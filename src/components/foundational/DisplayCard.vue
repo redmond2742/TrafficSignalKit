@@ -1,28 +1,31 @@
 <template>
   <v-card class="tool-card" :class="{ 'tool-card--featured': featured }" :to="link" link>
     <!--
-      cover, not contain. The card art spans 16 different aspect ratios, from
-      0.75 portrait to 2.41 panorama, so "contain" letterboxed them by wildly
-      different amounts and no two cards looked alike.
+      A plain <img>, not v-img. v-img waits for an IntersectionObserver, then a
+      tick and a timeout, then fades in, so every card sat as a grey box for
+      about two seconds and faded again each time the page was revisited. The
+      browser's own lazy loading starts well before a card scrolls into view,
+      and featured cards load at once (index.html also preloads their art).
+
+      cover, not contain: the card art spans 16 aspect ratios, from 0.75
+      portrait to 2.41 panorama, and "contain" letterboxed each differently.
     -->
-    <v-img
-      :src="image"
-      :height="imageHeight"
-      cover
-      :alt="resolvedImageAlt"
-      class="tool-card__image"
-      @error="imageFailed = true"
-    >
-      <!-- Two of the S3 URLs are dead, which used to leave a blank 200px void. -->
-      <template #error>
-        <div class="tool-card__fallback">
-          <v-icon icon="mdi-traffic-light" size="44"></v-icon>
-        </div>
-      </template>
-      <template #placeholder>
-        <div class="tool-card__fallback tool-card__fallback--loading"></div>
-      </template>
-    </v-img>
+    <div class="tool-card__media" :style="{ height: `${imageHeight}px` }">
+      <img
+        v-if="image && !imageFailed"
+        :src="image"
+        :alt="resolvedImageAlt"
+        :loading="featured ? 'eager' : 'lazy'"
+        :fetchpriority="featured ? 'high' : 'auto'"
+        decoding="async"
+        class="tool-card__image"
+        @error="imageFailed = true"
+      />
+      <!-- Missing or broken art gets an icon rather than a blank void. -->
+      <div v-else class="tool-card__fallback">
+        <v-icon icon="mdi-traffic-light" size="44"></v-icon>
+      </div>
+    </div>
 
     <v-card-title class="tool-card__title">{{ title }}</v-card-title>
     <v-card-text class="tool-card__description">{{ description }}</v-card-text>
@@ -151,11 +154,20 @@ export default {
   outline-offset: 2px;
 }
 
-/*
- * Anchor the crop to the top. The card box is ~2.3:1 on a phone against 1.5:1
- * art, so a centred crop cut the heading off every screenshot.
- */
-.tool-card__image :deep(.v-img__img) {
+.tool-card__media {
+  flex: none;
+  overflow: hidden;
+  background-color: rgba(var(--v-theme-on-surface), 0.06);
+}
+.tool-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /*
+   * Anchor the crop to the top. The card box is ~2.3:1 on a phone against
+   * 1.5:1 art, so a centred crop cut the heading off every screenshot.
+   */
   object-position: center top;
 }
 
@@ -167,9 +179,6 @@ export default {
   width: 100%;
   background-color: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
-}
-.tool-card__fallback--loading {
-  background-color: rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .tool-card__title {

@@ -22,7 +22,10 @@
  *   image       home card art; absent for tools that have no card
  *   topics      searchable tags, also the home page's topic vocabulary
  *   group       which desktop menu it belongs to
+ *   section     which part of that menu, for a menu with NAV_SECTIONS
  *   home        false for tools that are navigable and searchable but have no card
+ *   nav         false for tools kept off the menus but still searchable, with
+ *               a card if they have one
  */
 
 /**
@@ -87,6 +90,24 @@ export const NAV_GROUPS = [
   { id: "about", label: "About" },
 ];
 
+/**
+ * The parts of a menu, in reading order. Only Traffic Signal Data has them:
+ * at 31 tools it was one alphabetical list about twice the height of the
+ * window. A menu with no entry here stays one list.
+ *
+ * `column` places a section in the desktop menu's three columns. Left to CSS
+ * columns, the browser stood Phases & splits alone in the middle with the
+ * other two columns half again as tall.
+ */
+export const NAV_SECTIONS = [
+  { id: "controller", group: "data", label: "Controller data", column: 1 },
+  { id: "detection", group: "data", label: "Detection", column: 1 },
+  { id: "phases", group: "data", label: "Phases & splits", column: 2 },
+  { id: "priority", group: "data", label: "Preemption & TSP", column: 2 },
+  { id: "timing", group: "data", label: "Timing & coordination", column: 3 },
+  { id: "safety", group: "data", label: "Pedestrians & safety", column: 3 },
+];
+
 export const TOOLS = [
   {
     path: "/tsp-timing-calculator",
@@ -97,6 +118,7 @@ export const TOOLS = [
     image: "/images/tsp-timing-calculator.webp",
     topics: ["TSP", "Transit", "Timing", "Visualization"],
     group: "data",
+    section: "priority",
   },
   {
     path: "/phase-diagram",
@@ -107,6 +129,7 @@ export const TOOLS = [
     image: "/images/phase-diagram.webp",
     topics: ["Phases", "GTSS", "Printing", "Diagrams"],
     group: "data",
+    section: "phases",
   },
   {
     path: "/unused-green-time",
@@ -117,6 +140,7 @@ export const TOOLS = [
     image: "/images/unused-green-time.webp",
     topics: ["Detectors", "Controller Data", "Phases", "Pedestrians", "Delay"],
     group: "data",
+    section: "phases",
   },
   {
     path: "/single-loop-speed-estimator",
@@ -127,16 +151,18 @@ export const TOOLS = [
     image: "/images/single-loop-speed-estimator.webp",
     topics: ["Detectors", "Controller Data", "Speed"],
     group: "data",
+    section: "detection",
   },
   {
     path: "/yellow-red-running",
     title: "Yellow & Red Light Running Tool (V2)",
-    navTitle: "Yellow & Red Light Running Tool",
+    navTitle: "Yellow & Red Light Running",
     description:
       "Detect detector-off events during yellow or red intervals",
     image: "/images/yellow-red-running.webp",
     topics: ["Red Light Running", "Controller Data"],
     group: "data",
+    section: "safety",
   },
   {
     path: "/coordination-learning-tool",
@@ -155,6 +181,7 @@ export const TOOLS = [
     image: "/images/delay-estimator.webp",
     topics: ["Controller Data", "Delay", "Enumerations"],
     group: "data",
+    section: "detection",
   },
   {
     path: "/yolo-image-annotator",
@@ -173,6 +200,7 @@ export const TOOLS = [
     image: "/images/ped-conflict-correlator.webp",
     topics: ["Controller Data", "Pedestrians", "Safety", "Detection"],
     group: "data",
+    section: "safety",
   },
   {
     path: "/pedestrian-investigator",
@@ -182,6 +210,7 @@ export const TOOLS = [
     image: "/images/pedestrian-investigator.webp",
     topics: ["Controller Data", "Pedestrians", "Diagnostics"],
     group: "data",
+    section: "safety",
   },
   {
     path: "/stuck-detectors",
@@ -191,6 +220,7 @@ export const TOOLS = [
     image: "/images/stuck-detectors.webp",
     topics: ["Controller Data", "Detection", "Diagnostics"],
     group: "data",
+    section: "detection",
   },
   {
     path: "/skipped-phase-finder",
@@ -200,6 +230,7 @@ export const TOOLS = [
     image: "/images/skipped-phase-finder.webp",
     topics: ["Controller Data", "Detection", "Diagnostics"],
     group: "data",
+    section: "phases",
   },
   {
     path: "/split-failure-checker",
@@ -209,6 +240,7 @@ export const TOOLS = [
     image: "/images/split-failure-checker.webp",
     topics: ["Controller Data", "Detection", "Diagnostics"],
     group: "data",
+    section: "phases",
   },
   {
     path: "/preemption-evaluator",
@@ -218,6 +250,7 @@ export const TOOLS = [
     image: "/images/preemption-evaluator.webp",
     topics: ["Controller Data", "Enumerations", "Preemption", "Diagnostics"],
     group: "data",
+    section: "priority",
   },
   {
     path: "/preemption-plotter",
@@ -227,6 +260,7 @@ export const TOOLS = [
     image: "/images/preemption-plotter.webp",
     topics: ["Controller Data", "Enumerations", "Preemption"],
     group: "data",
+    section: "controller",
   },
   {
     path: "/enumeration-matrix",
@@ -236,6 +270,7 @@ export const TOOLS = [
     image: "/images/enumeration-matrix.webp",
     topics: ["Controller Data", "Enumerations", "Diagnostics"],
     group: "data",
+    section: "controller",
   },
   {
     path: "/detection-plotter",
@@ -245,6 +280,7 @@ export const TOOLS = [
     image: "/images/detection-plotter.webp",
     topics: ["Controller Data", "Enumerations", "Detection"],
     group: "data",
+    section: "detection",
   },
   {
     path: "/detector-bubble-chart",
@@ -254,6 +290,7 @@ export const TOOLS = [
     image: "/images/detector-bubble-chart.webp",
     topics: ["Controller Data", "Detection", "Cycles"],
     group: "data",
+    section: "detection",
   },
   {
     path: "/phase-bubble-scatter",
@@ -263,6 +300,7 @@ export const TOOLS = [
     image: "/images/phase-bubble-scatter.webp",
     topics: ["Controller Data", "Detection", "Phase"],
     group: "data",
+    section: "phases",
   },
   {
     path: "/detector-event-heat-map",
@@ -272,6 +310,7 @@ export const TOOLS = [
     image: "/images/detector-event-heat-map.webp",
     topics: ["Controller Data", "Detection", "Heat Map"],
     group: "data",
+    section: "detection",
   },
   {
     path: "/startup-loss-average",
@@ -281,6 +320,7 @@ export const TOOLS = [
     image: "/images/stuck-detectors.webp",
     topics: ["Controller Data", "Detection", "Performance"],
     group: "data",
+    section: "timing",
   },
   {
     path: "/gap-out-gap-reduction-helper",
@@ -290,6 +330,7 @@ export const TOOLS = [
     image: "/images/gap-out-gap-reduction-helper.webp",
     topics: ["Controller Data", "Detection", "Timing"],
     group: "data",
+    section: "timing",
   },
   {
     path: "/cabinet-pm-scheduler",
@@ -310,6 +351,7 @@ export const TOOLS = [
     image: "/images/split-history.webp",
     topics: ["Controller Data", "Enumerations", "Split"],
     group: "data",
+    section: "phases",
   },
   {
     path: "/signal-offsets",
@@ -319,6 +361,7 @@ export const TOOLS = [
     image: "/images/signal-offsets.webp",
     topics: ["Controller Data", "Coordination", "Offsets"],
     group: "data",
+    section: "timing",
   },
   {
     path: "/pattern-calendar",
@@ -328,6 +371,7 @@ export const TOOLS = [
     image: "/images/pattern-calendar.webp",
     topics: ["Controller Data", "Coordination", "Calendar"],
     group: "data",
+    section: "timing",
   },
   {
     path: "/gpx-mapper",
@@ -355,6 +399,7 @@ export const TOOLS = [
     image: "/images/basic-timing-seeker.webp",
     topics: ["Controller Data", "Timing", "GTSS"],
     group: "data",
+    section: "timing",
   },
   {
     path: "/explainer",
@@ -365,6 +410,7 @@ export const TOOLS = [
     image: "/images/explainer.webp",
     topics: ["Controller Data", "Enumerations"],
     group: "data",
+    section: "controller",
   },
   {
     path: "/gpx-phase-plotter",
@@ -384,6 +430,7 @@ export const TOOLS = [
     image: "/images/phase-plotter.webp",
     topics: ["Controller Data", "Enumerations"],
     group: "data",
+    section: "controller",
   },
   {
     path: "/traffic-simulator",
@@ -445,12 +492,15 @@ export const TOOLS = [
   {
     path: "/detectorRLR",
     title: "Red Light Runner (Original)",
-    navTitle: "Red Light Runners",
     description:
-      "Table of Yellow and Red light running events",
+      "The first red light running table, for one intersection. Yellow & Red Light Running replaces it.",
     image: "/images/detectorrlr.webp",
     topics: ["Red Light Running", "Controller Data"],
     group: "data",
+    section: "safety",
+    // Sat beside its replacement in the menu as "Red Light Runners", with
+    // nothing to say which to use. Still searchable, with its card.
+    nav: false,
   },
   {
     path: "/dashboard",
@@ -460,6 +510,7 @@ export const TOOLS = [
       "Process high-resolution data to review detector status, phase plots, and split history in one dashboard.",
     topics: ["Controller Data", "Diagnostics", "Visualization"],
     group: "data",
+    section: "controller",
     home: false,
   },
   {
@@ -469,6 +520,7 @@ export const TOOLS = [
       "Upload high-resolution CSV files to analyze transit signal priority channels, event frequencies, and time-series patterns.",
     topics: ["Controller Data", "Diagnostics", "Visualization"],
     group: "data",
+    section: "priority",
     home: false,
   },
   {
@@ -478,6 +530,7 @@ export const TOOLS = [
       "Combine detector-to-phase mappings with split history so split failure and red-light running metrics can be summarized by phase.",
     topics: ["Controller Data", "Split", "Red Light Running", "Visualization"],
     group: "data",
+    section: "phases",
     home: false,
   },
   {
@@ -487,6 +540,7 @@ export const TOOLS = [
       "Generate a table of phase start timestamps for green, yellow, and red intervals.",
     topics: ["Controller Data", "Enumerations", "Timing"],
     group: "data",
+    section: "controller",
     home: false,
   },
   {
@@ -496,6 +550,7 @@ export const TOOLS = [
       "Combine controller events with detector assignments to see how long phases sit in minimum green, extension, and gap-out time.",
     topics: ["Controller Data", "Detection", "Timing"],
     group: "data",
+    section: "timing",
     home: false,
   },
   {
@@ -627,14 +682,30 @@ export function topicCounts(tools) {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-/**
- * One menu's tools, alphabetically. The Traffic Signal Data menu holds 27
- * entries; in insertion order it is a wall of text to scan.
- */
+/** One menu's tools, alphabetically, leaving out any kept off the menus. */
 export function toolsInGroup(tools, group) {
   return (tools || [])
-    .filter((tool) => tool.group === group)
+    .filter((tool) => tool.group === group && tool.nav !== false)
     .sort((a, b) => navLabel(a).localeCompare(navLabel(b)));
+}
+
+/**
+ * One menu as its sections, each alphabetical, in NAV_SECTIONS order. A menu
+ * without sections comes back as a single unlabelled one, so a caller can
+ * draw every menu the same way. Empty sections are left out.
+ */
+export function navSections(tools, group) {
+  const items = toolsInGroup(tools, group);
+  const sections = NAV_SECTIONS.filter((section) => section.group === group);
+  if (!sections.length) return [{ id: group, label: null, items }];
+  return sections
+    .map((section) => ({
+      id: section.id,
+      label: section.label,
+      column: section.column,
+      items: items.filter((tool) => tool.section === section.id),
+    }))
+    .filter((section) => section.items.length);
 }
 
 /** The home page cards, in HOME_ORDER. Anything unlisted lands at the end. */

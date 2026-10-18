@@ -3,6 +3,14 @@
     &nbsp;
     <h1 class="h1-center-text">Detector Event</h1>
 
+    <!-- This page left the menus when its replacement took the name. -->
+    <v-alert type="info" variant="tonal" density="compact" class="newer-tool">
+      This is the original red light running table.
+      <router-link to="/yellow-red-running">Yellow &amp; Red Light Running</router-link>
+      replaces it: it reads several signals at once and takes the detector to
+      phase map as pasted text.
+    </v-alert>
+
     <div class="left-justify-text">
       <v-expansion-panels v-model="panel" multiple>
         <v-expansion-panel title="About: Detector Events" value="about">
@@ -89,4 +97,13 @@ export default {
   },
 };
 </script>
-<style scoped></style>
+<style scoped>
+.newer-tool {
+  margin-bottom: 16px;
+  text-align: left;
+}
+.newer-tool a {
+  color: inherit;
+  font-weight: 600;
+}
+</style>

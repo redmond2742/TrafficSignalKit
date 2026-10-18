@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import {
   TOOLS,
   NAV_GROUPS,
+  NAV_SECTIONS,
   HOME_ORDER,
   FEATURED_COUNT,
   featuredTools,
@@ -13,6 +14,7 @@ import {
   matchTools,
   topicCounts,
   toolsInGroup,
+  navSections,
   homeTools,
   suggestForPath,
 } from '../src/utils/toolRegistry.js';
@@ -93,9 +95,83 @@ test('each menu holds only its own tools, alphabetically', () => {
     const labels = inGroup.map(navLabel);
     assert.deepEqual(labels, [...labels].sort((a, b) => a.localeCompare(b)));
   }
-  // every tool reaches exactly one menu
+  // every tool reaches exactly one menu, unless it is kept off them on purpose
   const total = NAV_GROUPS.reduce((sum, g) => sum + toolsInGroup(TOOLS, g.id).length, 0);
-  assert.equal(total, TOOLS.length, 'a tool is in no menu, or in two');
+  assert.equal(total, TOOLS.filter((t) => t.nav !== false).length, 'a tool is in no menu, or in two');
+});
+
+test('a tool kept off the menus is still found by search', () => {
+  const hidden = TOOLS.filter((t) => t.nav === false);
+  assert.ok(hidden.length > 0);
+  for (const tool of hidden) {
+    assert.ok(!toolsInGroup(TOOLS, tool.group).includes(tool), `${tool.path} is still in a menu`);
+    assert.ok(matchTools(TOOLS, tool.title).includes(tool), `${tool.path} is not searchable`);
+  }
+});
+
+test('no two menu entries share a label, and red light running has one', () => {
+  // "Red Light Runners" beside "Yellow & Red Light Running Tool" left people
+  // guessing which to use.
+  const labels = NAV_GROUPS.flatMap((g) => toolsInGroup(TOOLS, g.id)).map(navLabel);
+  assert.equal(new Set(labels).size, labels.length, 'duplicate menu label');
+  assert.deepEqual(labels.filter((l) => /red light run/i.test(l)), ['Yellow & Red Light Running']);
+});
+
+test('every tool in a sectioned menu has a section of that menu, and no other does', () => {
+  const sectionGroup = new Map(NAV_SECTIONS.map((s) => [s.id, s.group]));
+  const sectioned = new Set(NAV_SECTIONS.map((s) => s.group));
+  for (const tool of TOOLS) {
+    if (sectioned.has(tool.group)) {
+      assert.equal(sectionGroup.get(tool.section), tool.group, `${tool.path}: section ${tool.section}`);
+    } else {
+      assert.equal(tool.section, undefined, `${tool.path} has a section in an unsectioned menu`);
+    }
+  }
+});
+
+test('a sectioned menu splits into its sections, in order, each alphabetical', () => {
+  const sections = navSections(TOOLS, 'data');
+  assert.deepEqual(
+    sections.map((s) => s.id),
+    NAV_SECTIONS.filter((s) => s.group === 'data').map((s) => s.id),
+  );
+  for (const section of sections) {
+    assert.ok(section.label);
+    const labels = section.items.map(navLabel);
+    assert.deepEqual(labels, [...labels].sort((a, b) => a.localeCompare(b)), section.id);
+    // short enough to scan, which was the point
+    assert.ok(section.items.length <= 8, `${section.id} has ${section.items.length} tools`);
+  }
+  // the sections hold the whole menu, once each
+  const flat = sections.flatMap((s) => s.items);
+  assert.deepEqual(
+    [...flat].sort((a, b) => a.path.localeCompare(b.path)),
+    [...toolsInGroup(TOOLS, 'data')].sort((a, b) => a.path.localeCompare(b.path)),
+  );
+});
+
+test('the desktop columns stay even, and short enough for a laptop screen', () => {
+  const rows = new Map();
+  for (const section of navSections(TOOLS, 'data')) {
+    // a heading counts as a row
+    rows.set(section.column, (rows.get(section.column) || 0) + section.items.length + 1);
+  }
+  assert.deepEqual([...rows.keys()].sort(), [1, 2, 3]);
+  const heights = [...rows.values()];
+  assert.ok(Math.max(...heights) <= 15, `a column runs to ${Math.max(...heights)} rows`);
+  assert.ok(Math.max(...heights) - Math.min(...heights) <= 5, `columns of ${heights.join(', ')} rows`);
+});
+
+test('a menu without sections is one unlabelled section', () => {
+  const [only, ...rest] = navSections(TOOLS, 'gpx');
+  assert.equal(rest.length, 0);
+  assert.equal(only.label, null);
+  assert.deepEqual(only.items, toolsInGroup(TOOLS, 'gpx'));
+});
+
+test('an empty section is left out', () => {
+  const tools = [{ path: '/a', title: 'A', group: 'data', section: 'detection' }];
+  assert.deepEqual(navSections(tools, 'data').map((s) => s.id), ['detection']);
 });
 
 test('home cards all carry art', () => {

@@ -7,6 +7,7 @@ import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 // Utilities
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
+import { featuredPreloadTags } from './scripts/featuredPreload.mjs'
 
 
 
@@ -20,6 +21,10 @@ export default defineConfig({
     // https://github.com/vuetifyjs/vuetify-loader/tree/master/packages/vite-plugin#readme
     Vuetify(),
     Components(),
+    // Starts the featured cards' art with the script; see featuredPreload.mjs.
+    // Build only: the dev server hands this HTML to every route, where the
+    // browser warns about preloads the page never uses.
+    { name: 'preload-featured-art', apply: 'build', transformIndexHtml: () => featuredPreloadTags() },
   ],
   // 111 console statements across src/. Dropping them at build time beats
   // editing every call site, and keeps them available in dev.

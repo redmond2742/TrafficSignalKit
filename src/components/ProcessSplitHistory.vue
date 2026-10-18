@@ -6,7 +6,13 @@
     -->
   </div>
   <div v-if="!hideInput" class="grow-wrap">
-    <InputBox v-model="localInputData" :defaultText="textboxDefaultText" />
+    <InputBox
+      v-model="localInputData"
+      :defaultText="textboxDefaultText"
+      :sample="sampleLog"
+      :sample-note="sampleNote"
+      @sample="calculatePhaseDurations"
+    />
   </div>
   <div v-if="!hideInput">
     <v-btn @click="calculatePhaseDurations" color="primary">Process</v-btn>
@@ -19,6 +25,7 @@ import processPhaseSplits from "../mixins/processPhaseSplits";
 import { DateTime } from "luxon";
 // components
 import InputBox from "./foundational/InputBox.vue";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 import TableDisplaySplit from "./foundational/TableDisplaySplit.vue";
 
 export default {
@@ -47,6 +54,7 @@ export default {
       hdDataObj: [],
       textboxDefaultText:
         "Paste in High-Resolution Traffic Signal Data as Text in CSV format",
+      sampleNote: SAMPLE_NOTE,
     };
   },
   created() {
@@ -72,6 +80,7 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
     resetPhaseState() {
       this.phasesInCycle = [];
       this.phaseArray = [];

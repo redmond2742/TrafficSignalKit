@@ -53,6 +53,9 @@
         <InputBox
           v-model="rawData"
           :defaultText="inputDefault"
+          :sample="sampleWeek"
+          :sample-note="sampleNote"
+          @sample="buildCalendar"
         />
       </div>
       <div class="action-row">
@@ -274,6 +277,7 @@ import {
   splitSegmentsByDay,
 } from "../utils/patternUsage.js";
 import convertTime from "../mixins/convertTime";
+import { samplePatternWeek, SAMPLE_WEEK_NOTE } from "../utils/sampleData.js";
 
 export default {
   name: "PatternCalendar",
@@ -283,6 +287,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
+      sampleNote: SAMPLE_WEEK_NOTE,
       panel: [],
       rawData: "",
       inputDefault:
@@ -484,6 +489,8 @@ export default {
     },
   },
   methods: {
+    // a week of plan changes: the calendar needs days, not an hour
+    sampleWeek: samplePatternWeek,
     resetCalendar() {
       this.rawData = "";
       this.warningMessage = "";

@@ -2,7 +2,13 @@
   <div>
     <div class="stuck-inputs">
       <div class="grow-wrap">
-        <InputBox v-model="inputData" :defaultText="dataDefaultText" />
+        <InputBox
+          v-model="inputData"
+          :defaultText="dataDefaultText"
+          :sample="sampleLog"
+          :sample-note="sampleNote"
+          @sample="processStuckDetectors"
+        />
       </div>
     </div>
     <div class="actions">
@@ -57,6 +63,7 @@
 <script>
 import convertTime from "../mixins/convertTime";
 import InputBox from "./foundational/InputBox.vue";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 
 const ON_EVENT_CODES = new Set([82, 90]);
 const OFF_EVENT_CODES = new Set([81, 89]);
@@ -64,6 +71,14 @@ const PED_ON_EVENT = 90;
 const PED_OFF_EVENT = 89;
 const PED_CYCLE_PERCENT_THRESHOLD = 80;
 const PED_CYCLE_MIN_ON_EVENTS = 2;
+/**
+ * A detector that ends the data ON, and has been for this long, counts as
+ * stuck even if it turned OFF earlier. Only a detector with no OFF at all
+ * used to be flagged, which missed the usual case: one that worked until it
+ * failed partway through the export. Five minutes is far longer than any
+ * vehicle, or any queue on red, holds a loop.
+ */
+const STUCK_AT_END_MS = 5 * 60 * 1000;
 
 export default {
   mixins: [convertTime],
@@ -72,6 +87,7 @@ export default {
   },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       inputData: "",
       headers: [
         { title: "Detector ID", key: "detectorId", sortable: true },
@@ -91,6 +107,7 @@ export default {
     };
   },
   methods: {
+    sampleLog: sampleHighResLog,
     processStuckDetectors() {
       this.hasProcessed = true;
       const events = this.parseHighResData(this.inputData);
@@ -184,7 +201,8 @@ export default {
       const pedCycleItems = [];
       detectorStats.forEach((stats) => {
         const percentOn = (stats.onDuration / totalDuration) * 100;
-        if (stats.hasOnEvent && !stats.hasOffEvent) {
+        const onAtEndFor = stats.isOn && stats.lastOnStart !== null ? lastMillis - stats.lastOnStart : 0;
+        if (stats.hasOnEvent && (!stats.hasOffEvent || onAtEndFor >= STUCK_AT_END_MS)) {
           items.push({
             detectorId: stats.detectorId,
             percentOn,

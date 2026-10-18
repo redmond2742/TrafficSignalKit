@@ -7,6 +7,9 @@
         v-model="inputData"
         class="dashboard-input"
         defaultText="Paste high-resolution signal CSV data or upload files"
+        :sample="sampleLog"
+        :sample-note="sampleNote"
+        @sample="processDashboard"
       />
       <v-btn color="primary" class="process-btn" size="small" @click="processDashboard">
         Process TSP Data
@@ -152,6 +155,7 @@ import {
 import InputBox from "../components/foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
 import enumerationObj from "../data/enumerations.json";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 
 ChartJS.register(Title, Tooltip, Legend, PointElement, LineElement, LinearScale);
 
@@ -181,6 +185,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       inputData: "",
       dashboardReady: false,
       tspEvents: [],
@@ -595,6 +600,7 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
     processDashboard() {
       const lines = this.inputData.split("\n");
       const tspEvents = [];

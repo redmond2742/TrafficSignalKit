@@ -11,6 +11,7 @@
       <v-col v-for="(card, index) in cards" :key="index" cols="12" sm="12">
         <signal-input-card
           :card-id="index"
+          :preset="card.preset"
           @signal-data="handleSignalData"
         ></signal-input-card>
       </v-col>
@@ -18,7 +19,13 @@
     <v-col>
       <h3>GPX Text Input</h3>
       <div class="grow-wrap">
-        <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
+        <InputBox
+          v-model="inputData"
+          :defaultText="textboxDefaultText"
+          :sample="sampleGpxPass"
+          :sample-note="sampleNote"
+          @sample="useSample"
+        />
       </div>
     </v-col>
     <v-row>
@@ -36,6 +43,12 @@
 import SignalInputCard from "@/components/foundational/SignalInputCard.vue";
 import InputBox from "@/components/foundational/InputBox.vue";
 import processTimeSpace from "../mixins/processTimeSpace";
+import {
+  sampleGpxPass,
+  sampleCorridorLogs,
+  SAMPLE_CORRIDOR,
+  SAMPLE_GPX_PASS_NOTE,
+} from "../utils/sampleData.js";
 
 export default {
   mixins: [processTimeSpace],
@@ -53,6 +66,9 @@ export default {
       signalCardCount: 0,
       inputData: "",
       gpxBoxXY: [],
+      sampleNote: SAMPLE_GPX_PASS_NOTE,
+      // cards still to report in before the sample is plotted
+      sampleCardsPending: 0,
     };
   },
   methods: {
@@ -62,6 +78,29 @@ export default {
     none() {
       this.panel = [];
     },
+    // one pass: a time-space diagram plots distance travelled
+    sampleGpxPass,
+    /**
+     * The sample bus run, with a card for each of the three signals it
+     * passes, already filled in. The cards load themselves as they mount, and
+     * the plot waits for the last of them.
+     */
+    useSample() {
+      const logs = sampleCorridorLogs();
+      this.childSignalData = [];
+      this.sampleCardsPending = SAMPLE_CORRIDOR.length;
+      this.cards = SAMPLE_CORRIDOR.map((signal, index) => ({
+        preset: {
+          name: signal.name,
+          latlon: `${signal.lat}, ${signal.lon}`,
+          phase: "Phase 2",
+          // only Clarkson St logs the bus's priority calls
+          tsp: index === 0 ? "TSP 1" : null,
+          inputData: logs[index],
+        },
+      }));
+      this.signalCardCount = this.cards.length;
+    },
     addCard() {
       this.cards.push({});
       this.signalCardCount++;
@@ -70,6 +109,14 @@ export default {
       //this.childSignalData.push(staticObjectDataObj);
 
       this.childSignalData[sigID] = staticObjectDataObj;
+      if (this.sampleCardsPending > 0) {
+        this.sampleCardsPending -= 1;
+        if (this.sampleCardsPending === 0) {
+          this.btnProcessGPX();
+          // the signals span the hour; the bus is two minutes of it
+          this.$nextTick(this.gpxZoom);
+        }
+      }
 
       console.log("emitted data :", sigID, this.childSignalData);
     },

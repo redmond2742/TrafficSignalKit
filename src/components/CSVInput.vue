@@ -6,7 +6,12 @@
     -->
 
     <div class="grow-wrap">
-      <InputBox v-model="inputData" />
+      <InputBox
+        v-model="inputData"
+        :sample="sampleLog"
+        :sample-note="sampleNote"
+        @sample="processCSV"
+      />
 
       <v-card>
         <v-card-text>
@@ -104,6 +109,7 @@
 <script>
 import { highlightMatches } from "@/utils/highlight.js";
 import InputBox from "./foundational/InputBox.vue";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 import convertTime from "../mixins/convertTime";
 
 export default {
@@ -114,6 +120,7 @@ export default {
   },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       inputData: "",
       filters: {
         timestamp: "",
@@ -295,6 +302,7 @@ export default {
     };
   },
   methods: {
+    sampleLog: sampleHighResLog,
     selectedTimezone(tzData) {
       this.timezoneOffset = tzData;
     },

@@ -3,7 +3,13 @@
     <v-col cols="12">
       <h3>GPX Text Input</h3>
       <div class="grow-wrap">
-        <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
+        <InputBox
+          v-model="inputData"
+          :defaultText="textboxDefaultText"
+          :sample="sampleGpx"
+          :sample-note="sampleNote"
+          @sample="btnProcessGPX"
+        />
         <br />
       </div>
 
@@ -57,6 +63,7 @@
 import InputBox from "@/components/foundational/InputBox.vue";
 import processTimeSpace from "../mixins/processTimeSpace";
 import GPXMapper from "../components/foundational/Map3.vue";
+import { sampleGpx, SAMPLE_GPX_NOTE } from "../utils/sampleData.js";
 
 export default {
   mixins: [processTimeSpace],
@@ -66,6 +73,7 @@ export default {
   },
   data() {
     return {
+      sampleNote: SAMPLE_GPX_NOTE,
       xmlString: "",
       cards: [],
       childSignalData: [],
@@ -105,6 +113,7 @@ export default {
     },
   },
   methods: {
+    sampleGpx,
     all() {
       this.panel = ["foo", "bar", "baz"];
     },

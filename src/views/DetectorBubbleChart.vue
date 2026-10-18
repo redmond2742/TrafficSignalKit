@@ -43,6 +43,7 @@
       @detectionEvents="storeDetectionEvents"
       @phaseEvents="storePhaseEvents"
       @coordCycleStateEvents="storeCoordCycleStateEvents"
+      @sample="useSample"
     />
 
     <div class="actions-row">
@@ -84,6 +85,7 @@ import {
 } from "chart.js";
 import ProcessDetectionEvents from "../components/ProcessDetectionEvents.vue";
 import InputBox from "../components/foundational/InputBox.vue";
+import { sampleDetectorMap } from "../utils/sampleData.js";
 
 ChartJS.register(PointElement, LinearScale, Tooltip, Legend, zoom);
 
@@ -212,6 +214,11 @@ export default {
     },
   },
   methods: {
+    /** The sample hour came in below: map its stop-bar loops and chart it. */
+    useSample() {
+      this.detectorPhaseMapInput = sampleDetectorMap("space", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.$nextTick(this.processDetection);
+    },
     processDetection() {
       this.$refs.processDetectionEvents?.processDetectionEvents?.();
       this.hasProcessed = true;

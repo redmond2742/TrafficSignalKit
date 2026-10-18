@@ -749,7 +749,7 @@ export default {
       },
         buildCycleItem(dataObj) {
           
-          const customFormat = "ccc, MMM d yyyy h:mm:ss.S a";
+          const customFormat = "ccc, MMM d yyyy h:mm:ss.uuu a";
           let allPhaseData = [];
           // Sets each row's cycle length; see utils/cycleClock.js.
           const cycleClock = createCycleClock();

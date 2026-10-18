@@ -14,6 +14,9 @@
         v-model="inputData"
         class="dashboard-input"
         defaultText="Paste high-resolution signal data or upload files"
+        :sample="sampleLog"
+        :sample-note="sampleNote"
+        @sample="processDashboard"
       />
       <v-btn color="primary" class="process-btn" size="small" @click="processDashboard">
         Process
@@ -240,6 +243,7 @@ import TerminationReasonTable from "../components/foundational/TerminationReason
 import PedestrianInvestigator from "./PedestrianInvestigator.vue";
 import convertTime from "../mixins/convertTime";
 import enumerationObj from "../data/enumerations.json";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 
 export default {
   name: "Dashboard",
@@ -254,6 +258,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       inputData: "",
       dashboardReady: false,
       dashboardTitle: "Signal Data Dashboard",
@@ -375,6 +380,7 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
     updateSplitHistory(data) {
       this.splitHistoryRows = data;
     },

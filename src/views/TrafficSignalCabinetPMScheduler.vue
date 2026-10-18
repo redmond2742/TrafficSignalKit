@@ -15,9 +15,13 @@
         <v-row>
           <v-col cols="12" md="6">
             <label class="input-label">GTSS Signal List</label>
+            <!-- the sample is the example list the placeholder shows -->
             <InputBox
               v-model="signalsInput"
               :default-text="defaultSignals"
+              :sample="exampleSignals"
+              sample-note="Sample data: the six-signal example list, in GTSS signal format."
+              @sample="rebuildSchedule"
             />
           </v-col>
           <v-col cols="12" md="6">
@@ -352,6 +356,9 @@ export default {
     this.rebuildSchedule();
   },
   methods: {
+    exampleSignals() {
+      return this.defaultSignals;
+    },
     parseSignals(text) {
       return text
         .split(/\r?\n/)

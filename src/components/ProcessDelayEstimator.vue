@@ -2,7 +2,13 @@
   <div>
     <div class="delay-inputs">
       <div class="grow-wrap">
-        <InputBox v-model="inputData" :defaultText="dataDefaultText" />
+        <InputBox
+          v-model="inputData"
+          :defaultText="dataDefaultText"
+          :sample="sampleLog"
+          :sample-note="sampleNote"
+          @sample="useSample"
+        />
       </div>
       <div class="grow-wrap">
         <InputBox
@@ -202,8 +208,9 @@
 import { DateTime } from "luxon";
 import convertTime from "../mixins/convertTime";
 import InputBox from "./foundational/InputBox.vue";
+import { sampleHighResLog, SAMPLE_NOTE, sampleDetectorMap } from "../utils/sampleData.js";
 
-const DISPLAY_FORMAT = "ccc, MMM d yyyy h:mm:ss.S a";
+const DISPLAY_FORMAT = "ccc, MMM d yyyy h:mm:ss.uuu a";
 
 export default {
   mixins: [convertTime],
@@ -212,6 +219,7 @@ export default {
   },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       inputData: "",
       detectorMapInput: "",
       dataDefaultText:
@@ -282,6 +290,12 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample() {
+      // the stop-bar loops are the ones that call a phase
+      this.detectorMapInput = sampleDetectorMap("tab", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.$nextTick(this.processDelays);
+    },
     computeRange(values) {
       const numericValues = values.filter((value) => Number.isFinite(value));
       if (!numericValues.length) {

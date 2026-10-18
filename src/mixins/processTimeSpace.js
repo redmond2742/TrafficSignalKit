@@ -453,9 +453,14 @@ export default {
                   startGPXTime = gpxPoints[0].time.getTime() / 1000; //milliseconds to seconds
 
                   let xBuffer = (gpxPoints[gpx.tracks[0].points.length-1].time.getTime() / 1000 - startGPXTime) * 0.1; // create buffer at right side of plot
-                  let yBuffer = gpx.tracks[0].distance.cumul * 0.5; // create buffer at top of plot
+                  // gpxparser's distance.cumul is the running distance at every
+                  // point, an array, so this box's top used to come out as all
+                  // of them joined into one string, and "Zoom to GPX" broke.
+                  // distance.total is metres; the plot is in feet.
+                  const trackFeet = gpx.tracks[0].distance.total * 3.28084;
+                  let yBuffer = trackFeet * 0.5; // create buffer at top of plot
                   // x1,y1, x2,y2
-                  gpxBoxXY = [0, 0, gpxPoints[gpx.tracks[0].points.length-1].time.getTime() / 1000 - startGPXTime + xBuffer, gpx.tracks[0].distance.cumul + yBuffer]
+                  gpxBoxXY = [0, 0, gpxPoints[gpx.tracks[0].points.length-1].time.getTime() / 1000 - startGPXTime + xBuffer, trackFeet + yBuffer]
         
                   // If no signal information is provided, then plot GPX points only.
                   if (Object.keys(staticObjData).length === 0) {

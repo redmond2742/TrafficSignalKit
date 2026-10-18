@@ -340,10 +340,14 @@
         hide-details
         class="mapping-textarea mb-3"
       ></v-textarea>
+      <!-- the sample is one intersection, so it goes on the first signal -->
       <InputBox
         v-model="source.text"
         defaultText="Paste in High-Resolution Traffic Signal Data as CSV text (timestamp, enumeration, parameter)"
         accept=".csv,.txt,text/csv,text/plain"
+        :sample="index === 0 ? sampleLog : null"
+        :sample-note="sampleNote"
+        @sample="useSample(source)"
       />
     </v-card>
 
@@ -520,6 +524,7 @@ import {
 } from "chart.js";
 import { DateTime } from "luxon";
 import InputBox from "../components/foundational/InputBox.vue";
+import { sampleHighResLog, sampleDetectorMap, SAMPLE_NOTE } from "../utils/sampleData.js";
 import { readZipText } from "../utils/zipReader.js";
 import { buildDetectorDirectory } from "../utils/gtss.js";
 import { parseDetectorPhaseMap } from "../utils/singleLoopSpeed.js";
@@ -590,6 +595,7 @@ export default {
   components: { InputBox, Bar },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       panel: [],
       assignmentTab: "manual",
       sources: [{ id: 1, signalId: "", assignments: "", text: "" }],
@@ -903,6 +909,14 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample(source) {
+      source.signalId = source.signalId || "1001";
+      // the stop-bar loops: the last car over one is when the green went unused
+      this.assignmentTab = "manual";
+      source.assignments = sampleDetectorMap("tab", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.$nextTick(this.evaluate);
+    },
     num(value) {
       return Number(value || 0).toLocaleString();
     },

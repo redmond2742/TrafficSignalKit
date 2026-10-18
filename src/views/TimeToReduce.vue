@@ -89,6 +89,9 @@
             <InputBox
               v-model="inputData"
               :default-text="defaultText"
+              :sample="sampleLog"
+              :sample-note="sampleNote"
+              @sample="useSample"
             />
           </div>
           <div>
@@ -204,6 +207,7 @@ import {
   LinearScale,
 } from "chart.js";
 import InputBox from "../components/foundational/InputBox.vue";
+import { sampleHighResLog, SAMPLE_NOTE, sampleDetectorMap } from "../utils/sampleData.js";
 
 ChartJS.register(Title, Tooltip, Legend, PointElement, LineElement, LinearScale);
 
@@ -223,6 +227,7 @@ export default {
   },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       panel: [],
       inputData: "",
       assignmentData: "",
@@ -332,6 +337,12 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample() {
+      // phase, detector: the stop-bar loops that call each phase
+      this.assignmentData = sampleDetectorMap("comma", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.$nextTick(this.processData);
+    },
     processData() {
       const events = this.parseEvents();
       if (!events.length) {

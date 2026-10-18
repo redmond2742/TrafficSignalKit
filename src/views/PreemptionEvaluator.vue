@@ -371,10 +371,14 @@ approaches.txt  approach_id, signal_id, street_name, compass_bearing
           Remove
         </v-btn>
       </div>
+      <!-- the sample is one intersection, so it goes on the first signal -->
       <InputBox
         v-model="source.text"
         defaultText="Paste in High-Resolution Traffic Signal Data as CSV text (timestamp, enumeration, channel)"
         accept=".csv,.txt,text/csv,text/plain"
+        :sample="index === 0 ? sampleLog : null"
+        :sample-note="sampleNote"
+        @sample="useSample(source)"
       />
     </v-card>
 
@@ -990,6 +994,7 @@ import {
   summarizePreemption,
   toSeconds,
 } from "../utils/preemptionEvaluator.js";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 
 ChartJS.register(
   Title, Tooltip, Legend, BarElement, PointElement, LinearScale, CategoryScale, zoom,
@@ -1058,6 +1063,7 @@ export default {
   components: { InputBox, Bar, Scatter },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       panel: [],
       sources: [{ id: 1, signalId: "", text: "" }],
       nextSourceId: 2,
@@ -1796,6 +1802,11 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample(source) {
+      source.signalId = source.signalId || "1001";
+      this.$nextTick(this.evaluate);
+    },
     /**
      * The intervals inside one event, as absolute times. Each runs from its own
      * mark to the first mark that follows it, so a sequence that is missing a
@@ -1960,7 +1971,7 @@ export default {
     },
     fullTime(ms) {
       if (!Number.isFinite(ms)) return "";
-      return DateTime.fromMillis(ms).toFormat("yyyy-LL-dd HH:mm:ss.S");
+      return DateTime.fromMillis(ms).toFormat("yyyy-LL-dd HH:mm:ss.uuu");
     },
     evaluate() {
       this.error = "";

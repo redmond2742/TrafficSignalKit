@@ -16,6 +16,9 @@
               v-model="hrCsvText"
               :default-text="csvPlaceholder"
               accept=".csv,text/csv,.txt"
+              :sample="sampleLog"
+              :sample-note="sampleNote"
+              @sample="useSample"
             />
 
             <h3 class="mt-4">Detector Mapping</h3>
@@ -104,6 +107,8 @@ import {
   LinearScale,
 } from "chart.js";
 import InputBox from "../components/foundational/InputBox.vue";
+import { parseTimestamp } from "../utils/highResTimestamp.js";
+import { sampleHighResLog, SAMPLE_NOTE, sampleDetectorMap } from "../utils/sampleData.js";
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, LinearScale);
 
@@ -119,6 +124,7 @@ export default {
   components: { Line, InputBox },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       hrCsvText: "",
       csvPlaceholder:
         "Paste high-resolution CSV rows: timestamp, event code, parameter\n2024-03-14T08:00:00.100, 1, 6\n2024-03-14T08:00:02.200, 82, 1",
@@ -223,6 +229,13 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample() {
+      // DET detector phase; phase 4, the actuated side street, shows it best
+      this.mappingText = sampleDetectorMap("space", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.selectedPhase = 4;
+      this.$nextTick(this.processData);
+    },
     processData() {
       const events = this.parseEvents(this.hrCsvText);
       const { phaseToDetectors } = this.parseMapping(this.mappingText);
@@ -307,11 +320,9 @@ export default {
       if (fromISO.isValid) {
         return fromISO.toMillis();
       }
-      const fromSlash = DateTime.fromFormat(input, "M/d/yyyy HH:mm:ss.S");
-      if (fromSlash.isValid) {
-        return fromSlash.toMillis();
-      }
-      return Number.NaN;
+      // Not luxon's "ss.S": its S is milliseconds, so ".5" read as 5 ms and
+      // every headway was off by up to 0.9 s.
+      return parseTimestamp(input);
     },
     parseMapping(text) {
       const phaseToDetectors = new Map();

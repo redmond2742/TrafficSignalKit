@@ -29,6 +29,9 @@
           v-model="csvText"
           default-text="Paste high-resolution CSV rows: timestamp, event code, parameter"
           accept=".csv,text/csv,.txt"
+          :sample="sampleLog"
+          :sample-note="sampleNote"
+          @sample="useSample"
         />
       </v-col>
       <v-col cols="12" md="6">
@@ -123,6 +126,7 @@ import { Bubble } from 'vue-chartjs';
 import { Chart as ChartJS, PointElement, LinearScale, Tooltip, Legend } from 'chart.js';
 import { bubbleRadius } from '../utils/phaseBubbleScatter';
 import InputBox from '../components/foundational/InputBox.vue';
+import { sampleHighResLog, SAMPLE_NOTE, sampleDetectorMap } from "../utils/sampleData.js";
 
 ChartJS.register(PointElement, LinearScale, Tooltip, Legend);
 
@@ -131,6 +135,7 @@ export default {
   components: { Bubble, InputBox },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       csvText: '', detectorText: 'DET 1 1',
       ignoreFirstMinutes: 0, cycleHandling: 'keep-first', bubbleSizing: 'scaled-sqrt', downloadFormat: 'csv',
       xAxisField: 'cycle_index', yAxisField: 'off_count', bubbleSizeField: 'split_s', transparencyField: 'off_count', invertTransparency: false,
@@ -292,6 +297,12 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample() {
+      // DET detector phase, for the stop-bar loops
+      this.detectorText = sampleDetectorMap("space", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.$nextTick(this.process);
+    },
     fmt(v) { return Number.isFinite(v) ? v.toFixed(2) : 'NA'; },
     fieldValue(point, field) {
       const value = point[field];

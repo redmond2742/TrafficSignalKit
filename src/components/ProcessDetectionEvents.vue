@@ -1,13 +1,20 @@
 <template>
   <div>
     <div class="grow-wrap">
-      <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
+      <InputBox
+        v-model="inputData"
+        :defaultText="textboxDefaultText"
+        :sample="sampleLog"
+        :sample-note="sampleNote"
+        @sample="onSample"
+      />
     </div>
   </div>
 </template>
 
 <script>
 import InputBox from "./foundational/InputBox.vue";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 import convertTime from "../mixins/convertTime";
 import enumerationObj from "../data/enumerations.json";
 
@@ -19,6 +26,7 @@ export default {
   data() {
     return {
       inputData: "",
+      sampleNote: SAMPLE_NOTE,
       textboxDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV text (timestamp, enumeration, channel)",
     };
@@ -83,6 +91,12 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    /** Plot the sample, then tell the page, which may have settings to fill. */
+    onSample() {
+      this.processDetectionEvents();
+      this.$emit("sample");
+    },
     processDetectionEvents() {
       const lines = this.inputData.split("\n");
       const events = [];

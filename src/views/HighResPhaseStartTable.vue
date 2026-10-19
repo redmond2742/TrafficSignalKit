@@ -10,6 +10,9 @@
       <InputBox
         v-model="inputData"
         :defaultText="inputPlaceholder"
+        :sample="sampleLog"
+        :sample-note="sampleNote"
+        @sample="processData"
       />
     </div>
 
@@ -101,6 +104,7 @@ import { escapeHtml } from "@/utils/highlight.js";
 import { DateTime } from "luxon";
 import InputBox from "../components/foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 
 export default {
   name: "HighResPhaseStartTable",
@@ -108,6 +112,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       inputData: "",
       tableRows: [],
       filters: {
@@ -155,6 +160,7 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
     processData() {
       const lines = this.inputData
         .split(/\r?\n/)

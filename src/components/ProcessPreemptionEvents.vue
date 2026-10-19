@@ -1,7 +1,13 @@
 <template>
   <div>
     <div class="grow-wrap">
-      <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
+      <InputBox
+        v-model="inputData"
+        :defaultText="textboxDefaultText"
+        :sample="sampleLog"
+        :sample-note="sampleNote"
+        @sample="processPreemptionEvents"
+      />
     </div>
     <div>
       <v-btn @click="processPreemptionEvents" color="primary">
@@ -13,6 +19,7 @@
 
 <script>
 import InputBox from "./foundational/InputBox.vue";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 import convertTime from "../mixins/convertTime";
 import enumerationObj from "../data/enumerations.json";
 
@@ -24,11 +31,13 @@ export default {
   data() {
     return {
       inputData: "",
+      sampleNote: SAMPLE_NOTE,
       textboxDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV text (timestamp, enumeration, channel)",
     };
   },
   methods: {
+    sampleLog: sampleHighResLog,
     getEventDescriptor(eventCode) {
       const match = enumerationObj.find(
         (item) => parseInt(item.eventCode, 10) === eventCode

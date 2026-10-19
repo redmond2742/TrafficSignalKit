@@ -64,7 +64,13 @@ Example input:
             Process High Resolution Data
           </v-btn>
         </div>
-        <InputBox v-model="inputData" :default-text="defaultText" />
+        <InputBox
+          v-model="inputData"
+          :default-text="defaultText"
+          :sample="sampleLog"
+          :sample-note="sampleNote"
+          @sample="useSample"
+        />
         <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
       </v-card-text>
     </v-card>
@@ -214,6 +220,7 @@ Example input:
 
 <script>
 import InputBox from "../components/foundational/InputBox.vue";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 
 const EVENT_CODES = {
   BEGIN_GREEN: 1,
@@ -236,6 +243,7 @@ export default {
   },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       panel: [],
       inputData: "",
       defaultText:
@@ -266,6 +274,11 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample() {
+      this.signalId = 1001;
+      this.$nextTick(this.processData);
+    },
     processData() {
       const events = this.parseInput();
       if (!events.length) {
@@ -317,11 +330,7 @@ export default {
             [EVENT_CODES.PED_CLEARANCE],
             [EVENT_CODES.PED_SOLID_DW, EVENT_CODES.PED_DARK],
           );
-          const lpi = this.averageDuration(
-            phaseEvents,
-            [EVENT_CODES.PED_WALK],
-            [EVENT_CODES.BEGIN_GREEN],
-          );
+          const lpi = this.leadingPedInterval(phaseEvents);
 
           const hasTiming = [
             minGreen,
@@ -416,6 +425,28 @@ export default {
           return { timestamp, enumeration, phase };
         })
         .filter(Boolean);
+    },
+    /**
+     * How long WALK starts before its phase's green. Paired by time rather
+     * than by the next green in the log: a controller writes a WALK and a
+     * green that start together in either order, and with no leading interval
+     * the "next green" was the next cycle's, so a zero LPI averaged about a
+     * cycle length. Anything over 15 s is not a leading interval.
+     */
+    leadingPedInterval(events) {
+      const greens = events
+        .filter((event) => event.enumeration === EVENT_CODES.BEGIN_GREEN)
+        .map((event) => event.timestamp);
+      const leads = [];
+      for (const walk of events) {
+        if (walk.enumeration !== EVENT_CODES.PED_WALK) continue;
+        const green = greens.find((time) => time >= walk.timestamp);
+        if (green === undefined) continue;
+        const lead = (green - walk.timestamp) / 10;
+        if (lead <= 15) leads.push(lead);
+      }
+      if (!leads.length) return 0;
+      return Number((leads.reduce((sum, value) => sum + value, 0) / leads.length).toFixed(1));
     },
     averageDuration(events, startEnums, endEnums) {
       const durations = [];

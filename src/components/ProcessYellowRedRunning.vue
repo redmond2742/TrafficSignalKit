@@ -43,7 +43,14 @@
       </div>
       <div class="rlr-inputs">
         <div class="grow-wrap">
-          <InputBox v-model="signal.inputData" :defaultText="dataDefaultText" />
+          <!-- the sample is one intersection, so it goes on the first signal -->
+          <InputBox
+            v-model="signal.inputData"
+            :defaultText="dataDefaultText"
+            :sample="index === 0 ? sampleLog : null"
+            :sample-note="sampleNote"
+            @sample="useSample(signal)"
+          />
         </div>
         <div class="grow-wrap">
           <InputBox
@@ -534,8 +541,9 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import convertTime from "../mixins/convertTime";
 import InputBox from "./foundational/InputBox.vue";
+import { sampleHighResLog, sampleDetectorMap, SAMPLE_NOTE } from "../utils/sampleData.js";
 
-const DISPLAY_FORMAT = "ccc, MMM d yyyy h:mm:ss.S a";
+const DISPLAY_FORMAT = "ccc, MMM d yyyy h:mm:ss.uuu a";
 
 export default {
   mixins: [convertTime],
@@ -554,6 +562,7 @@ export default {
         },
       ],
       nextSignalId: 2,
+      sampleNote: SAMPLE_NOTE,
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, channel)",
       detectorDefaultText: "Det 1\t6\nDet 2\t2\nDet 3\t0\nDet 4\t0\nDet 5\t0",
@@ -1330,6 +1339,14 @@ export default {
       ) {
         this.selectedHeatmapPhase = "All";
       }
+    },
+    sampleLog: sampleHighResLog,
+    useSample(signal) {
+      signal.name = signal.name || "Sample Ave & 1st St";
+      signal.number = signal.number || "1001";
+      // the stop-bar loops, which see each car cross the line
+      signal.detectorMapInput = sampleDetectorMap("tab", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.$nextTick(this.processDetectorEvents);
     },
     addSignal() {
       this.signals.push({

@@ -12,7 +12,13 @@
     <div class="input-grid">
       <div class="input-card">
         <h3>High-Resolution Data</h3>
-        <InputBox v-model="inputData" :defaultText="dataPlaceholder" />
+        <InputBox
+          v-model="inputData"
+          :defaultText="dataPlaceholder"
+          :sample="sampleLog"
+          :sample-note="sampleNote"
+          @sample="useSample"
+        />
       </div>
       <div class="input-card">
         <h3>Detector Mapping</h3>
@@ -96,8 +102,9 @@
 import { DateTime } from "luxon";
 import InputBox from "../components/foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
+import { sampleHighResLog, SAMPLE_NOTE, sampleDetectorMap } from "../utils/sampleData.js";
 
-const DISPLAY_FORMAT = "ccc, MMM d yyyy h:mm:ss.S a";
+const DISPLAY_FORMAT = "ccc, MMM d yyyy h:mm:ss.uuu a";
 
 export default {
   name: "StartUpLossAverage",
@@ -105,6 +112,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       inputData: "",
       detectorMapInput: "",
       tableRows: [],
@@ -121,6 +129,12 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample() {
+      // the stop-bar loops, where each queue starts
+      this.detectorMapInput = sampleDetectorMap("tab", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.$nextTick(this.processData);
+    },
     resetResults() {
       this.tableRows = [];
     },

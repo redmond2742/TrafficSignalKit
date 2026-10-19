@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon';
+import { parseTimestamp } from '../utils/highResTimestamp.js';
 export default {
     methods: {
         dtToISO(input) {
@@ -87,6 +88,7 @@ export default {
             let iso_ts;
             let inputDate;
             let luxonInputDate;
+            let tenths = false;
 
             var rezoned = DateTime.local().setZone("America/Los_Angeles");
             const timeWithMilliseconds = DateTime.toLocaleString({
@@ -123,9 +125,17 @@ export default {
               convertedTimeFormats.calculatable = true;
             } 
             else if (dateTimeRegex.test(ts)){
-              //console.log(ts+" M/D/YYYY HH:MM:SS.ms DETECTED");
-              luxonInputDate = DateTime.fromFormat(ts, "M/d/yyyy HH:mm:ss.S").toISO();//DateTime.fromFormat(ts.toString(),"HH:mm.s").toLocaleString(DateTime.TIME_SIMPLE); //try catch?
-              
+              // M/D/YYYY HH:MM:SS.s, the usual controller export. This used
+              // DateTime.fromFormat(ts, "M/d/yyyy HH:mm:ss.S"), but luxon's S
+              // is milliseconds, so ".5" read as 5 ms: a 3.5 s yellow showed
+              // as 3.0 or 3.9 depending on where it fell. It also refused a
+              // one-digit hour. parseTimestamp reads the fraction as a
+              // fraction of a second.
+              const ms = parseTimestamp(String(ts).trim());
+              luxonInputDate = Number.isFinite(ms)
+                ? DateTime.fromMillis(ms).toISO()
+                : DateTime.fromFormat(ts, "M/d/yyyy HH:mm:ss.S").toISO();
+              tenths = true;
               convertedTimeFormats.new = true;  
               convertedTimeFormats.calculatable = true;
             } 
@@ -166,7 +176,8 @@ export default {
                 //this.humanDate = inputDate.toLocaleDateString(DateTime.DATETIME_FULL);
            
 
-                const customFormat = "ccc, MMM d yyyy h:mm:ss.S a";
+                // uuu is tenths, which is what a controller export carries
+                const customFormat = tenths ? "ccc, MMM d yyyy h:mm:ss.uuu a" : "ccc, MMM d yyyy h:mm:ss.S a";
 
                 // Format the DateTime object
                 convertedTimeFormats.humanReadable = DateTime.fromISO(luxonInputDate).toFormat(customFormat);

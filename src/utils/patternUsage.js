@@ -276,10 +276,14 @@ export function buildPatternSegments(rawEvents) {
     for (const event of events) {
       if (event.eventCode === 132) cycleHere = event.parameter;
     }
+    // A 132 logged in the same tenth as a 131 is the new pattern's cycle
+    // length. Applying it to the open segment as well gave every pattern
+    // the cycle length of the one after it.
+    const patternStartsHere = events.some((event) => event.eventCode === 131);
     if (cycleHere !== null) {
       currentCycle = cycleHere;
       const open = segments[segments.length - 1];
-      if (open) open.cycleLength = cycleHere;
+      if (open && !patternStartsHere) open.cycleLength = cycleHere;
     }
 
     for (const event of events) {

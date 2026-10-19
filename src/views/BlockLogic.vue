@@ -19,7 +19,13 @@
       <v-row>
         <v-col cols="12">
           <div class="text-subtitle-2 mb-1">High Resolution Data Input</div>
-          <InputBox v-model="datasetText" default-text="Paste HR CSV with headers (timestamp,eventType,channel,state,value) or JSON array of events." />
+          <InputBox
+            v-model="datasetText"
+            default-text="Paste HR CSV with headers (timestamp,eventType,channel,state,value) or JSON array of events."
+            :sample="sampleBlockLogicCsv"
+            sample-note="Sample data: the site's simulated hour at a made-up intersection, as phase, detector, pedestrian and pattern rows, run against the Detector Stuck On template for channel 11, which sticks on at 7:24."
+            @sample="useSample"
+          />
           <div class="text-caption mt-1">Parsed events: {{ datasetEvents.length }}</div>
         </v-col>
       </v-row>
@@ -152,6 +158,7 @@ import { Chart as ChartJS, PointElement, LineElement, LinearScale, Tooltip, Lege
 import InputBox from '../components/foundational/InputBox.vue';
 import { actionPalette, builtInTemplates, conditionPalette, createAction, createCondition, createEmptySchema, createRule, validateSchema } from '../utils/blockLogicSchema.js';
 import { createRuntime } from '../utils/blockLogicEngine.js';
+import { sampleBlockLogicCsv, SAMPLE_STUCK } from '../utils/sampleData.js';
 
 ChartJS.register(PointElement, LineElement, LinearScale, Tooltip, Legend);
 
@@ -250,6 +257,17 @@ function parseDatasetText() {
   datasetEvents.value = lines
     .map((line) => line.split(','))
     .map((cells) => Object.fromEntries(cols.map((col, index) => [col, cells[index]?.trim()])));
+}
+
+/** The sample: parse it, and catch its stuck detector with the template for that. */
+function useSample() {
+  parseDatasetText();
+  applyTemplateByName('Detector Stuck On');
+  schema.rules = schema.rules.map((rule) => ({
+    ...rule,
+    if: { ...rule.if, condition: { ...rule.if.condition, channel: SAMPLE_STUCK.channel } },
+  }));
+  runRules();
 }
 
 function applyTemplateByName(name) {

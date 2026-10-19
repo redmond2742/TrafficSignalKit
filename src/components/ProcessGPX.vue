@@ -20,7 +20,13 @@
   </v-container>
 
   <div class="grow-wrap">
-    <InputBox v-model="inputData" :defaultText="gpxTextboxDefaultText" />
+    <InputBox
+      v-model="inputData"
+      :defaultText="gpxTextboxDefaultText"
+      :sample="sampleGpxPass"
+      :sample-note="sampleNote"
+      @sample="useSample"
+    />
   </div>
   <br />
   <div class="button-container">
@@ -76,6 +82,7 @@
 import InputBox from "./foundational/InputBox.vue";
 import Metric from "./foundational/Metric.vue";
 import processTimeSpace from "../mixins/processTimeSpace";
+import { sampleGpxPass, SAMPLE_GPX_PASS_NOTE, sampleSignalLocations } from "../utils/sampleData.js";
 
 export default {
   mixins: [processTimeSpace],
@@ -83,6 +90,7 @@ export default {
   props: {},
   data() {
     return {
+      sampleNote: SAMPLE_GPX_PASS_NOTE,
       gpxTextboxDefaultText: "Paste in GPX file in XML format",
       signalInfoTextboxDefaultText:
         "For each signal location, Paste in CSV of: Name, Latitude, Longitude",
@@ -93,6 +101,13 @@ export default {
   },
   mounted() {},
   methods: {
+    // one pass: a time-space diagram plots distance travelled
+    sampleGpxPass,
+    /** The bus run, and the three signals it passes, as Name,Latitude,Longitude. */
+    useSample() {
+      this.signalLocations = sampleSignalLocations();
+      this.$nextTick(this.btnProcessGPX);
+    },
     btnProcessGPX() {
       this.ProcessGPX(this.inputData, this.signalLocations);
     },

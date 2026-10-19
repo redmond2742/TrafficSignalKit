@@ -3,7 +3,13 @@
     <v-card class="mb-4" variant="outlined">
       <v-card-title>Detector Occupancy Cycle Heat Map Inputs</v-card-title>
       <v-card-text>
-        <InputBox v-model="inputData" :defaultText="textboxDefaultText" />
+        <InputBox
+          v-model="inputData"
+          :defaultText="textboxDefaultText"
+          :sample="sampleLog"
+          :sample-note="sampleNote"
+          @sample="buildCycleHeatMap"
+        />
 
         <v-row class="mt-2">
           <v-col cols="12" md="4">
@@ -65,6 +71,7 @@
 import InputBox from "./foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
 import enumerationObj from "../data/enumerations.json";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 
 export default {
   name: "DetectorEventHeatMapTool",
@@ -74,6 +81,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       inputData: "",
       textboxDefaultText:
         "Paste in High-Resolution CSV data or switch to file upload in the input control.",
@@ -117,6 +125,7 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
     buildCycleHeatMap() {
       this.errorMessage = "";
       this.cycleRows = [];

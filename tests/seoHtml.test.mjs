@@ -117,3 +117,19 @@ test('a route that is also a directory prefix gets both without colliding', () =
   assert.equal(dir, 'blog/index.html');
   assert.equal(flat, 'blog.html');
 });
+
+test('only the home page preloads the featured card art', async () => {
+  const { featuredPreloadTags, stripHomePreloads, PRELOAD_MARK } = await import('../scripts/featuredPreload.mjs');
+  const { featuredTools, TOOLS } = await import('../src/utils/toolRegistry.js');
+  const tags = featuredPreloadTags();
+  assert.deepEqual(tags.map((t) => t.attrs.href), featuredTools(TOOLS).map((t) => t.image));
+  for (const t of tags) assert.equal(t.attrs.as, 'image');
+
+  // what Vite writes for those descriptors, then a route's copy of it
+  const links = tags.map((t) => `    <link rel="preload" as="image" href="${t.attrs.href}" fetchpriority="high" ${PRELOAD_MARK}>`).join('\n');
+  const shell = TEMPLATE.replace('</head>', `${links}\n</head>`);
+  const { html } = renderRoute(shell, route('/split-history'));
+  assert.ok(!html.includes(PRELOAD_MARK), 'a tool page kept the home preloads');
+  assert.ok(html.includes('/assets/index-abc123.js'), 'stripping took the script with it');
+  assert.equal(stripHomePreloads(shell), TEMPLATE);
+});

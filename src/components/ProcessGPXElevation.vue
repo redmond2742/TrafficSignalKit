@@ -1,6 +1,12 @@
 <template>
   <div class="grow-wrap">
-    <InputBox v-model="inputData" :defaultText="gpxTextboxDefaultText" />
+    <InputBox
+      v-model="inputData"
+      :defaultText="gpxTextboxDefaultText"
+      :sample="sampleGpx"
+      :sample-note="sampleNote"
+      @sample="btnPlot"
+    />
   </div>
   <br />
   <v-btn color="primary" @click="btnPlot">Plot</v-btn>
@@ -88,18 +94,21 @@
 <script>
 import InputBox from "./foundational/InputBox.vue";
 import processElevation from "../mixins/processElevation";
+import { sampleGpx, SAMPLE_GPX_NOTE } from "../utils/sampleData.js";
 
 export default {
   mixins: [processElevation],
   components: { InputBox },
   data() {
     return {
+      sampleNote: SAMPLE_GPX_NOTE,
       gpxTextboxDefaultText: "Paste in GPX file in XML format",
       inputData: "",
       metrics: null
     };
   },
   methods: {
+    sampleGpx,
     btnPlot() {
       const result = this.processGPXElevation(this.inputData);
       this.metrics = result.metrics;

@@ -38,7 +38,13 @@
         <div class="input-section">
           <div>
             <h3>High-Resolution Event Data</h3>
-            <InputBox v-model="inputData" :default-text="defaultText" />
+            <InputBox
+              v-model="inputData"
+              :default-text="defaultText"
+              :sample="sampleLog"
+              :sample-note="sampleNote"
+              @sample="useSample"
+            />
           </div>
           <div>
             <h3>Detector Assignments</h3>
@@ -102,6 +108,7 @@
 <script>
 import InputBox from "../components/foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
+import { sampleHighResLog, SAMPLE_NOTE, sampleDetectorMap } from "../utils/sampleData.js";
 
 const EVENT_CODES = {
   GREEN_TERMINATION: 7,
@@ -121,6 +128,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       panel: [],
       inputData: "",
       assignmentData: "",
@@ -138,6 +146,12 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample() {
+      // phase, detector: the stop-bar loops that call each phase
+      this.assignmentData = sampleDetectorMap("comma", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.$nextTick(this.processData);
+    },
     processData() {
       this.processed = true;
       this.errorMessage = "";

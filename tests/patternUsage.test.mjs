@@ -305,6 +305,22 @@ test('a cycle change at the same instant as the pattern change still lands', () 
   assert.equal(segments[0].cycleLength, 90);
 });
 
+test('cycle changes in the same tenth as each pattern change stay with their own pattern', () => {
+  // How the sample week, and some controllers, write a plan change.
+  const events = [
+    ev(at(2024, 3, 14, 6), 131, 1),
+    ev(at(2024, 3, 14, 6), 132, 100),
+    ev(at(2024, 3, 14, 9), 131, 2),
+    ev(at(2024, 3, 14, 9), 132, 90),
+    ev(at(2024, 3, 14, 15), 131, 3),
+    ev(at(2024, 3, 14, 15), 132, 120),
+  ];
+  assert.deepEqual(
+    buildPatternSegments(events).map((s) => [s.pattern, s.cycleLength]),
+    [[1, 100], [2, 90], [3, 120]],
+  );
+});
+
 test('a pattern before any cycle change has no cycle length', () => {
   // Free operation logs no 132 at all, and inventing one for it would be worse
   // than saying so.

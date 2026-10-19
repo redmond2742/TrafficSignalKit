@@ -233,6 +233,9 @@
         v-model="text"
         defaultText="Paste in High-Resolution Traffic Signal Data as CSV text (timestamp, enumeration, parameter)"
         accept=".csv,.txt,text/csv,text/plain"
+        :sample="sampleLog"
+        :sample-note="sampleNote"
+        @sample="useSample"
       />
     </v-card>
 
@@ -480,6 +483,7 @@ import {
   stateAt,
   summarizeOccupancies,
 } from "../utils/singleLoopSpeed.js";
+import { sampleHighResLog, SAMPLE_NOTE, sampleDetectorMap } from "../utils/sampleData.js";
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, LinearScale, CategoryScale);
 
@@ -504,6 +508,7 @@ export default {
   components: { InputBox, Bar },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       panel: [],
       text: "",
       loopFeet: DEFAULT_LOOP_FEET,
@@ -821,6 +826,16 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample() {
+      this.phaseMapInput = sampleDetectorMap("tab");
+      this.evaluate();
+      // After the scan, which picks the busiest channel: the phase 2 advance
+      // loop, 350 ft back, where cars pass at their own speed.
+      setTimeout(() => {
+        if (this.channels.includes(9)) this.channel = 9;
+      }, 0);
+    },
     num(value) {
       return Number(value || 0).toLocaleString();
     },
@@ -855,7 +870,7 @@ export default {
       if (this.bucket === "day") return when.toFormat("yyyy-LL-dd");
       if (this.bucket === "hour") return when.toFormat("LL/dd HH:00");
       if (this.bucket === "minute") return when.toFormat("LL/dd HH:mm");
-      return when.toFormat("LL/dd HH:mm:ss.S");
+      return when.toFormat("LL/dd HH:mm:ss.uuu");
     },
     evaluate() {
       this.error = "";
@@ -914,8 +929,8 @@ export default {
         const speed = estimateSpeedMph(row.occupancyMs, this.loopFeet, this.vehicleFeet);
         lines.push(
           [
-            DateTime.fromMillis(row.onMs).toFormat("yyyy-LL-dd HH:mm:ss.S"),
-            DateTime.fromMillis(row.offMs).toFormat("yyyy-LL-dd HH:mm:ss.S"),
+            DateTime.fromMillis(row.onMs).toFormat("yyyy-LL-dd HH:mm:ss.uuu"),
+            DateTime.fromMillis(row.offMs).toFormat("yyyy-LL-dd HH:mm:ss.uuu"),
             (row.occupancyMs / 1000).toFixed(2),
             row.channel,
             row.phase ?? "",

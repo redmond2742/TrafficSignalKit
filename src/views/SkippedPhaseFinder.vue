@@ -39,7 +39,13 @@
         <div class="input-section">
           <div>
             <h3>High-Resolution Event Data</h3>
-            <InputBox v-model="inputData" :default-text="defaultText" />
+            <InputBox
+              v-model="inputData"
+              :default-text="defaultText"
+              :sample="sampleLog"
+              :sample-note="sampleNote"
+              @sample="useSample"
+            />
           </div>
           <div>
             <h3>Detector Assignments</h3>
@@ -173,9 +179,11 @@
 <script>
 import InputBox from "../components/foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
+import { sampleHighResLog, SAMPLE_NOTE, sampleDetectorMap } from "../utils/sampleData.js";
 
 const EVENT_CODES = {
   BEGIN_GREEN: 1,
+  END_YELLOW: 9,
   DETECTOR_ON: 82,
   PHASE_SKIPPED: 14,
 };
@@ -188,6 +196,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       panel: [],
       inputData: "",
       assignmentData: "",
@@ -214,6 +223,12 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample() {
+      // phase, detector: the stop-bar loops that call each phase
+      this.assignmentData = sampleDetectorMap("comma", [1, 2, 3, 4, 5, 6, 7, 8]);
+      this.$nextTick(this.processData);
+    },
     processData() {
       this.processed = true;
       this.errorMessage = "";
@@ -247,6 +262,7 @@ export default {
       }
 
       const greenEventsByPhase = this.collectGreenEvents(events);
+      const servingByPhase = this.collectServingIntervals(events);
       const detectorEvents = events.filter(
         (event) => event.eventCode === EVENT_CODES.DETECTOR_ON,
       );
@@ -258,6 +274,12 @@ export default {
           return;
         }
         phases.forEach((phase) => {
+          // A car crossing on green or yellow is being served, not waiting.
+          // Counting those flagged every car on a main street held green
+          // longer than two minutes.
+          if (this.isServing(servingByPhase.get(phase), event.millis)) {
+            return;
+          }
           const nextGreen = this.findNextGreen(
             greenEventsByPhase.get(phase),
             event.millis,
@@ -354,6 +376,31 @@ export default {
         normalized.set(detector, Array.from(phases).sort((a, b) => a - b));
       });
       return normalized;
+    },
+    /** Each phase's green-through-yellow intervals, as [start, end] millis. */
+    collectServingIntervals(events) {
+      const byPhase = new Map();
+      const openAt = new Map();
+      const firstMillis = events.length ? events[0].millis : 0;
+      events.forEach((event) => {
+        if (event.eventCode === EVENT_CODES.BEGIN_GREEN) {
+          openAt.set(event.parameter, event.millis);
+        } else if (event.eventCode === EVENT_CODES.END_YELLOW) {
+          // a green already running when the data starts counts from there
+          const start = openAt.has(event.parameter) ? openAt.get(event.parameter) : firstMillis;
+          if (!byPhase.has(event.parameter)) byPhase.set(event.parameter, []);
+          byPhase.get(event.parameter).push([start, event.millis]);
+          openAt.delete(event.parameter);
+        }
+      });
+      openAt.forEach((start, phase) => {
+        if (!byPhase.has(phase)) byPhase.set(phase, []);
+        byPhase.get(phase).push([start, Infinity]);
+      });
+      return byPhase;
+    },
+    isServing(intervals, millis) {
+      return (intervals || []).some(([start, end]) => millis >= start && millis <= end);
     },
     collectGreenEvents(events) {
       const phaseMap = new Map();

@@ -50,9 +50,13 @@
             density="compact"
           ></v-select>
           <div class="grow-wrap">
+            <!-- one button fills both signals: the sample is a pair -->
             <InputBox
               v-model="leftSignalData"
               :defaultText="leftTextboxDefault"
+              :sample="samplePair"
+              :sample-note="sampleNote"
+              @sample="useSample"
             />
           </div>
         </v-col>
@@ -202,6 +206,7 @@
 <script>
 import InputBox from "../components/foundational/InputBox.vue";
 import convertTime from "../mixins/convertTime";
+import { sampleCorridorPair, SAMPLE_PAIR_NOTE } from "../utils/sampleData.js";
 
 export default {
   components: {
@@ -210,6 +215,7 @@ export default {
   mixins: [convertTime],
   data() {
     return {
+      sampleNote: SAMPLE_PAIR_NOTE,
       panel: [],
       leftSignalData: "",
       rightSignalData: "",
@@ -251,6 +257,15 @@ export default {
     },
   },
   methods: {
+    samplePair() {
+      return sampleCorridorPair().first;
+    },
+    useSample() {
+      this.rightSignalData = sampleCorridorPair().second;
+      this.leftPhase = 2;
+      this.rightPhase = 2;
+      this.$nextTick(this.calculateOffsets);
+    },
     swapSignals() {
       const tempData = this.leftSignalData;
       this.leftSignalData = this.rightSignalData;
@@ -406,19 +421,43 @@ export default {
         .slice(-this.phaseHistoryLabels.length)
         .map((entry) => entry.text);
     },
+    /**
+     * Two exports cut at the same clock time can start a cycle apart: one
+     * signal's first coordinated green falls just after the cut, the other's
+     * just before it and is missing. Pairing in order then set every cycle
+     * against the wrong one, about a whole cycle out. This tries the files as
+     * they are, and with the first event of either left out, and keeps the
+     * line-up with the smallest typical offset.
+     */
+    alignStarts(left, right) {
+      const typicalGap = (l, r) => {
+        const count = Math.min(l.length, r.length);
+        if (!count) return Infinity;
+        const gaps = [];
+        for (let i = 0; i < count; i += 1) {
+          gaps.push(Math.abs(r[i].milliseconds - l[i].milliseconds));
+        }
+        gaps.sort((a, b) => a - b);
+        return gaps[Math.floor(count / 2)];
+      };
+      const options = [
+        { left, right },
+        { left, right: right.slice(1) },
+        { left: left.slice(1), right },
+      ];
+      return options.reduce((best, option) =>
+        typicalGap(option.left, option.right) < typicalGap(best.left, best.right)
+          ? option
+          : best
+      );
+    },
     calculateOffsets() {
       this.warningMessage = "";
       const leftRawEvents = this.parseRawEvents(this.leftSignalData);
       const rightRawEvents = this.parseRawEvents(this.rightSignalData);
-      const leftEvents = this.parseSignalEvents(
-        leftRawEvents,
-        this.leftPhase,
-        this.eventBasis
-      );
-      const rightEvents = this.parseSignalEvents(
-        rightRawEvents,
-        this.rightPhase,
-        this.eventBasis
+      const { left: leftEvents, right: rightEvents } = this.alignStarts(
+        this.parseSignalEvents(leftRawEvents, this.leftPhase, this.eventBasis),
+        this.parseSignalEvents(rightRawEvents, this.rightPhase, this.eventBasis)
       );
       const patternChanges = leftRawEvents.filter(
         (event) => event.eventCode === 131

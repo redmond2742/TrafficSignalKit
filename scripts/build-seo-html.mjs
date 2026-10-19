@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { headFor, metaTagsFor } from '../src/seo/head.js';
 import { indexableRoutes } from './routerSource.mjs';
+import { stripHomePreloads } from './featuredPreload.mjs';
 
 const DIST = new URL('../dist/', import.meta.url).pathname;
 const TEMPLATE = path.join(DIST, 'index.html');
@@ -56,7 +57,8 @@ export function outputPathsFor(routePath) {
 
 export function renderRoute(template, route) {
   const head = headFor(route.path, route.name);
-  let html = template;
+  // The featured-card art is for the home page only.
+  let html = stripHomePreloads(template);
 
   html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeText(head.title)}</title>`);
 

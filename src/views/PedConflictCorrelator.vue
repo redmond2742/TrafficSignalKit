@@ -136,21 +136,25 @@
     <v-card class="mt-6" variant="outlined">
       <v-card-title>1. High-Resolution Data</v-card-title>
       <v-card-text>
-        <InputBox v-model="rawData" :default-text="defaultText" />
+        <!--
+          This tool keeps its own sample, built to match its default rules,
+          rather than the site-wide hour: a permissive left that turns through
+          the crosswalk during WALK is what it is for.
+        -->
+        <InputBox
+          v-model="rawData"
+          :default-text="defaultText"
+          :sample="buildSampleData"
+          :sample-note="sampleNote"
+          @sample="useSample"
+        />
         <div class="action-row">
           <v-btn color="primary" :disabled="!hasRawData || parsing" :loading="parsing" @click="loadData">
             Load &amp; Scan Data
           </v-btn>
-          <v-btn variant="outlined" @click="loadSample">Load Sample Data</v-btn>
           <v-btn v-if="dataLoaded" variant="text" @click="resetAll">Clear</v-btn>
         </div>
         <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-        <p v-if="sampleLoaded" class="note-text">
-          Sample data: pedestrian phase 4, a permissive left turn on channel 5, a
-          phase 2 through movement on stop bar channel 2, and a downstream
-          detector on channel 21 that confirms vehicles entering on yellow or
-          red.
-        </p>
 
         <v-row dense class="signal-identity">
           <v-col cols="12" md="4">
@@ -1062,7 +1066,12 @@ export default {
       binSec: 1,
       contextSec: 10,
       conflictsOnly: false,
-      sampleLoaded: false,
+      // set by the sample button: run the rules as soon as the scan is done
+      analyzeAfterLoad: false,
+      sampleNote:
+        "Sample data: pedestrian phase 4, a permissive left turn on channel 5, a " +
+        "phase 2 through movement on stop bar channel 2, and a downstream " +
+        "detector on channel 21 that confirms vehicles entering on yellow or red.",
       detectedSignalIds: [],
       signalId: "",
       signalName: "",
@@ -1354,7 +1363,7 @@ export default {
       return `${values.slice(0, 12).join(", ")} … (${values.length} total)`;
     },
     fullTime(ts) {
-      return ts == null ? "—" : DateTime.fromMillis(ts).toFormat("M/d/yyyy HH:mm:ss.S");
+      return ts == null ? "—" : DateTime.fromMillis(ts).toFormat("M/d/yyyy HH:mm:ss.uuu");
     },
     shortTime(ts) {
       return ts == null ? "" : DateTime.fromMillis(ts).toFormat("HH:mm:ss");
@@ -1461,6 +1470,7 @@ export default {
         return;
       }
       if (type === "error") {
+        this.analyzeAfterLoad = false;
         this.parsing = false;
         this.analyzing = false;
         this.errorMessage = payload;
@@ -1473,6 +1483,8 @@ export default {
       if (!this.signalId && signalIds.length === 1) this.signalId = signalIds[0];
       this.detectedSignalIds = signalIds;
       this.results = [];
+      const analyzeNow = this.analyzeAfterLoad;
+      this.analyzeAfterLoad = false;
       if (!summary.eventCount) {
         this.dataLoaded = false;
         this.errorMessage =
@@ -1481,6 +1493,7 @@ export default {
       }
       this.dataLoaded = true;
       this.seedRuleDefaults();
+      if (analyzeNow) this.analyze();
     },
     seedRuleDefaults() {
       const vehicleChannel = this.summary.channels.vehicle[0];
@@ -1559,7 +1572,6 @@ export default {
       this.results = [];
       this.skippedRows = 0;
       this.errorMessage = "";
-      this.sampleLoaded = false;
       if (this.worker) this.worker.postMessage({ type: "reset" });
     },
     downloadCsv() {
@@ -1606,10 +1618,10 @@ export default {
     diamondPoints(cx, cy, r) {
       return `${cx},${cy - r} ${cx + r},${cy} ${cx},${cy + r} ${cx - r},${cy}`;
     },
-    loadSample() {
-      this.rawData = this.buildSampleData();
+    useSample() {
       this.errorMessage = "";
-      this.sampleLoaded = true;
+      this.analyzeAfterLoad = true;
+      this.$nextTick(this.loadData);
     },
     /**
      * Deterministic demo file: ped phase 4 served every cycle with a permissive
@@ -1682,7 +1694,7 @@ export default {
         .sort((a, b) => a.offsetSec - b.offsetSec)
         .map(({ offsetSec, code, param }) => {
           const ts = start.plus({ milliseconds: Math.round(offsetSec * 10) * 100 });
-          return `${ts.toFormat("M/d/yyyy HH:mm:ss.S")},${code},${param}`;
+          return `${ts.toFormat("M/d/yyyy HH:mm:ss.uuu")},${code},${param}`;
         })
         .join("\n");
     },

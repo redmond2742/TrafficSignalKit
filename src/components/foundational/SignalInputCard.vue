@@ -152,6 +152,18 @@ export default {
       type: Object,
       required: true,
     },
+    /**
+     * Fills the card and loads it, as if typed in and the Load button
+     * pressed: name, latlon ("lat, lon"), phase ("Phase 2"), tsp ("TSP 1")
+     * and inputData. The sample data uses it.
+     */
+    preset: {
+      type: Object,
+      default: null,
+    },
+  },
+  mounted() {
+    if (this.preset) this.usePreset(this.preset);
   },
   data() {
     return {
@@ -169,6 +181,10 @@ export default {
     };
   },
   methods: {
+    usePreset(preset) {
+      this.signalForm = { ...this.signalForm, ...preset };
+      this.$nextTick(this.handleClick);
+    },
     handleSubmit() {
       // Handle form submission
       //console.log(this.form);

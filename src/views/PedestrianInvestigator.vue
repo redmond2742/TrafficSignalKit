@@ -36,7 +36,14 @@
             class="signal-id-input"
           ></v-text-field>
           <div class="grow-wrap">
-            <InputBox v-model="signal.data" :defaultText="dataDefaultText" />
+            <!-- the sample is one intersection, so it goes on the first signal -->
+            <InputBox
+              v-model="signal.data"
+              :defaultText="dataDefaultText"
+              :sample="index === 0 ? sampleLog : null"
+              :sample-note="sampleNote"
+              @sample="useSample(signal)"
+            />
           </div>
         </div>
       </div>
@@ -210,6 +217,7 @@
 
 <script>
 import InputBox from "../components/foundational/InputBox.vue";
+import { sampleHighResLog, SAMPLE_NOTE } from "../utils/sampleData.js";
 import convertTime from "../mixins/convertTime";
 import { DateTime } from "luxon";
 
@@ -256,6 +264,7 @@ export default {
   },
   data() {
     return {
+      sampleNote: SAMPLE_NOTE,
       signals: [{ signalId: "", data: "" }],
       dataDefaultText:
         "Paste in High-Resolution Traffic Signal Data as CSV (timestamp, eventCode, phase)",
@@ -453,6 +462,11 @@ export default {
     },
   },
   methods: {
+    sampleLog: sampleHighResLog,
+    useSample(signal) {
+      signal.signalId = signal.signalId || "1001";
+      this.$nextTick(this.processData);
+    },
     processData() {
       const invalidRows = [];
       const metadataRows = [];

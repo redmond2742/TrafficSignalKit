@@ -134,7 +134,7 @@
         <a :href="links.github" target="_blank" rel="noopener">open source</a>
         and welcomes new ideas and improvements through the
         <a :href="links.feedback" target="_blank" rel="noopener">feedback form</a>
-        &mdash; the heart icon at the top of every page.
+        &mdash; the Feedback button at the top of every page.
       </p>
     </section>
   </v-container>
@@ -147,8 +147,8 @@ export default {
     return {
       // The same targets the rest of the site links to: Purdue's enumeration
       // report (SplitHistory.vue), the GPX & Phase Plotter walkthrough
-      // (GPXPhasePlotter.vue), the feedback form behind the heart in the app
-      // bar (Header.vue), and the repository (Footer.vue).
+      // (GPXPhasePlotter.vue), the feedback form behind the Feedback button in
+      // the app bar (Header.vue), and the repository (Footer.vue).
       links: {
         purdue: "https://docs.lib.purdue.edu/jtrpdata/4/",
         video: "https://www.youtube.com/watch?v=MLJvc0Hdg6c",

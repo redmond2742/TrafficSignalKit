@@ -6,85 +6,102 @@
     <div class="form-group-select">
       <v-select
         label="Topic Selection for Practice Quiz"
-        :items="['Fun Quiz', 'Home DIY', 'Traffic Signal Tech Quiz 1']"
+        :items="topics"
         variant="outlined"
         v-model="selectedTopic"
         @update:modelValue="loadQuiz"
       ></v-select>
     </div>
-    <br />
-    <br />
 
-    <!-- Countdown Timer Display -->
-    <div v-if="questions.length > 0 && currentQuestionIndex < questions.length">
-      <Timer :initialTime="questions.length * 60 * 4" />
-    </div>
+    <template v-if="questions.length && !finished">
+      <!-- Countdown Timer Display; keyed so a new quiz starts a new clock -->
+      <Timer :key="startTime" :initialTime="questions.length * 60 * 4" />
 
-    <!-- Display Questions -->
-    <div v-if="questions.length > 0 && currentQuestionIndex < questions.length">
       <h2>
         Question {{ currentQuestionIndex + 1 }} / {{ questions.length }} ({{
           percentComplete.toFixed(0)
         }}%):
       </h2>
-      <p>{{ currentQuestion.question }}</p>
+      <div class="quiz-question">
+        <p class="quiz-question__text">{{ currentQuestion.question }}</p>
 
-      <div v-for="(option, index) in currentQuestion.options" :key="index">
-        <label>
-          <v-container fluid>
-            <v-radio-group v-model="userAnswers[currentQuestionIndex]">
-              <v-radio
-                :label="option"
-                :name="'question' + currentQuestionIndex"
-                :value="option"
-              />
-            </v-radio-group>
-          </v-container>
-        </label>
+        <!--
+          One group for the question, valued by option key. Each option used
+          to sit in a group of its own, valued by its text, which is what made
+          Traffic Signal Tech Quiz 1 (answers stored as letters) unscoreable.
+        -->
+        <v-radio-group
+          :model-value="answers[currentQuestionIndex] ?? null"
+          :aria-label="currentQuestion.question"
+          @update:model-value="answer"
+        >
+          <v-radio
+            v-for="option in currentQuestion.options"
+            :key="option.key"
+            :label="`${option.key}. ${option.text}`"
+            :value="option.key"
+          />
+        </v-radio-group>
       </div>
 
-      <v-btn @click="prev10QuestionBtn" :disabled="currentQuestionIndex < 10">
-        <<10
-      </v-btn>
-
-      <v-btn @click="prevQuestionBtn" :disabled="currentQuestionIndex === 0">
-        Back
-      </v-btn>
-
-      <v-btn @click="nextQuestionBtn"> Next </v-btn>
-      <v-btn
-        @click="next10QuestionBtn"
-        :disabled="currentQuestionIndex > questions.length - 11"
-      >
-        10>>
-      </v-btn>
-    </div>
+      <div class="quiz-nav">
+        <v-btn @click="prev10Question" :disabled="currentQuestionIndex < 10">
+          &laquo; 10
+        </v-btn>
+        <v-btn @click="prevQuestion" :disabled="currentQuestionIndex === 0">
+          Back
+        </v-btn>
+        <v-btn v-if="!onLastQuestion" color="primary" @click="nextQuestion">
+          Next
+        </v-btn>
+        <v-btn v-else color="primary" @click="endQuiz">Finish</v-btn>
+        <v-btn
+          @click="next10Question"
+          :disabled="currentQuestionIndex > questions.length - 11"
+        >
+          10 &raquo;
+        </v-btn>
+      </div>
+      <p class="quiz-answered">
+        {{ answeredCount }} of {{ questions.length }} answered
+      </p>
+    </template>
 
     <!-- Grade Display -->
-    <div
-      v-if="(currentQuestionIndex >= questions.length) & (selectedTopic != '')"
-    >
+    <div v-if="finished" class="quiz-results">
       <h2>Quiz Completed!</h2>
       <p>
-        Your score: {{ score }}/{{ questions.length }} (
-        {{ percentScore.toFixed(2) }}% )
+        Your score: {{ result.score }}/{{ result.total }} (
+        {{ result.percent.toFixed(2) }}% )
       </p>
       <p>Total time taken: {{ totalTime }} seconds</p>
-      <p>
-        Average time per question:
-        {{ averageTimePerQuestion }} seconds
-      </p>
-      <p></p>
-      <v-btn @click="restartQuiz">Restart Quiz</v-btn>
+      <p>Average time per question: {{ averageTimePerQuestion }} seconds</p>
+      <v-btn color="primary" @click="restartQuiz">Restart Quiz</v-btn>
+
+      <!-- Every question, so a score can be checked against the key. -->
+      <ol class="quiz-review">
+        <li
+          v-for="row in review"
+          :key="row.index"
+          :class="row.correct ? 'is-right' : 'is-wrong'"
+        >
+          <p class="quiz-review__question">
+            <strong>{{ row.correct ? "Right" : "Wrong" }}:</strong>
+            {{ row.question }}
+          </p>
+          <p v-if="!row.correct" class="quiz-review__line">
+            Your answer: {{ row.chosenText || "none" }}
+          </p>
+          <p class="quiz-review__line">Correct answer: {{ row.answerText }}</p>
+        </li>
+      </ol>
     </div>
   </div>
 </template>
 
 <script>
-import { useQuizStore } from "../stores/quizStore";
-
-import { ref, computed } from "vue";
-
+import { computed, ref } from "vue";
+import { useQuizStore, QUIZ_TOPICS } from "../stores/quizStore";
 import Timer from "../components/foundational/Timer.vue";
 
 export default {
@@ -93,86 +110,54 @@ export default {
   },
   setup() {
     const quizStore = useQuizStore();
-    const selectedTopic = ref("");
-    const remainingTime = ref(new Date());
-    const totalQuizTime = 0;
-    let timer = null;
+    // a quiz left open from an earlier visit comes back where it was
+    const selectedTopic = ref(quizStore.topic || "");
 
-    const loadQuiz = (topic) => {
-      /*
-      if (topic === "practice Questions") {
-        const password = prompt(
-          "Please enter the password to access Practice 1:"
-        );
-        if (password === quizStore.secretKey) {
-          // Proceed to load the quiz for Practice 1
-          console.log("Access granted. Loading Practice 1...");
-          quizStore.loadQuiz(topic);
-        } else {
-          alert("Incorrect password. Access denied.");
-          // Optionally reset the selected topic
-          this.selectedTopic = null;
-        }
-      } else {
-        // Load other quizzes normally
-        
-      }
-      */
-      quizStore.loadQuiz(topic);
-    };
-
-    // Method to move to the next question or end the quiz
-    const nextQuestionBtn = () => {
-      if (quizStore.currentQuestionIndex < quizStore.questions.length - 1) {
-        quizStore.nextQuestion();
-      } else {
-        quizStore.endQuiz(); // End the quiz and stop the timer
-        console.log(quizStore.currentQuestionIndex, quizStore.questions.length);
-      }
-    };
-
-    const prev10QuestionBtn = () => {
-      quizStore.prev10Question();
-    };
-
-    const prevQuestionBtn = () => {
-      quizStore.prevQuestion();
-
-      console.log(quizStore.currentQuestionIndex, quizStore.questions.length);
-    };
-
-    const next10QuestionBtn = () => {
-      quizStore.next10Question();
+    const optionText = (question, key) => {
+      const option = question.options.find((o) => o.key === key);
+      return option ? `${option.key}. ${option.text}` : "";
     };
 
     return {
-      // State and actions from the store
+      topics: QUIZ_TOPICS,
       selectedTopic,
-
-      totalQuizTime: computed(() => quizStore.questions.length * 4 * 60),
       questions: computed(() => quizStore.questions),
       currentQuestionIndex: computed(() => quizStore.currentQuestionIndex),
       currentQuestion: computed(() => quizStore.currentQuestion),
-      userAnswers: ref(quizStore.userAnswers),
-      score: computed(() => quizStore.score),
+      answers: computed(() => quizStore.answers),
+      finished: computed(() => quizStore.finished),
+      startTime: computed(() => quizStore.startTime),
       totalTime: computed(() => quizStore.totalTime),
-      secretKey: computed(() => quizStore.secretKey),
-      percentComplete: computed(
-        () =>
-          (quizStore.currentQuestionIndex / quizStore.questions.length) * 100
-      ),
       averageTimePerQuestion: computed(() => quizStore.averageTimePerQuestion),
-      nextQuestionBtn,
-      next10QuestionBtn,
-      prevQuestionBtn,
-      prev10QuestionBtn,
-      nextQuestion: quizStore.nextQuestion,
-      restartQuiz: quizStore.restartQuiz,
-      endQuiz: quizStore.endQuiz,
-      percentScore: computed(
-        () => (quizStore.score / quizStore.questions.length) * 100.0
+      result: computed(() => quizStore.result),
+      onLastQuestion: computed(
+        () => quizStore.currentQuestionIndex === quizStore.questions.length - 1
       ),
-      loadQuiz,
+      percentComplete: computed(
+        () => (quizStore.currentQuestionIndex / quizStore.questions.length) * 100
+      ),
+      answeredCount: computed(
+        () => quizStore.answers.filter((key) => key != null).length
+      ),
+      review: computed(() =>
+        quizStore.result.results.map((row) => {
+          const question = quizStore.questions[row.index];
+          return {
+            ...row,
+            question: question.question,
+            chosenText: optionText(question, row.chosen),
+            answerText: optionText(question, row.answer),
+          };
+        })
+      ),
+      loadQuiz: (topic) => quizStore.loadQuiz(topic),
+      answer: (key) => quizStore.answer(key),
+      nextQuestion: () => quizStore.nextQuestion(),
+      prevQuestion: () => quizStore.prevQuestion(),
+      next10Question: () => quizStore.next10Question(),
+      prev10Question: () => quizStore.prev10Question(),
+      endQuiz: () => quizStore.endQuiz(),
+      restartQuiz: () => quizStore.restartQuiz(),
     };
   },
 };
@@ -180,12 +165,60 @@ export default {
 
 <style scoped>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
   text-align: center;
   margin-top: 50px;
 }
 
-button {
-  margin-top: 20px;
+.form-group-select {
+  max-width: 560px;
+  margin: 0 auto 24px;
+}
+
+.quiz-question {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: left;
+}
+.quiz-question__text {
+  font-size: 1.05rem;
+  margin-bottom: 4px;
+}
+
+.quiz-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.quiz-answered {
+  text-align: center;
+  margin-top: 8px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.quiz-results p {
+  text-align: center;
+}
+.quiz-review {
+  max-width: 640px;
+  margin: 24px auto 0;
+  padding-left: 1.5em;
+  text-align: left;
+}
+.quiz-review li {
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+.quiz-review li.is-wrong {
+  color: rgb(var(--v-theme-error));
+}
+.quiz-review .quiz-review__question,
+.quiz-review .quiz-review__line {
+  text-align: left;
+  margin: 0;
+}
+.quiz-review__line {
+  color: rgba(var(--v-theme-on-surface), 0.8);
 }
 </style>

@@ -1,0 +1,16 @@
+number,question,option_a,option_b,option_c,option_d,answer
+1,What is the main purpose of a traffic signal?,To improve road aesthetics,To control and manage traffic flow,To provide information on street names,To monitor vehicle speed,B
+2,Which component controls the timing of traffic signal lights?,Controller cabinet,Signal head,Loop detector,Pedestrian push button,A
+3,Which color of light instructs vehicles to stop?,Red,Yellow,Green,Blue,A
+4,"If a traffic signal is flashing red, what should drivers do?",Proceed without stopping,Slow down and proceed with caution,Stop completely and then proceed when safe,Ignore the signal,C
+5,Which tool is commonly used to test electrical connections in a signal cabinet?,Multimeter,Hammer,Wire stripper,Wrench,A
+6,What is the purpose of a loop detector?,To detect the presence of vehicles,To control signal timing,To regulate pedestrian crossings,To measure vehicle speed,A
+7,Which of these is crucial for traffic signal safety?,Securing all wiring connections,Keeping the controller cabinet open,Turning off the power at all times,Ignoring loose wires,A
+8,Which color wire typically represents a ground in traffic signal wiring?,Red,Black,White,Green,D
+9,What does a pedestrian signal showing a flashing hand mean?,Pedestrians should start crossing,Pedestrians should stop crossing immediately,Pedestrians should finish crossing if already started,The light is out of order,C
+10,What should be done if a traffic light bulb needs replacement?,Replace it without powering down,Turn off the power first,Notify a supervisor before doing anything,Wait until the next day,B
+11,Which device helps synchronize multiple traffic signals?,Pedestrian signal,Signal cabinet,Controller module,Signal heads,C
+12,How often should traffic signals be inspected for maintenance?,Daily,Weekly,Monthly,Annually,C
+13,What is the purpose of a conflict monitor in a traffic signal system?,To prevent opposing signals from turning green simultaneously,To detect vehicle presence,To synchronize signals,To control pedestrian signals,A
+14,"In a power outage, what safety feature should traffic signals have?",Emergency battery backup,Automatic reset feature,Surge protector,Timer adjustment feature,A
+15,"If the pedestrian push button is non-functional, what should a technician check first?",The button wiring connection,The signal head,The loop detector,The conflict monitor,A

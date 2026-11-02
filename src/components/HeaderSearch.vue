@@ -118,8 +118,14 @@ export default {
     };
   },
   computed: {
+    /**
+     * An icon that opens the field over the bar. On a phone the bar has no
+     * room for a field at all; on a narrow desktop the four menus leave it
+     * too little (21px at 960px once Beyond Signal Kit joined them), and
+     * below about 1100px it would be under 160px wide.
+     */
     compact() {
-      return this.$vuetify.display.smAndDown;
+      return this.$vuetify.display.width < 1100;
     },
     matches() {
       return this.query ? matchTools(TOOLS, this.query) : [];

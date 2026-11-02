@@ -82,13 +82,49 @@ export const HOME_ORDER = [
 /** How many of HOME_ORDER sit above the divider. */
 export const FEATURED_COUNT = 6;
 
-/** The desktop menus, in bar order. */
+/**
+ * The desktop menus, in bar order. Beyond Signal Kit follows them; it links
+ * out to other sites, so it is BEYOND_SIGNAL_KIT below rather than a group of
+ * tools. About and the blog used to be a menu of their own and are now the
+ * foot of Misc.
+ */
 export const NAV_GROUPS = [
   { id: "data", label: "Traffic Signal Data" },
   { id: "gpx", label: "Time-Space & GPX" },
   { id: "misc", label: "Misc." },
-  { id: "about", label: "About" },
 ];
+
+/**
+ * Related projects on other sites, for the last menu in the bar. Each opens
+ * in a new tab. Descriptions follow each site's own, or for gtss.dev the
+ * blog's (ConfigureOnceWithGtssPost.vue), since its page carries none.
+ */
+export const BEYOND_SIGNAL_KIT = {
+  id: "beyond",
+  label: "Beyond Signal Kit",
+  links: [
+    {
+      title: "GTSS Specification",
+      description: "The General Traffic Signal Specification: an open, plain-text format for describing a signal",
+      href: "https://gtss.dev",
+    },
+    {
+      title: "GTSS Builder",
+      description: "Configure signals and build a GTSS feed, signal by signal",
+      href: "https://app.gtss.dev",
+    },
+    {
+      title: "Intersection Mix",
+      description: "Design an intersection approach by approach, with phases, detectors and GTSS",
+      href: "https://intersectionmix.net",
+    },
+    {
+      title: "OpenRoad",
+      description: "An iOS app that records your drive as roadway data",
+      href: "https://openroad-landing.onrender.com/",
+    },
+  ],
+};
 
 /**
  * The parts of a menu, in reading order. Only Traffic Signal Data has them:
@@ -106,6 +142,9 @@ export const NAV_SECTIONS = [
   { id: "priority", group: "data", label: "Preemption & TSP", column: 2 },
   { id: "timing", group: "data", label: "Timing & coordination", column: 3 },
   { id: "safety", group: "data", label: "Pedestrians & safety", column: 3 },
+  // Misc: its tools, then the site's own pages at the foot
+  { id: "misc-tools", group: "misc", label: null },
+  { id: "about", group: "misc", label: "About" },
 ];
 
 export const TOOLS = [
@@ -172,6 +211,7 @@ export const TOOLS = [
     image: "/images/coordination-learning-tool.webp",
     topics: ["Coordination", "Education", "Offsets"],
     group: "misc",
+    section: "misc-tools",
   },
   {
     path: "/delay-estimator",
@@ -191,6 +231,7 @@ export const TOOLS = [
     image: "/images/yolo-image-annotator.webp",
     topics: ["Machine Learning", "Detection", "Datasets", "Video"],
     group: "misc",
+    section: "misc-tools",
   },
   {
     path: "/ped-conflict-correlator",
@@ -341,6 +382,7 @@ export const TOOLS = [
     image: "/images/cabinet-pm-scheduler.webp",
     topics: ["Maintenance", "Scheduling", "Cabinets"],
     group: "misc",
+    section: "misc-tools",
   },
   {
     path: "/split-history",
@@ -441,6 +483,7 @@ export const TOOLS = [
     image: "/images/traffic-simulator.webp",
     topics: ["Simulation", "Basic Timing"],
     group: "misc",
+    section: "misc-tools",
   },
   {
     path: "/message-sign-designer",
@@ -450,6 +493,7 @@ export const TOOLS = [
     image: "/images/message-sign-designer.webp",
     topics: ["Message Signs", "Visualization", "Field Devices"],
     group: "misc",
+    section: "misc-tools",
   },
   {
     path: "/split-calculator",
@@ -459,6 +503,7 @@ export const TOOLS = [
     image: "/images/split-calculator.webp",
     topics: ["Coordination", "Split", "Calculator"],
     group: "misc",
+    section: "misc-tools",
   },
   {
     path: "/gpx",
@@ -478,6 +523,7 @@ export const TOOLS = [
     image: "/images/practice-exam.webp",
     topics: ["Exam", "Practice", "TE"],
     group: "misc",
+    section: "misc-tools",
   },
   {
     path: "/gpx-elevation",
@@ -561,6 +607,7 @@ export const TOOLS = [
     image: "/images/video-frame-extractor.webp",
     topics: ["Video", "Detection", "Datasets"],
     group: "misc",
+    section: "misc-tools",
   },
   {
     path: "/tools/block-logic",
@@ -569,6 +616,7 @@ export const TOOLS = [
       "Build and step through block-diagram logic rules against high-resolution controller data, with loadable templates.",
     topics: ["Controller Data", "Education"],
     group: "misc",
+    section: "misc-tools",
     home: false,
   },
   {
@@ -578,6 +626,7 @@ export const TOOLS = [
       "Quick reference notes and resources for traffic signal timing work.",
     topics: ["Education", "TE"],
     group: "misc",
+    section: "misc-tools",
     home: false,
   },
   {
@@ -586,7 +635,8 @@ export const TOOLS = [
     description:
       "How Traffic Signal Kit supports traffic engineers with controller event analysis and signal timing workflows.",
     topics: ["TE"],
-    group: "about",
+    group: "misc",
+    section: "about",
     home: false,
   },
   {
@@ -596,7 +646,8 @@ export const TOOLS = [
     description:
       "Updates, experiments, and explainers on ATSPM metrics, high-resolution controller data, and signal operations.",
     topics: ["Education", "TE"],
-    group: "about",
+    group: "misc",
+    section: "about",
     home: false,
   },
 ];

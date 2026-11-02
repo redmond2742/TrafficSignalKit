@@ -19,18 +19,19 @@
     <!--
       One block per desktop menu; the groups come from the tool registry.
       Traffic Signal Data holds 31 tools, so it opens as titled sections in
-      columns rather than one list twice the height of the window.
+      columns rather than one list twice the height of the window. Beyond
+      Signal Kit is last, and its links open other sites in a new tab.
     -->
     <template v-if="mobileViewHide">
       <div v-for="group in navGroups" :key="group.id" class="text-center">
         <v-menu>
           <template v-slot:activator="{ props }">
-            <v-btn v-bind="props">{{ group.label }}</v-btn>
+            <v-btn v-bind="props" class="nav-menu-btn">{{ group.label }}</v-btn>
           </template>
 
           <v-list
-            :density="group.sectioned ? 'compact' : undefined"
-            :class="{ 'nav-columns': group.sectioned }"
+            :density="group.multiColumn ? 'compact' : undefined"
+            :class="{ 'nav-columns': group.multiColumn, 'nav-links': group.external }"
           >
             <div
               v-for="(column, index) in group.columns"
@@ -53,13 +54,19 @@
                 </v-list-subheader>
                 <v-list-item
                   v-for="item in section.items"
-                  :key="item.path"
-                  :to="item.path"
+                  :key="item.path || item.href"
+                  v-bind="linkProps(item)"
                   link
                   active-class="nav-item-active"
                   class="nav-list-item"
                 >
                   <v-list-item-title>{{ item.label }}</v-list-item-title>
+                  <v-list-item-subtitle v-if="item.description">
+                    {{ item.description }}
+                  </v-list-item-subtitle>
+                  <template v-if="item.href" #append>
+                    <v-icon icon="mdi-open-in-new" size="16" aria-hidden="true"></v-icon>
+                  </template>
                 </v-list-item>
               </div>
             </div>
@@ -155,14 +162,20 @@
             </v-list-subheader>
             <v-list-item
               v-for="item in section.items"
-              :key="item.path"
-              :to="item.path"
+              :key="item.path || item.href"
+              v-bind="linkProps(item)"
               link
               active-class="nav-item-active"
               class="nav-list-item drawer-item"
               @click="drawer = false"
             >
               <v-list-item-title>{{ item.label }}</v-list-item-title>
+              <v-list-item-subtitle v-if="item.description">
+                {{ item.description }}
+              </v-list-item-subtitle>
+              <template v-if="item.href" #append>
+                <v-icon icon="mdi-open-in-new" size="16" aria-hidden="true"></v-icon>
+              </template>
             </v-list-item>
           </template>
         </template>
@@ -190,9 +203,11 @@ import HeaderSearch from "./HeaderSearch.vue";
 import {
   TOOLS,
   NAV_GROUPS,
+  BEYOND_SIGNAL_KIT,
   navSections,
   navLabel,
   matchTools,
+  searchTerms,
 } from "@/utils/toolRegistry.js";
 
 export default {
@@ -230,12 +245,24 @@ export default {
       this.drawer = false;
       this.$nextTick(() => this.$refs.menuButton?.$el?.focus());
     },
+    /** A tool is a route; a Beyond Signal Kit link is another site, in a new tab. */
+    linkProps(item) {
+      if (!item.href) return { to: item.path };
+      return {
+        href: item.href,
+        target: "_blank",
+        rel: "noopener",
+        lines: "two",
+        "aria-label": `${item.label}: ${item.description} (opens in a new tab)`,
+      };
+    },
     /** Enter in the filter opens the first tool it left showing. */
     openFirstMatch() {
       const first = this.drawerGroups[0]?.sections[0]?.items[0];
       if (!first) return;
       this.drawer = false;
-      this.$router.push(first.path);
+      if (first.href) window.open(first.href, "_blank", "noopener");
+      else this.$router.push(first.path);
     },
     openFeedback() {
       this.drawer = false;
@@ -245,7 +272,7 @@ export default {
   computed: {
     /** The menus and their sections, each already sorted, from the registry. */
     navGroups() {
-      return NAV_GROUPS.map((group) => {
+      const groups = NAV_GROUPS.map((group) => {
         const sections = navSections(TOOLS, group.id).map((section) => ({
           ...section,
           items: section.items.map((tool) => ({ path: tool.path, label: navLabel(tool) })),
@@ -260,9 +287,27 @@ export default {
           ...group,
           sections,
           columns: columns.filter(Boolean),
-          sectioned: sections.some((s) => s.label),
+          multiColumn: columns.filter(Boolean).length > 1,
         };
       });
+      const links = {
+        id: "beyond-links",
+        label: null,
+        items: BEYOND_SIGNAL_KIT.links.map((link) => ({
+          href: link.href,
+          label: link.title,
+          description: link.description,
+        })),
+      };
+      const beyond = {
+        id: BEYOND_SIGNAL_KIT.id,
+        label: BEYOND_SIGNAL_KIT.label,
+        external: true,
+        sections: [links],
+        columns: [[links]],
+        multiColumn: false,
+      };
+      return [...groups, beyond];
     },
     /**
      * The same menus for the drawer, cut down to what the filter matches.
@@ -273,13 +318,19 @@ export default {
       const query = (this.drawerQuery || "").trim();
       if (!query) return this.navGroups;
       const hits = new Set(matchTools(TOOLS, query).map((tool) => tool.path));
+      // outside links match on their name and description, as tools do
+      const terms = searchTerms(query);
+      const matches = (item) =>
+        item.path
+          ? hits.has(item.path)
+          : terms.every((term) => `${item.label} ${item.description}`.toLowerCase().includes(term));
       return this.navGroups
         .map((group) => ({
           ...group,
           sections: group.sections
             .map((section) => ({
               ...section,
-              items: section.items.filter((item) => hits.has(item.path)),
+              items: section.items.filter(matches),
             }))
             .filter((section) => section.items.length),
         }))
@@ -334,6 +385,29 @@ a {
 :deep(.nav-item-active) {
   color: rgb(var(--v-theme-primary));
   font-weight: 600;
+}
+/*
+ * Four menus, the title, search and Feedback fill a 960px bar; narrower
+ * button padding keeps Feedback from being pushed off its end.
+ */
+@media (max-width: 1099px) {
+  .nav-menu-btn {
+    padding-inline: 10px;
+  }
+}
+
+/* Beyond Signal Kit: room for each site's one-line description */
+.nav-links {
+  max-width: 380px;
+  text-align: left;
+}
+.nav-links :deep(.v-list-item-subtitle) {
+  white-space: normal;
+  -webkit-line-clamp: 2;
+}
+.drawer-item :deep(.v-list-item-subtitle) {
+  white-space: normal;
+  -webkit-line-clamp: 3;
 }
 :deep(.nav-list-item:focus-visible) {
   outline: 2px solid rgb(var(--v-theme-primary));

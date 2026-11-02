@@ -33,6 +33,7 @@ import {
   mdiFolderZipOutline,
   mdiMapMarkerDistance,
   mdiMinus,
+  mdiOpenInNew,
   mdiPaperclip,
   mdiPause,
   mdiPlay,
@@ -42,7 +43,7 @@ import {
 } from '@mdi/js'
 
 /**
- * The 23 icons the site actually uses, as SVG paths.
+ * The 26 icons the site actually uses, as SVG paths.
  *
  * This replaces @mdi/font, which shipped all four webfont formats (3.3MB, of
  * which a browser uses one) plus a stylesheet declaring roughly 7,400 icon
@@ -72,6 +73,7 @@ export const ICONS = {
   'mdi-folder-zip-outline': mdiFolderZipOutline,
   'mdi-map-marker-distance': mdiMapMarkerDistance,
   'mdi-minus': mdiMinus,
+  'mdi-open-in-new': mdiOpenInNew,
   'mdi-paperclip': mdiPaperclip,
   'mdi-pause': mdiPause,
   'mdi-play': mdiPlay,

@@ -5,6 +5,7 @@ import {
   TOOLS,
   NAV_GROUPS,
   NAV_SECTIONS,
+  BEYOND_SIGNAL_KIT,
   HOME_ORDER,
   FEATURED_COUNT,
   featuredTools,
@@ -160,6 +161,32 @@ test('the desktop columns stay even, and short enough for a laptop screen', () =
   const heights = [...rows.values()];
   assert.ok(Math.max(...heights) <= 15, `a column runs to ${Math.max(...heights)} rows`);
   assert.ok(Math.max(...heights) - Math.min(...heights) <= 5, `columns of ${heights.join(', ')} rows`);
+});
+
+test('About and the blog sit at the foot of Misc, under their own heading', () => {
+  assert.ok(!NAV_GROUPS.some((g) => g.id === 'about'), 'About is a menu again');
+  const sections = navSections(TOOLS, 'misc');
+  const last = sections[sections.length - 1];
+  assert.equal(last.label, 'About');
+  assert.deepEqual(last.items.map((t) => t.path).sort(), ['/about', '/blog']);
+  assert.equal(sections[0].label, null, 'the tools come first, without a heading');
+  assert.ok(sections[0].items.length > 5);
+});
+
+test('Beyond Signal Kit links out to the four related sites, after the tool menus', () => {
+  assert.equal(BEYOND_SIGNAL_KIT.label, 'Beyond Signal Kit');
+  const hrefs = BEYOND_SIGNAL_KIT.links.map((l) => l.href);
+  assert.deepEqual(hrefs, [
+    'https://gtss.dev',
+    'https://app.gtss.dev',
+    'https://intersectionmix.net',
+    'https://openroad-landing.onrender.com/',
+  ]);
+  for (const link of BEYOND_SIGNAL_KIT.links) {
+    assert.ok(link.title && link.description, link.href);
+    assert.ok(!TOOLS.some((t) => t.path === link.href), 'an outside site is not a route');
+  }
+  assert.equal(new Set(BEYOND_SIGNAL_KIT.links.map((l) => l.title)).size, BEYOND_SIGNAL_KIT.links.length);
 });
 
 test('a menu without sections is one unlabelled section', () => {

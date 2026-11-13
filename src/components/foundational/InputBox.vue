@@ -1,5 +1,16 @@
 <template>
-  <div class="input-box-shell">
+  <div
+    class="input-box-shell"
+    @dragenter="onDragOver"
+    @dragover="onDragOver"
+    @dragleave="onDragLeave"
+    @drop="onDrop"
+  >
+    <!--
+      The whole box takes a dropped file, in either mode. Dropped on the text
+      box, a file would otherwise replace the page, so it switches to Upload
+      and loads instead; the pasted text comes back on switching to Paste.
+    -->
     <!--
       The mode switch sits here, top-left above the input, in every tool that
       takes high-resolution data. Some tools used to wrap this in a second
@@ -42,48 +53,63 @@
       </v-btn>
     </div>
 
-    <textarea
-      v-if="inputMode === 'text'"
-      v-model="inputData"
-      rows="10"
-      class="input-box"
-      :placeholder="defaultText"
-      :aria-label="defaultText"
-      @input="onType"
-      @blur="emitInput"
-    ></textarea>
+    <div class="input-box-area">
+      <textarea
+        v-if="inputMode === 'text'"
+        v-model="inputData"
+        rows="10"
+        class="input-box"
+        :placeholder="defaultText"
+        :aria-label="defaultText"
+        @input="onType"
+        @blur="emitInput"
+      ></textarea>
 
-    <div v-else class="input-box-upload">
-      <!--
-        A real button rather than the browser's bare file input, so the
-        control is in the same place and the same shape on every tool.
-      -->
-      <v-btn
-        color="primary"
-        variant="tonal"
-        prepend-icon="mdi-paperclip"
-        @click="$refs.fileInput.click()"
-      >
-        Choose file{{ multiple ? "s" : "" }}
-      </v-btn>
-      <input
-        ref="fileInput"
-        type="file"
-        class="input-box-file-native"
-        :multiple="multiple"
-        :accept="accept"
-        @change="handleFileChange"
-      />
-      <span class="input-box-files">{{ fileSummary }}</span>
+      <div v-else class="input-box-upload">
+        <v-icon icon="mdi-tray-arrow-up" size="28" aria-hidden="true"></v-icon>
+        <!-- no dragging on a touch screen, so the wording goes with it -->
+        <p class="input-box-drop-text">
+          Drag and drop file{{ multiple ? "s" : "" }} here, or
+        </p>
+        <!--
+          A real button rather than the browser's bare file input, so the
+          control is in the same place and the same shape on every tool.
+        -->
+        <v-btn
+          color="primary"
+          variant="tonal"
+          prepend-icon="mdi-paperclip"
+          @click="$refs.fileInput.click()"
+        >
+          Choose file{{ multiple ? "s" : "" }}
+        </v-btn>
+        <input
+          ref="fileInput"
+          type="file"
+          class="input-box-file-native"
+          :multiple="multiple"
+          :accept="accept"
+          @change="handleFileChange"
+        />
+        <span class="input-box-files">{{ fileSummary }}</span>
+      </div>
+
+      <div v-if="dragging" class="input-box-drop-hint">
+        Drop file{{ multiple ? "s" : "" }} to load
+      </div>
     </div>
 
-    <p v-if="sampleShown" class="input-box-note" role="status">
+    <p v-if="fileError" class="input-box-error" role="alert">{{ fileError }}</p>
+
+    <p v-if="sampleShown && inputMode === 'text'" class="input-box-note" role="status">
       {{ sampleNote }}
     </p>
   </div>
 </template>
 
 <script>
+import { dragHasFiles, pickDroppedFiles, rejectedMessage } from "../../utils/fileDrop.js";
+
 export default {
   name: "InputBox",
   props: {
@@ -129,6 +155,9 @@ export default {
       fileNames: [],
       // true from loading the sample until the text is changed by hand
       sampleShown: false,
+      // a file is being dragged over this box
+      dragging: false,
+      fileError: "",
     };
   },
   computed: {
@@ -149,17 +178,61 @@ export default {
         this.inputData = "";
       } else {
         this.fileNames = [];
+        this.fileError = "";
         this.inputData = this.textData;
       }
       this.emitInput();
     },
   },
+  /**
+   * A box invites dropping, so a near miss gets likelier, and a file dropped
+   * anywhere else on the page would replace the page and lose the work on it.
+   */
+  mounted() {
+    window.addEventListener("dragover", this.refusePageDrop);
+    window.addEventListener("drop", this.refusePageDrop);
+  },
+  beforeUnmount() {
+    window.removeEventListener("dragover", this.refusePageDrop);
+    window.removeEventListener("drop", this.refusePageDrop);
+  },
   methods: {
+    onDragOver(event) {
+      if (!dragHasFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      this.dragging = true;
+    },
+    onDragLeave(event) {
+      // leaving for a child of the box is still inside it
+      if (!event.currentTarget.contains(event.relatedTarget)) this.dragging = false;
+    },
+    onDrop(event) {
+      if (!dragHasFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      this.dragging = false;
+      const { accepted, rejected } = pickDroppedFiles(event.dataTransfer.files, {
+        accept: this.accept,
+        multiple: this.multiple,
+      });
+      if (accepted.length) {
+        this.inputMode = "file";
+        this.readFiles(accepted);
+      }
+      this.fileError = rejected.length ? rejectedMessage(rejected, this.accept) : "";
+    },
+    /** Runs after the box's own handlers; a drop zone that took it has said so. */
+    refusePageDrop(event) {
+      if (event.defaultPrevented || !dragHasFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "none";
+    },
     emitInput() {
       this.$emit("update:modelValue", this.inputData);
     },
     onType() {
       this.sampleShown = false;
+      this.fileError = "";
       this.emitInput();
     },
     loadSample() {
@@ -167,6 +240,7 @@ export default {
       // a file upload in progress gives way to the sample
       this.inputMode = "text";
       this.fileNames = [];
+      this.fileError = "";
       this.$nextTick(() => {
         this.inputData = text;
         this.textData = text;
@@ -176,7 +250,10 @@ export default {
       });
     },
     handleFileChange(event) {
-      const files = Array.from(event.target.files || []);
+      this.fileError = "";
+      this.readFiles(Array.from(event.target.files || []));
+    },
+    readFiles(files) {
       this.fileNames = files.map((file) => file.name);
       if (files.length === 0) {
         this.inputData = "";
@@ -201,6 +278,8 @@ export default {
         .catch(() => {
           this.inputData = "";
           this.fileNames = [];
+          // what a dropped folder comes to, since it arrives looking like a file
+          this.fileError = "Could not read that. A folder can't be loaded; drop the files inside it.";
           this.emitInput();
         });
     },
@@ -257,15 +336,56 @@ export default {
   box-shadow: 0 0 0 1px rgb(var(--v-theme-primary));
 }
 
+.input-box-area {
+  position: relative;
+}
+
 .input-box-upload {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
+  justify-content: center;
+  gap: 8px;
   min-height: 140px;
   padding: 16px;
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.28);
   border-radius: 6px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.input-box-drop-text {
+  margin: 0;
+}
+@media (hover: none) {
+  .input-box-drop-text {
+    display: none;
+  }
+}
+
+/*
+ * Over the box while a file is held above it, and lets the drag events through.
+ * Opaque, so its one line does not land on top of the text and button beneath.
+ */
+.input-box-drop-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed rgb(var(--v-theme-primary));
+  border-radius: 6px;
+  background:
+    linear-gradient(rgba(var(--v-theme-primary), 0.12), rgba(var(--v-theme-primary), 0.12)),
+    rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.input-box-error {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: rgb(var(--v-theme-error));
 }
 
 /* the button above opens this; it is never shown itself */
@@ -274,7 +394,6 @@ export default {
 }
 
 .input-box-files {
-  color: rgba(var(--v-theme-on-surface), 0.7);
   word-break: break-all;
 }
 </style>

@@ -99,6 +99,42 @@
       </div>
     </div>
 
+    <!--
+      Which layout the log is in, and the proof: its first rows as they are in
+      the file beside how the tool reads them. Only for something that reads
+      as a controller log; a GPX file or a detector map shows nothing here.
+    -->
+    <div v-if="detected" class="input-box-format" role="status">
+      <p class="input-box-format__line">
+        <v-icon icon="mdi-check-circle-outline" size="16" aria-hidden="true"></v-icon>
+        Detected format: <strong>{{ detected.name }}</strong>
+        ({{ detected.columns.join(", ") }}). {{ detectedSummary }}
+        <button
+          v-if="detected.sample.length"
+          type="button"
+          class="input-box-format__toggle"
+          :aria-expanded="String(showProof)"
+          @click="showProof = !showProof"
+        >
+          {{ showProof ? "Hide" : "Show" }} the first rows
+        </button>
+      </p>
+      <table v-if="showProof && detected.sample.length" class="input-box-format__proof">
+        <thead>
+          <tr>
+            <th scope="col">In the file</th>
+            <th scope="col">As the tool reads it</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(row, index) in detected.sample" :key="index">
+            <td><code>{{ row.raw }}</code></td>
+            <td><code>{{ row.converted }}</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <p v-if="fileError" class="input-box-error" role="alert">{{ fileError }}</p>
 
     <p v-if="sampleShown && inputMode === 'text'" class="input-box-note" role="status">
@@ -109,6 +145,7 @@
 
 <script>
 import { dragHasFiles, pickDroppedFiles, rejectedMessage } from "../../utils/fileDrop.js";
+import { normalizeHighResText } from "../../utils/highResFormats.js";
 
 export default {
   name: "InputBox",
@@ -158,9 +195,33 @@ export default {
       // a file is being dragged over this box
       dragging: false,
       fileError: "",
+      // what was last handed to the tool, which may be the log reordered
+      lastEmitted: null,
+      showProof: true,
     };
   },
   computed: {
+    /**
+     * The box's text in the layout the tools read. A log in another layout,
+     * such as D4's, is reordered here, so every tool takes it; the box keeps
+     * showing what was pasted or uploaded.
+     */
+    normalized() {
+      return normalizeHighResText(this.inputData);
+    },
+    detected() {
+      return this.normalized.detection;
+    },
+    detectedSummary() {
+      const d = this.detected;
+      if (!d) return "";
+      const rows = `${d.rows.toLocaleString()} row${d.rows === 1 ? "" : "s"}`;
+      if (!d.converted) return `${rows}, read as they are.`;
+      const notes = [`${rows} reordered to timestamp, event code, parameter for this tool`];
+      if (d.ignored.length) notes.push(`${d.ignored.join(", ")} ignored`);
+      if (d.skipped) notes.push(`${d.skipped.toLocaleString()} line${d.skipped === 1 ? "" : "s"} that did not read skipped`);
+      return `${notes.join("; ")}.`;
+    },
     fileSummary() {
       if (!this.fileNames.length) return "No file chosen";
       if (this.fileNames.length === 1) return this.fileNames[0];
@@ -169,7 +230,8 @@ export default {
   },
   watch: {
     modelValue(value) {
-      if (value === this.inputData) return;
+      // the reordered log coming back is not a new value from the tool
+      if (value === this.inputData || value === this.lastEmitted) return;
       this.inputData = value;
     },
     inputMode(mode) {
@@ -228,7 +290,9 @@ export default {
       event.dataTransfer.dropEffect = "none";
     },
     emitInput() {
-      this.$emit("update:modelValue", this.inputData);
+      const text = this.normalized.text;
+      this.lastEmitted = text;
+      this.$emit("update:modelValue", text);
     },
     onType() {
       this.sampleShown = false;
@@ -380,6 +444,47 @@ export default {
   color: rgb(var(--v-theme-primary));
   font-weight: 600;
   pointer-events: none;
+}
+
+.input-box-format {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+}
+.input-box-format__line {
+  margin: 0;
+}
+.input-box-format__line .v-icon {
+  color: rgb(var(--v-theme-success));
+  vertical-align: -3px;
+}
+.input-box-format__toggle {
+  margin-left: 4px;
+  color: rgb(var(--v-theme-primary));
+  text-decoration: underline;
+  cursor: pointer;
+}
+.input-box-format__proof {
+  margin-top: 6px;
+  border-collapse: collapse;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+}
+.input-box-format__proof th,
+.input-box-format__proof td {
+  padding: 3px 12px 3px 0;
+  text-align: left;
+  white-space: pre;
+  vertical-align: top;
+}
+.input-box-format__proof th {
+  font-weight: 600;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.16);
+}
+.input-box-format__proof code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
 }
 
 .input-box-error {

@@ -781,6 +781,19 @@ export default {
                 ) {
                   //logic for after green start time +0.1 sec
                   this.phaseArray[phaseNum].redTimeEnd = obj.timestamp.iso;
+                } else if (
+                  obj.eventCode === 12 &&
+                  this.phaseArray[phaseNum].yellowTimeEnd &&
+                  !this.phaseArray[phaseNum].redTimeEnd
+                ) {
+                  // A phase with no red clearance logs no 10 or 11: yellow
+                  // ends (9) and the phase goes inactive (12) together, as in
+                  // a D4 cabinet log. Without this no phase ever completed
+                  // and the table stayed empty.
+                  if (!this.phaseArray[phaseNum].redTimeStart) {
+                    this.phaseArray[phaseNum].redTimeStart = this.phaseArray[phaseNum].yellowTimeEnd;
+                  }
+                  this.phaseArray[phaseNum].redTimeEnd = obj.timestamp.iso;
                 } else if (obj.eventCode === 6) {
                   this.phaseArray[phaseNum].phaseTerminationReason = "Force Off";
                 } else if (obj.eventCode === 5) {

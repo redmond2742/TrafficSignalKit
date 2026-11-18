@@ -16,6 +16,7 @@ import { aliases } from 'vuetify/iconsets/mdi-svg'
 import {
   mdiArrowRight,
   mdiCheck,
+  mdiCheckCircleOutline,
   mdiCircle,
   mdiClipboardTextOutline,
   mdiClose,
@@ -43,7 +44,7 @@ import {
 } from '@mdi/js'
 
 /**
- * The 26 icons the site actually uses, as SVG paths.
+ * The 27 icons the site actually uses, as SVG paths.
  *
  * This replaces @mdi/font, which shipped all four webfont formats (3.3MB, of
  * which a browser uses one) plus a stylesheet declaring roughly 7,400 icon
@@ -56,6 +57,7 @@ import {
 export const ICONS = {
   'mdi-arrow-right': mdiArrowRight,
   'mdi-check': mdiCheck,
+  'mdi-check-circle-outline': mdiCheckCircleOutline,
   'mdi-circle': mdiCircle,
   'mdi-clipboard-text-outline': mdiClipboardTextOutline,
   'mdi-close': mdiClose,
